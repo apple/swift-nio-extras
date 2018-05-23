@@ -23,7 +23,7 @@ functionality.
 ## Using NIOExtras:
 
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio-extras.git", .upToNextMinor("0.1.0")),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", .upToNextMinor(from: "0.1.0")),
     ],
 
 ## Current Contents
