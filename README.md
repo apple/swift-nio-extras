@@ -16,14 +16,17 @@ followed as in the other SwiftNIO repositories. We indicate this by starting
 with major version 0 (`0.x.y`). We will try to increment the minor version
 number whenever there is a breaking change until we release `1.0.0` when we will
 start to follow the usual SemVer requirements. We recommend that users depend on
-the exact version.
+`.upToNextMinor` as we reserve the right to introduce breaking changes with
+minor version increments. For patch level increments, we might only introduce new
+functionality.
 
 ## Using NIOExtras:
 
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio-extras.git", .exact("0.0.1")),
+        .package(url: "https://github.com/apple/swift-nio-extras.git", .upToNextMinor("0.1.0")),
     ],
 
 ## Current Contents
 
-_empty_
+- [`QuiescingHelper`](Sources/NIOExtras/QuiescingHelper.swift): Helps to quiesce
+  a server by notifying user code when all previously open connections have closed.
