@@ -30,3 +30,4 @@ functionality.
 
 - [`QuiescingHelper`](Sources/NIOExtras/QuiescingHelper.swift): Helps to quiesce
   a server by notifying user code when all previously open connections have closed.
+- [`LineBasedFrameDecoder`](Sources/NIOExtras/LineBasedFrameDecoder.swift) Splits incoming `ByteBuffer`s on line endings.

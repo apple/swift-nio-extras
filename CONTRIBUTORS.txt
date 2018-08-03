@@ -16,3 +16,4 @@ needs to be listed here.
 - Johannes Weiß <johannesweiss@apple.com>
 - Norman Maurer <norman_maurer@apple.com>
 - Tom Doron <tomerd@apple.com>
+- Ludovic Dewailly <ldewailly@apple.com>
