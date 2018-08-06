@@ -36,7 +36,7 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     public typealias InboundOut = ByteBuffer
     public var cumulationBuffer: ByteBuffer?
     // keep track of the last scan offset from the buffer's reader index (if we didn't find the delimiter)
-    private var lastScanOffset: Int? = nil
+    private var lastScanOffset = 0
     
     public init() { }
     
@@ -50,26 +50,20 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     }
     
     private func findNextFrame(buffer: inout ByteBuffer) throws -> ByteBuffer? {
-        var view = buffer.readableBytesView
-        // get the view's true start, end indexes
-        let _startIndex = view.startIndex
-        // start where we left off or from the beginning
-        let lastIndex = self.lastScanOffset.flatMap { buffer.readerIndex + $0 }
-        let firstIndex = min(lastIndex ?? _startIndex, view.endIndex)
-        view = view.dropFirst(firstIndex - buffer.readerIndex)
+        let view = buffer.readableBytesView.dropFirst(lastScanOffset)
         // look for the delimiter
         if let delimiterIndex = view.firstIndex(of: 0x0A) { // '\n'
-            let length = delimiterIndex - _startIndex
-            let dropCarriageReturn = delimiterIndex > 0 && view[delimiterIndex - 1] == 0x0D // '\r'
+            let length = delimiterIndex - buffer.readerIndex
+            let dropCarriageReturn = delimiterIndex > view.startIndex && view[delimiterIndex - 1] == 0x0D // '\r'
             let buff = buffer.readSlice(length: dropCarriageReturn ? length - 1 : length)
             // drop the delimiter (and trailing carriage return if appicable)
             buffer.moveReaderIndex(forwardBy: dropCarriageReturn ? 2 : 1)
             // reset the last scan start index since we found a line
-            self.lastScanOffset = nil
+            self.lastScanOffset = 0
             return buff
         }
         // next scan we start where we stopped
-        self.lastScanOffset = buffer.readerIndex + view.count
+        self.lastScanOffset = buffer.readableBytes
         return nil
     }
     
@@ -90,8 +84,8 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
 
 #if !swift(>=4.2)
 private extension ByteBufferView {
-    func firstIndex(of: UInt8) -> Int? {
-        return self.index(of: of)
+    func firstIndex(of element: UInt8) -> Int? {
+        return self.index(of: element)
     }
 }
 #endif
