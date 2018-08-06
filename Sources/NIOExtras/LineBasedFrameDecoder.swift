@@ -14,7 +14,6 @@
 
 import NIO
 
-///
 /// A decoder that splits incoming `ByteBuffer`s around line end
 /// character(s) (`'\n'` or `'\r\n'`).
 ///
@@ -36,13 +35,13 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
     public var cumulationBuffer: ByteBuffer?
-    // we keep track of the last scan end index if we didn't find the delimiter
-    private var lastIndex: ByteBufferView.Index? = nil
+    // keep track of the last scan offset from the buffer's reader index (if we didn't find the delimiter)
+    private var lastScanOffset: Int? = nil
     
     public init() { }
     
     public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        if let frame = try findNextFrame(buffer: &buffer) {
+        if let frame = try self.findNextFrame(buffer: &buffer) {
             ctx.fireChannelRead(wrapInboundOut(frame))
             return .continue
         } else {
@@ -54,33 +53,45 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
         var view = buffer.readableBytesView
         // get the view's true start, end indexes
         let _startIndex = view.startIndex
-        let _endIndex = view.endIndex
-        // start where we left off last scan or from the beginning
-        let firstIndex = min(self.lastIndex ?? _startIndex, _endIndex)
-        view = view.dropFirst(firstIndex)
-        while !view.isEmpty {
-            if view.starts(with: "\n".utf8) {
-                let length = view.startIndex - _startIndex
-                // check if the line ends with carriage return, if so drop it
-                let dropCarriageReturn = length > 0
-                        && buffer.getBytes(at: buffer.readerIndex + length - 1, length: 1) == [0x0D]
-                let buff = buffer.readSlice(length: dropCarriageReturn ? length - 1 : length)
-                // drop the delimiter (and trailing carriage return if appicable)
-                buffer.moveReaderIndex(forwardBy: dropCarriageReturn ? 2 : 1)
-                // reset the last scan start index since we found a line
-                self.lastIndex = nil
-                return buff
-            }
-            view = view.dropFirst(1)
+        // start where we left off or from the beginning
+        let lastIndex = self.lastScanOffset.flatMap { buffer.readerIndex + $0 }
+        let firstIndex = min(lastIndex ?? _startIndex, view.endIndex)
+        view = view.dropFirst(firstIndex - buffer.readerIndex)
+        // look for the delimiter
+        if let delimiterIndex = view.firstIndex(of: 0x0A) { // '\n'
+            let length = delimiterIndex - _startIndex
+            let dropCarriageReturn = delimiterIndex > 0 && view[delimiterIndex - 1] == 0x0D // '\r'
+            let buff = buffer.readSlice(length: dropCarriageReturn ? length - 1 : length)
+            // drop the delimiter (and trailing carriage return if appicable)
+            buffer.moveReaderIndex(forwardBy: dropCarriageReturn ? 2 : 1)
+            // reset the last scan start index since we found a line
+            self.lastScanOffset = nil
+            return buff
         }
         // next scan we start where we stopped
-        self.lastIndex = max(0, _endIndex - 1)
+        self.lastScanOffset = buffer.readerIndex + view.count
         return nil
     }
     
     public func handlerRemoved(ctx: ChannelHandlerContext) {
+        self.handleLeftOverBytes(ctx: ctx)
+    }
+    
+    public func channelInactive(ctx: ChannelHandlerContext) {
+        self.handleLeftOverBytes(ctx: ctx)
+    }
+    
+    private func handleLeftOverBytes(ctx: ChannelHandlerContext) {
         if let buffer = cumulationBuffer, buffer.readableBytes > 0 {
             ctx.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
     }
 }
+
+#if !swift(>=4.2)
+private extension ByteBufferView {
+    func firstIndex(of: UInt8) -> Int? {
+        return self.index(of: of)
+    }
+}
+#endif

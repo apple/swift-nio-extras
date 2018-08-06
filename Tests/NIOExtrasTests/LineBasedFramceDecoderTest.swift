@@ -103,4 +103,53 @@ class LineBasedFrameDecoderTest: XCTestCase {
         XCTAssertFalse(try channel.writeInbound(buffer))
         XCTAssertFalse(try channel.finish())
     }
+    
+    func testReaderIndexNotZero() throws {
+        let channel = EmbeddedChannel()
+        let handler = LineBasedFrameDecoder()
+        try channel.pipeline.add(handler: handler).wait()
+        
+        var buffer = channel.allocator.buffer(capacity: 8)
+        // read "abc" so the reader index is not 0
+        buffer.write(string: "abcfoo\r\nbar")
+        XCTAssertEqual("abc", buffer.readString(length: 3))
+        XCTAssertEqual(3, buffer.readerIndex)
+        
+        XCTAssertTrue(try channel.writeInbound(buffer))
+        var outputBuffer: ByteBuffer? = channel.readInbound()
+        XCTAssertEqual(3, outputBuffer?.readableBytes)
+        XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
+        // discard the read bytes - this will reset the reader index to 0
+        var buf = handler.cumulationBuffer
+        buf?.discardReadBytes()
+        handler.cumulationBuffer = buf
+        XCTAssertEqual(0, handler.cumulationBuffer?.readerIndex ?? -1)
+        
+        buffer.write(string: "\r\n")
+        XCTAssertTrue(try channel.writeInbound(buffer))
+        outputBuffer = channel.readInbound()
+        XCTAssertEqual("bar", outputBuffer?.readString(length: 3))
+    }
+    
+    func testChannelInactiveWithLeftOverBytes() throws {
+        let channel = EmbeddedChannel()
+        let handler = LineBasedFrameDecoder()
+        try channel.pipeline.add(handler: handler).wait()
+        // add some data to the buffer
+        var buffer = channel.allocator.buffer(capacity: 2)
+        // read "abc" so the reader index is not 0
+        buffer.write(string: "hi")
+        XCTAssertFalse(try channel.writeInbound(buffer))
+        
+        try channel.close().wait()
+        XCTAssertThrowsError(try channel.throwIfErrorCaught()) { error in
+            guard let error = error as? NIOExtrasErrors.LeftOverBytesError else {
+                XCTFail()
+                return
+            }
+            var expectedBuffer = channel.allocator.buffer(capacity: 7)
+            expectedBuffer.write(string: "hi")
+            XCTAssertEqual(error.leftOverBytes, expectedBuffer)
+        }
+    }
 }

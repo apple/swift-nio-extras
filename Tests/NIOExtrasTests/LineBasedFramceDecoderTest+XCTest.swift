@@ -31,6 +31,8 @@ extension LineBasedFrameDecoderTest {
                 ("testRemoveHandlerWhenBufferIsEmpty", testRemoveHandlerWhenBufferIsEmpty),
                 ("testEmptyLine", testEmptyLine),
                 ("testEmptyBuffer", testEmptyBuffer),
+                ("testReaderIndexNotZero", testReaderIndexNotZero),
+                ("testChannelInactiveWithLeftOverBytes", testChannelInactiveWithLeftOverBytes),
            ]
    }
 }
