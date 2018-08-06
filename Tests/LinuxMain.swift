@@ -27,6 +27,7 @@ import XCTest
 
    XCTMain([
          testCase(FixedLengthFrameDecoderTest.allTests),
+         testCase(LineBasedFrameDecoderTest.allTests),
          testCase(QuiescingHelperTest.allTests),
     ])
 #endif
