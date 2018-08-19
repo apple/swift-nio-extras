@@ -128,4 +128,41 @@ class LineBasedFrameDecoderTest: XCTestCase {
             XCTAssertEqual(error.leftOverBytes, expectedBuffer)
         }
     }
+
+    func testMoreDataAvailableWhenChannelBecomesInactive() throws {
+        class CloseWhenMyFavouriteMessageArrives: ChannelInboundHandler {
+            typealias InboundIn = ByteBuffer
+
+            private let receivedLeftOversPromise: EventLoopPromise<ByteBuffer>
+
+            init(receivedLeftOversPromise: EventLoopPromise<ByteBuffer>) {
+                self.receivedLeftOversPromise = receivedLeftOversPromise
+            }
+
+            func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+                let buffer = self.unwrapInboundIn(data)
+
+                if buffer.readableBytes == 3 {
+                    context.close(promise: nil)
+                }
+            }
+
+            func errorCaught(context: ChannelHandlerContext, error: Error) {
+                if let leftOvers = error as? NIOExtrasErrors.LeftOverBytesError {
+                    self.receivedLeftOversPromise.succeed(leftOvers.leftOverBytes)
+                } else {
+                    context.fireErrorCaught(error)
+                }
+            }
+        }
+        let receivedLeftOversPromise: EventLoopPromise<ByteBuffer> = self.channel.eventLoop.makePromise()
+        let handler = CloseWhenMyFavouriteMessageArrives(receivedLeftOversPromise: receivedLeftOversPromise)
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(handler).wait())
+        var buffer = self.channel.allocator.buffer(capacity: 16)
+        buffer.writeString("a\nbb\nccc\ndddd\neeeee\nffffff\n")
+        XCTAssertNoThrow(try self.channel.writeInbound(buffer))
+        XCTAssertNoThrow(try XCTAssertEqual("dddd\neeeee\nffffff\n",
+                                            String(decoding: receivedLeftOversPromise.futureResult.wait().readableBytesView,
+                                                   as: UTF8.self)))
+    }
 }

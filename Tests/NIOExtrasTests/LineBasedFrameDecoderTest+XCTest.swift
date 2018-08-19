@@ -32,6 +32,7 @@ extension LineBasedFrameDecoderTest {
                 ("testEmptyLine", testEmptyLine),
                 ("testEmptyBuffer", testEmptyBuffer),
                 ("testChannelInactiveWithLeftOverBytes", testChannelInactiveWithLeftOverBytes),
+                ("testMoreDataAvailableWhenChannelBecomesInactive", testMoreDataAvailableWhenChannelBecomesInactive),
            ]
    }
 }
