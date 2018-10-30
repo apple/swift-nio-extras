@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// FixedLengthDecoderTest+XCTest.swift
+// FixedLengthFrameDecoderTest+XCTest.swift
 //
 import XCTest
 

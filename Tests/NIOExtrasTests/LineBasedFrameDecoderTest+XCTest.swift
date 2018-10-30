@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// LineBasedFramceDecoderTest+XCTest.swift
+// LineBasedFrameDecoderTest+XCTest.swift
 //
 import XCTest
 
