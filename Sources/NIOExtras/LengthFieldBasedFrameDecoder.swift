@@ -13,8 +13,20 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+
 ///
-/// A decoder that splits the received `ByteBuffer` by the number of bytes speicifed in a fixed length header
+/// An enumeration to describe the length of a piece of data in bytes.
+/// It is contained to lengths that can be converted to integer types.
+///
+public enum ByteLength: Int {
+    case one = 1
+    case two = 2
+    case four = 4
+    case eight = 8
+}
+
+///
+/// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
 /// contained within the buffer.
 /// For example, if you received the following four fragmented packets:
 ///     +---+----+------+----+
@@ -22,7 +34,7 @@ import NIO
 ///     +---+----+------+----+
 ///
 /// Given that the specified header length is 1 byte,
-/// where the first header specifies 3 bytes while the second header speicifies 4 bytes,
+/// where the first header specifies 3 bytes while the second header specifies 4 bytes,
 /// a `LengthFieldBasedFrameDecoder` will decode them into the following packets:
 ///
 ///     +-----+------+
@@ -39,7 +51,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     
     public var cumulationBuffer: ByteBuffer?
     
-    private let lengthFieldLength: Int
+    private let lengthFieldLength: ByteLength
     private let lengthFieldEndianness: Endianness
     
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
@@ -48,26 +60,19 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - lengthFieldLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
-    public init(lengthFieldLength: Int, lengthFieldEndianness: Endianness = .little) {
-        
-        precondition(lengthFieldLength >= 0, "lengthField length must not be negative")
-        precondition(lengthFieldLength > 0, "lengthField length must not be zero")
-        precondition(lengthFieldLength <= 8, "lengthField length only handles up to 64bit (8 byte)")
-
+    public init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
         self.lengthFieldLength = lengthFieldLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
     
     public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         
-        guard let lengthFieldSlice = buffer.readSlice(length: lengthFieldLength) else {
+        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.rawValue) else {
             return .needMoreData
         }
 
         // convert the length field to an int specifying the length
-        guard let lengthFieldValue = frameLength(for: lengthFieldSlice,
-                                                 length: lengthFieldLength,
-                                                 endianness: lengthFieldEndianness) else {
+        guard let lengthFieldValue = self.frameLength(for: lengthFieldSlice) else {
             return .needMoreData
         }
 
@@ -91,32 +96,18 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     /// capable of decoding the specified region into an unsigned 8/16/32/64 bit integer.
     /// - parameters:
     ///    - buffer: The buffer containing the integer frame length
-    ///    - length: The length of the integer contained within the buffer.
-    ///    - endianness: The endianness of the integer contained within the buffer.
     ///
-    private func frameLength(for buffer: ByteBuffer, length: Int, endianness: Endianness) -> Int? {
+    private func frameLength(for buffer: ByteBuffer) -> Int? {
 
-        switch length {
-        case UInt8.byteWidth:
-            return buffer.getInteger(at: 0, endianness: endianness, as: UInt8.self).map { Int($0) }
-        case Int16.byteWidth:
-            return buffer.getInteger(at: 0, endianness: endianness, as: UInt16.self).map { Int($0) }
-        case UInt32.byteWidth:
-            return  buffer.getInteger(at: 0, endianness: endianness, as: Int32.self).map { Int($0) }
-        case UInt64.byteWidth:
-            return buffer.getInteger(at: 0, endianness: endianness, as: UInt64.self).map { Int($0) }
-        default:
-            return nil
+        switch self.lengthFieldLength {
+        case .one:
+            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
+        case .two:
+            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
+        case .four:
+            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
+        case .eight:
+            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
         }
-    }
-}
-
-///
-/// A private protocol extension to FixedWidthInteger for recovering the byte width.
-///
-extension FixedWidthInteger {
-
-    fileprivate static var byteWidth: Int {
-        return bitWidth / 8
     }
 }

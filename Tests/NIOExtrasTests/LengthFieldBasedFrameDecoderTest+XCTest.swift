@@ -27,11 +27,12 @@ extension LengthFieldBasedFrameDecoderTest {
    static var allTests : [(String, (LengthFieldBasedFrameDecoderTest) -> () throws -> Void)] {
       return [
                 ("testDecodeWithUInt8HeaderWithData", testDecodeWithUInt8HeaderWithData),
-                ("testDecodeWithUInt8HeaderWithString", testDecodeWithUInt8HeaderWithString),
                 ("testDecodeWithUInt16HeaderWithString", testDecodeWithUInt16HeaderWithString),
                 ("testDecodeWithUInt32HeaderWithString", testDecodeWithUInt32HeaderWithString),
                 ("testDecodeWithUInt64HeaderWithString", testDecodeWithUInt64HeaderWithString),
                 ("testDecodeWithInt64HeaderWithString", testDecodeWithInt64HeaderWithString),
+                ("testDecodeWithInt64HeaderStringBigEndian", testDecodeWithInt64HeaderStringBigEndian),
+                ("testDecodeWithInt64HeaderStringDefaultingToBigEndian", testDecodeWithInt64HeaderStringDefaultingToBigEndian),
                 ("testDecodeWithUInt8HeaderTwoFrames", testDecodeWithUInt8HeaderTwoFrames),
                 ("testEmptyBuffer", testEmptyBuffer),
                 ("testDecodeWithUInt16HeaderWithPartialHeader", testDecodeWithUInt16HeaderWithPartialHeader),
