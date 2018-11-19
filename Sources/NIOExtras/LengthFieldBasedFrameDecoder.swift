@@ -18,11 +18,28 @@ import NIO
 /// An enumeration to describe the length of a piece of data in bytes.
 /// It is contained to lengths that can be converted to integer types.
 ///
-public enum ByteLength: Int {
-    case one = 1
-    case two = 2
-    case four = 4
-    case eight = 8
+public enum ByteLength {
+    case one
+    case two
+    case four
+    case eight
+}
+
+extension ByteLength {
+   
+    fileprivate var length: Int {
+
+        switch self {
+        case .one:
+            return 1
+        case .two:
+            return 2
+        case .four:
+            return 4
+        case .eight:
+            return 8
+        }
+    }
 }
 
 ///
@@ -67,7 +84,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     
     public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         
-        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.rawValue) else {
+        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.length) else {
             return .needMoreData
         }
 

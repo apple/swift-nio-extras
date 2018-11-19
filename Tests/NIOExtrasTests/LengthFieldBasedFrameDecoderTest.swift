@@ -203,7 +203,6 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         try? self.channel.pipeline.add(handler: self.decoderUnderTest).wait()
         
         var buffer = self.channel.allocator.buffer(capacity: 1)
-        buffer.write(string: "")
         XCTAssertFalse(try self.channel.writeInbound(buffer))
         XCTAssertFalse(try self.channel.finish())
     }
