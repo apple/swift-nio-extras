@@ -197,12 +197,40 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertFalse(try self.channel.finish())
     }
     
+    func testDecodeWithUInt8HeaderFrameSplitIncomingData() throws {
+        
+        self.decoderUnderTest = LengthFieldBasedFrameDecoder(lengthFieldLength: .one,  lengthFieldEndianness: .little)
+        try? self.channel.pipeline.add(handler: self.decoderUnderTest).wait()
+    
+        let frameDataLength: UInt8 = 5
+        
+        var firstBuffer = self.channel.allocator.buffer(capacity: 1) // 1 byte header
+        firstBuffer.write(integer: frameDataLength, endianness: .little, as: UInt8.self)
+        
+        XCTAssertFalse(try self.channel.writeInbound(firstBuffer))
+        
+        // Read should fail because there is not yet enough data.
+        XCTAssertNil(self.channel.readInbound())
+        
+        var secondBuffer = self.channel.allocator.buffer(capacity: 5) // 5 byte data
+        secondBuffer.write(string: standardDataString)
+        
+        XCTAssertTrue(try self.channel.writeInbound(secondBuffer))
+        
+        var outputBuffer: ByteBuffer? = self.channel.readInbound()
+        
+        let outputData = outputBuffer?.readString(length: standardDataString.count)
+        XCTAssertEqual(standardDataString, outputData)
+
+        XCTAssertFalse(try self.channel.finish())
+    }
+    
     func testEmptyBuffer() throws {
         
         self.decoderUnderTest = LengthFieldBasedFrameDecoder(lengthFieldLength: .one,  lengthFieldEndianness: .little)
         try? self.channel.pipeline.add(handler: self.decoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: 1)
+        let buffer = self.channel.allocator.buffer(capacity: 1)
         XCTAssertFalse(try self.channel.writeInbound(buffer))
         XCTAssertFalse(try self.channel.finish())
     }

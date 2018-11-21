@@ -43,6 +43,15 @@ extension ByteLength {
 }
 
 ///
+/// The state of a decoder. It has two distinct sections of data to read. Each must be fully present before it is considered as read.
+/// During the time when it is not present the decoder must wait. `DecoderReadState` details that waiting state.
+///
+private enum DecoderReadState {
+    case waitingForHeader
+    case waitingForFrame(length: Int)
+}
+
+///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
 /// contained within the buffer.
 /// For example, if you received the following four fragmented packets:
@@ -67,6 +76,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public typealias InboundOut = ByteBuffer
     
     public var cumulationBuffer: ByteBuffer?
+    private var readState: DecoderReadState = .waitingForHeader
     
     private let lengthFieldLength: ByteLength
     private let lengthFieldEndianness: Endianness
@@ -78,28 +88,57 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
     public init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
+
+        // The value contained in the length field must be able to be represented by an integer type on the platform.
+        // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
+        precondition(lengthFieldLength.length <= Int.bitWidth/8)
+            
         self.lengthFieldLength = lengthFieldLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
     
     public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         
-        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.length) else {
+        if case .waitingForHeader = self.readState {
+            try self.readNextLengthFieldToState(buffer: &buffer)
+        }
+        
+        guard case .waitingForFrame(let frameLength) = self.readState else {
             return .needMoreData
         }
-
-        // convert the length field to an int specifying the length
-        guard let lengthFieldValue = self.frameLength(for: lengthFieldSlice) else {
+        
+        guard let frameBuffer = try self.readNextFrame(buffer: &buffer, frameLength: frameLength) else {
             return .needMoreData
         }
-
-        guard let contentsFieldSlice = buffer.readSlice(length: lengthFieldValue) else {
-            return .needMoreData
-        }
-
-        ctx.fireChannelRead(self.wrapInboundOut(contentsFieldSlice))
+        
+        ctx.fireChannelRead(self.wrapInboundOut(frameBuffer))
 
         return .continue
+    }
+    
+    private func readNextLengthFieldToState(buffer: inout ByteBuffer) throws {
+        
+        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.length) else {
+            return
+        }
+        
+        // Convert the length field to an integer specifying the length
+        guard let lengthFieldValue = self.frameLength(for: lengthFieldSlice) else {
+            return
+        }
+        
+        self.readState = .waitingForFrame(length: lengthFieldValue)
+    }
+    
+    private func readNextFrame(buffer: inout ByteBuffer, frameLength: Int) throws -> ByteBuffer? {
+        
+        guard let contentsFieldSlice = buffer.readSlice(length: frameLength) else {
+            return nil
+        }
+        
+        self.readState = .waitingForHeader
+        
+        return contentsFieldSlice
     }
     
     public func handlerRemoved(ctx: ChannelHandlerContext) {

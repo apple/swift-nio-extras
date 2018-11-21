@@ -34,6 +34,7 @@ extension LengthFieldBasedFrameDecoderTest {
                 ("testDecodeWithInt64HeaderStringBigEndian", testDecodeWithInt64HeaderStringBigEndian),
                 ("testDecodeWithInt64HeaderStringDefaultingToBigEndian", testDecodeWithInt64HeaderStringDefaultingToBigEndian),
                 ("testDecodeWithUInt8HeaderTwoFrames", testDecodeWithUInt8HeaderTwoFrames),
+                ("testDecodeWithUInt8HeaderFrameSplitIncomingData", testDecodeWithUInt8HeaderFrameSplitIncomingData),
                 ("testEmptyBuffer", testEmptyBuffer),
                 ("testDecodeWithUInt16HeaderWithPartialHeader", testDecodeWithUInt16HeaderWithPartialHeader),
                 ("testDecodeWithUInt16HeaderWithPartialBody", testDecodeWithUInt16HeaderWithPartialBody),
