@@ -43,15 +43,6 @@ extension ByteLength {
 }
 
 ///
-/// The state of a decoder. It has two distinct sections of data to read. Each must be fully present before it is considered as read.
-/// During the time when it is not present the decoder must wait. `DecoderReadState` details that waiting state.
-///
-private enum DecoderReadState {
-    case waitingForHeader
-    case waitingForFrame(length: Int)
-}
-
-///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
 /// contained within the buffer.
 /// For example, if you received the following four fragmented packets:
@@ -71,6 +62,16 @@ private enum DecoderReadState {
 ///
 
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
+    
+    ///
+    /// The decoder has two distinct sections of data to read.
+    /// Each must be fully present before it is considered as read.
+    /// During the time when it is not present the decoder must wait. `DecoderReadState` details that waiting state.
+    ///
+    private enum DecoderReadState {
+        case waitingForHeader
+        case waitingForFrame(length: Int)
+    }
 
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
