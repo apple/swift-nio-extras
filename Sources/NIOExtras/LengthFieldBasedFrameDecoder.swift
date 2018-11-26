@@ -15,34 +15,6 @@
 import NIO
 
 ///
-/// An enumeration to describe the length of a piece of data in bytes.
-/// It is contained to lengths that can be converted to integer types.
-///
-public enum ByteLength {
-    case one
-    case two
-    case four
-    case eight
-}
-
-extension ByteLength {
-   
-    fileprivate var length: Int {
-
-        switch self {
-        case .one:
-            return 1
-        case .two:
-            return 2
-        case .four:
-            return 4
-        case .eight:
-            return 8
-        }
-    }
-}
-
-///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
 /// contained within the buffer.
 /// For example, if you received the following four fragmented packets:
@@ -62,6 +34,31 @@ extension ByteLength {
 ///
 
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
+    
+    ///
+    /// An enumeration to describe the length of a piece of data in bytes.
+    /// It is contained to lengths that can be converted to integer types.
+    ///
+    public enum ByteLength {
+        case one
+        case two
+        case four
+        case eight
+        
+        fileprivate var length: Int {
+            
+            switch self {
+            case .one:
+                return 1
+            case .two:
+                return 2
+            case .four:
+                return 4
+            case .eight:
+                return 8
+            }
+        }
+    }
     
     ///
     /// The decoder has two distinct sections of data to read.
@@ -117,54 +114,64 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         return .continue
     }
     
+    ///
+    /// Attempts to read the header data. Updates the status is successful.
+    ///
+    /// - parameters:
+    ///    - buffer: The buffer containing the integer frame length.
+    ///
     private func readNextLengthFieldToState(buffer: inout ByteBuffer) throws {
-        
-        guard let lengthFieldSlice = buffer.readSlice(length: self.lengthFieldLength.length) else {
-            return
-        }
-        
+
         // Convert the length field to an integer specifying the length
-        guard let lengthFieldValue = self.frameLength(for: lengthFieldSlice) else {
+        guard let lengthFieldValue = self.readFrameLength(for: &buffer) else {
             return
         }
-        
+
         self.readState = .waitingForFrame(length: lengthFieldValue)
     }
     
+    ///
+    /// Attempts to read the body data for a given length. Updates the status is successful.
+    ///
+    /// - parameters:
+    ///    - buffer: The buffer containing the frame data.
+    ///    - frameLength: The length of the frame data to be read.
+    ///
     private func readNextFrame(buffer: inout ByteBuffer, frameLength: Int) throws -> ByteBuffer? {
         
         guard let contentsFieldSlice = buffer.readSlice(length: frameLength) else {
             return nil
         }
-        
+
         self.readState = .waitingForHeader
         
         return contentsFieldSlice
-    }
-    
-    public func handlerRemoved(ctx: ChannelHandlerContext) {
-        if let buffer = cumulationBuffer, buffer.readableBytes > 0 {
-            ctx.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
-        }
     }
 
     ///
     /// Decodes the specified region of the buffer into an unadjusted frame length. The default implementation is
     /// capable of decoding the specified region into an unsigned 8/16/32/64 bit integer.
-    /// - parameters:
-    ///    - buffer: The buffer containing the integer frame length
     ///
-    private func frameLength(for buffer: ByteBuffer) -> Int? {
+    /// - parameters:
+    ///    - buffer: The buffer containing the integer frame length.
+    ///
+    private func readFrameLength(for buffer: inout ByteBuffer) -> Int? {
 
         switch self.lengthFieldLength {
         case .one:
-            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
+            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
         case .two:
-            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
+            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
         case .four:
-            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
+            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
         case .eight:
-            return buffer.getInteger(at: 0, endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
+            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
+        }
+    }
+    
+    public func handlerRemoved(ctx: ChannelHandlerContext) {
+        if let buffer = cumulationBuffer, buffer.readableBytes > 0 {
+            ctx.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
     }
 }

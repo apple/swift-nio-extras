@@ -199,23 +199,46 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     
     func testDecodeWithUInt8HeaderFrameSplitIncomingData() throws {
         
-        self.decoderUnderTest = LengthFieldBasedFrameDecoder(lengthFieldLength: .one,  lengthFieldEndianness: .little)
+        self.decoderUnderTest = LengthFieldBasedFrameDecoder(lengthFieldLength: .two,  lengthFieldEndianness: .little)
         try? self.channel.pipeline.add(handler: self.decoderUnderTest).wait()
     
-        let frameDataLength: UInt8 = 5
+        let frameDataLength: UInt16 = 5
+
+        // Write and try to read both bytes of the data individually
+        let frameDataLengthFirstByte: UInt8 = UInt8(frameDataLength)
+        let frameDataLengthSecondByte: UInt8 = 0
         
-        var firstBuffer = self.channel.allocator.buffer(capacity: 1) // 1 byte header
-        firstBuffer.write(integer: frameDataLength, endianness: .little, as: UInt8.self)
+        var firstBuffer = self.channel.allocator.buffer(capacity: 1) // Byte 1 of 2 byte header header
+        firstBuffer.write(integer: frameDataLengthFirstByte, endianness: .little, as: UInt8.self)
         
         XCTAssertFalse(try self.channel.writeInbound(firstBuffer))
         
         // Read should fail because there is not yet enough data.
         XCTAssertNil(self.channel.readInbound())
         
-        var secondBuffer = self.channel.allocator.buffer(capacity: 5) // 5 byte data
-        secondBuffer.write(string: standardDataString)
+        var secondBuffer = self.channel.allocator.buffer(capacity: 1) // Byte 2 of 2 byte header header
+        secondBuffer.write(integer: frameDataLengthSecondByte, endianness: .little, as: UInt8.self)
         
-        XCTAssertTrue(try self.channel.writeInbound(secondBuffer))
+        XCTAssertFalse(try self.channel.writeInbound(secondBuffer))
+        
+        // Read should fail because there is not yet enough data.
+        XCTAssertNil(self.channel.readInbound())
+        
+        // Write and try to read each byte of the data individually
+        for (index, character) in standardDataString.enumerated() {
+            
+            var characterBuffer = self.channel.allocator.buffer(capacity: 1)
+            characterBuffer.write(string: String(character))
+            
+            if index < standardDataString.count - 1 {
+                
+                XCTAssertFalse(try self.channel.writeInbound(characterBuffer))
+                // Read should fail because there is not yet enough data.
+                XCTAssertNil(self.channel.readInbound())
+            } else {
+                XCTAssertTrue(try self.channel.writeInbound(characterBuffer))
+            }
+        }
         
         var outputBuffer: ByteBuffer? = self.channel.readInbound()
         
