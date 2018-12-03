@@ -35,6 +35,7 @@ extension LengthFieldPrependerTest {
                 ("testEncodeWithInt64HeaderStringDefaultingToBigEndian", testEncodeWithInt64HeaderStringDefaultingToBigEndian),
                 ("testEmptyBuffer", testEmptyBuffer),
                 ("testTooLargeFor256DefaultBuffer", testTooLargeFor256DefaultBuffer),
+                ("testTooLargeForLengthField", testTooLargeForLengthField),
            ]
    }
 }
