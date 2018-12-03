@@ -309,4 +309,31 @@ class LengthFieldPrependerTest: XCTestCase {
         
         XCTAssertFalse(try self.channel.finish())
     }
+    
+    func testTooLargeForLengthField() throws {
+        
+        let endianness: Endianness = .little
+        
+        // One byte has maximum integer description of 256
+        self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .one,
+                                                     lengthFieldEndianness: endianness)
+        
+        try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
+        
+        let contents = Array<UInt8>(repeating: 200, count: 300)
+        
+        var buffer = self.channel.allocator.buffer(capacity: contents.count)
+        buffer.write(bytes: contents)
+        
+        do {
+            try self.channel.writeAndFlush(buffer).wait()
+            XCTFail("Did not throw LengthFieldPrependerError.messageDataTooLongForLengthField")
+        } catch LengthFieldPrependerError.messageDataTooLongForLengthField {
+            
+        } catch {
+            XCTFail("Threw incorrect error: \(error) expecting LengthFieldPrependerError.messageDataTooLongForLengthField")
+        }
+
+        XCTAssertFalse(try self.channel.finish())
+    }
 }

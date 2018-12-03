@@ -14,16 +14,20 @@
 
 import NIO
 
+public enum LengthFieldPrependerError: Error {
+    case messageDataTooLongForLengthField
+}
+
 ///
 /// An encoder that takes a `ByteBuffer` message and prepends the number of bytes in the message.
 /// The length field is always the same fixed length specified on construction.
 /// These bytes contain a binary specification of the message size.
-/// For example, if you received a packet with a 3 byte length:
+///
+/// For example, if you received a packet with the 3 byte length (BCD)...
+/// Given that the specified header length is 1 byte, there would be a single byte appended which contains the number 3
 ///     +---+-----+
 ///     | A | BCD | ('A' contains 0x0003)
 ///     +---+-----+
-///
-/// Given that the specified header length is 1 byte, there would be a byte appended which contains the number 3
 /// This initial appended byte is called the 'length field'.
 ///
 public final class LengthFieldPrepender: MessageToByteEncoder {
@@ -51,6 +55,20 @@ public final class LengthFieldPrepender: MessageToByteEncoder {
                 return 8
             }
         }
+        
+        fileprivate var max: UInt {
+            
+            switch self {
+            case .one:
+                return UInt(UInt8.max)
+            case .two:
+                return UInt(UInt16.max)
+            case .four:
+                return UInt(UInt32.max)
+            case .eight:
+                return UInt(UInt64.max)
+            }
+        }
     }
 
     public typealias OutboundIn = ByteBuffer
@@ -76,11 +94,18 @@ public final class LengthFieldPrepender: MessageToByteEncoder {
     }
     
     public func allocateOutBuffer(ctx: ChannelHandlerContext, data: OutboundIn) throws -> ByteBuffer {
-        return ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length + data.readableBytes)
+
+        let dataLength = data.readableBytes
+        
+        if dataLength > self.lengthFieldLength.max {
+            throw LengthFieldPrependerError.messageDataTooLongForLengthField
+        }
+
+        return ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length + dataLength)
     }
 
     public func encode(ctx: ChannelHandlerContext, data: OutboundIn, out: inout ByteBuffer) throws {
-        
+
         switch self.lengthFieldLength {
         case .one:
             out.write(integer: UInt8(data.readableBytes), endianness: self.lengthFieldEndianness)
