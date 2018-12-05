@@ -30,7 +30,7 @@ public enum LengthFieldPrependerError: Error {
 ///     +---+-----+
 /// This initial appended byte is called the 'length field'.
 ///
-public final class LengthFieldPrepender: MessageToByteEncoder {
+public final class LengthFieldPrepender: ChannelOutboundHandler {
     
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
@@ -72,7 +72,7 @@ public final class LengthFieldPrepender: MessageToByteEncoder {
     }
 
     public typealias OutboundIn = ByteBuffer
-    public typealias OutbondOut = ByteBuffer
+    public typealias OutboundOut = ByteBuffer
 
     private let lengthFieldLength: ByteLength
     private let lengthFieldEndianness: Endianness
@@ -92,31 +92,31 @@ public final class LengthFieldPrepender: MessageToByteEncoder {
         self.lengthFieldLength = lengthFieldLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
-    
-    public func allocateOutBuffer(ctx: ChannelHandlerContext, data: OutboundIn) throws -> ByteBuffer {
 
-        let dataLength = data.readableBytes
+    public func write(ctx: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+
+        let dataBuffer = self.unwrapOutboundIn(data)
+        let dataLength = dataBuffer.readableBytes
         
-        if dataLength > self.lengthFieldLength.max {
-            throw LengthFieldPrependerError.messageDataTooLongForLengthField
+        guard dataLength <= self.lengthFieldLength.max else {
+            promise?.fail(error: LengthFieldPrependerError.messageDataTooLongForLengthField)
+            return
         }
 
-        return ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length + dataLength)
-    }
-
-    public func encode(ctx: ChannelHandlerContext, data: OutboundIn, out: inout ByteBuffer) throws {
+        var lengthBuffer = ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length)
 
         switch self.lengthFieldLength {
         case .one:
-            out.write(integer: UInt8(data.readableBytes), endianness: self.lengthFieldEndianness)
+            lengthBuffer.write(integer: UInt8(dataLength), endianness: self.lengthFieldEndianness)
         case .two:
-            out.write(integer: UInt16(data.readableBytes), endianness: self.lengthFieldEndianness)
+            lengthBuffer.write(integer: UInt16(dataLength), endianness: self.lengthFieldEndianness)
         case .four:
-            out.write(integer: UInt32(data.readableBytes), endianness: self.lengthFieldEndianness)
+            lengthBuffer.write(integer: UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .eight:
-            out.write(integer: UInt64(data.readableBytes), endianness: self.lengthFieldEndianness)
+            lengthBuffer.write(integer: UInt64(dataLength), endianness: self.lengthFieldEndianness)
         }
         
-        out.write(bytes: data.readableBytesView)
+        ctx.write(self.wrapOutboundOut(lengthBuffer), promise: nil)
+        ctx.write(data, promise: promise)
     }
 }
