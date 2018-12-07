@@ -101,4 +101,31 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
         XCTAssertFalse(try channel.finish())
     }
+
+    func testCloseInChannelRead() {
+        let channel = EmbeddedChannel(handler: LengthFieldBasedFrameDecoder(lengthFieldLength: .four))
+        class CloseInReadHandler: ChannelInboundHandler {
+            typealias InboundIn = ByteBuffer
+
+            private var numberOfReads = 0
+
+            func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+                self.numberOfReads += 1
+                XCTAssertEqual(1, self.numberOfReads)
+                XCTAssertEqual([UInt8(100)], Array(self.unwrapInboundIn(data).readableBytesView))
+                ctx.close().whenFailure { error in
+                    XCTFail("unexpected error: \(error)")
+                }
+                ctx.fireChannelRead(data)
+            }
+        }
+        XCTAssertNoThrow(try channel.pipeline.add(handler: CloseInReadHandler()).wait())
+
+        var buf = channel.allocator.buffer(capacity: 1024)
+        buf.write(bytes: [UInt8(0), 0, 0, 1, 100])
+        XCTAssertNoThrow(try channel.writeInbound(buf))
+        XCTAssertEqual([100], Array((channel.readInbound() as ByteBuffer?)!.readableBytesView))
+        XCTAssertNil(channel.readInbound())
+
+    }
 }

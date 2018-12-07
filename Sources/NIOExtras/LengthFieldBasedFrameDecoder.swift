@@ -114,6 +114,11 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         return .continue
     }
     
+    public func decodeLast(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+        // work around the extreme brittleness of ByteToMessageDecoder
+        return .needMoreData
+    }
+
     ///
     /// Attempts to read the header data. Updates the status is successful.
     ///
