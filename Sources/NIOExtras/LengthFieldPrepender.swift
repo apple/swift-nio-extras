@@ -24,17 +24,17 @@ public enum LengthFieldPrependerError: Error {
 /// These bytes contain a binary specification of the message size.
 ///
 /// For example, if you received a packet with the 3 byte length (BCD)...
-/// Given that the specified header length is 1 byte, there would be a single byte appended which contains the number 3
+/// Given that the specified header length is 1 byte, there would be a single byte prepended which contains the number 3
 ///     +---+-----+
 ///     | A | BCD | ('A' contains 0x0003)
 ///     +---+-----+
-/// This initial appended byte is called the 'length field'.
+/// This initial prepended byte is called the 'length field'.
 ///
 public final class LengthFieldPrepender: ChannelOutboundHandler {
     
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
-    /// It is contained to lengths that can be converted to integer types.
+    /// It is constrained to lengths that can be converted to integer types.
     ///
     public enum ByteLength {
         case one
@@ -74,8 +74,10 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
 
-    private let lengthFieldLength: ByteLength
+    private let lengthFieldLength: LengthFieldPrepender.ByteLength
     private let lengthFieldEndianness: Endianness
+    
+    private var lengthBuffer: ByteBuffer?
 
     /// Create `LengthFieldPrepender` with a given length field length.
     ///
@@ -102,21 +104,29 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
             promise?.fail(error: LengthFieldPrependerError.messageDataTooLongForLengthField)
             return
         }
+        
+        var dataLengthBuffer: ByteBuffer
 
-        var lengthBuffer = ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length)
+        if let existingBuffer = self.lengthBuffer {
+            dataLengthBuffer = existingBuffer
+            dataLengthBuffer.clear()
+        } else {
+            dataLengthBuffer = ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length)
+            self.lengthBuffer = dataLengthBuffer
+        }
 
         switch self.lengthFieldLength {
         case .one:
-            lengthBuffer.write(integer: UInt8(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.write(integer: UInt8(dataLength), endianness: self.lengthFieldEndianness)
         case .two:
-            lengthBuffer.write(integer: UInt16(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.write(integer: UInt16(dataLength), endianness: self.lengthFieldEndianness)
         case .four:
-            lengthBuffer.write(integer: UInt32(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.write(integer: UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .eight:
-            lengthBuffer.write(integer: UInt64(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.write(integer: UInt64(dataLength), endianness: self.lengthFieldEndianness)
         }
-        
-        ctx.write(self.wrapOutboundOut(lengthBuffer), promise: nil)
+
+        ctx.write(self.wrapOutboundOut(dataLengthBuffer), promise: nil)
         ctx.write(data, promise: promise)
     }
 }

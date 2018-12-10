@@ -17,6 +17,7 @@ import NIO
 import NIOExtras
 
 private let standardDataString = "abcde"
+private let standardDataStringCount = standardDataString.utf8.count
 
 class LengthFieldPrependerTest: XCTestCase {
     
@@ -46,9 +47,6 @@ class LengthFieldPrependerTest: XCTestCase {
             let outputData = headerBuffer.readBytes(length: headerBuffer.readableBytes)
             XCTAssertEqual([UInt8(dataBytes.count)],  outputData)
             
-            let additionalData = headerBuffer.readBytes(length: 1)
-            XCTAssertNil(additionalData)
-            
         } else {
             XCTFail("couldn't read ByteBuffer from channel")
         }
@@ -57,9 +55,6 @@ class LengthFieldPrependerTest: XCTestCase {
             
             let outputData = outputBuffer.readBytes(length: outputBuffer.readableBytes)
             XCTAssertEqual(dataBytes,  outputData)
-            
-            let additionalData = outputBuffer.readBytes(length: 1)
-            XCTAssertNil(additionalData)
             
         } else {
             XCTFail("couldn't read ByteBuffer from channel")
@@ -78,7 +73,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -86,7 +81,7 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: UInt16.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
@@ -120,7 +115,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -128,7 +123,7 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: UInt32.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
@@ -139,7 +134,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
             XCTAssertEqual(standardDataString, bodyString)
             
             let additionalData = outputBuffer.readBytes(length: 1)
@@ -162,7 +157,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -170,8 +165,8 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: UInt64.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
-
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
+            
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
             
@@ -181,11 +176,8 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: outputBuffer.readableBytes)
             XCTAssertEqual(standardDataString, bodyString)
-            
-            let additionalData = outputBuffer.readBytes(length: 1)
-            XCTAssertNil(additionalData)
             
         } else {
             XCTFail("couldn't read ByteBuffer from channel")
@@ -204,7 +196,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -212,7 +204,7 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: Int64.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
@@ -223,7 +215,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
 
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
             XCTAssertEqual(standardDataString, bodyString)
             
             let additionalData = outputBuffer.readBytes(length: 1)
@@ -246,7 +238,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -254,7 +246,7 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: UInt64.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
@@ -265,7 +257,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
 
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
             XCTAssertEqual(standardDataString, bodyString)
             
             let additionalData = outputBuffer.readBytes(length: 1)
@@ -285,7 +277,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         try? self.channel.pipeline.add(handler: self.encoderUnderTest).wait()
         
-        var buffer = self.channel.allocator.buffer(capacity: standardDataString.count)
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.write(string: standardDataString)
         
         try self.channel.writeAndFlush(buffer).wait()
@@ -293,7 +285,7 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: .big, as: UInt64.self).map({ Int($0) })
-            XCTAssertEqual(standardDataString.count, sizeInHeader)
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
             XCTAssertNil(additionalData)
@@ -304,7 +296,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
             XCTAssertEqual(standardDataString, bodyString)
             
             let additionalData = outputBuffer.readBytes(length: 1)
@@ -382,11 +374,8 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
 
-            let bodyData = outputBuffer.readBytes(length: contents.count)
+            let bodyData = outputBuffer.readBytes(length: outputBuffer.readableBytes)
             XCTAssertEqual(contents, bodyData)
-            
-            let additionalData = outputBuffer.readBytes(length: 1)
-            XCTAssertNil(additionalData)
             
         } else {
             XCTFail("couldn't read ByteBuffer from channel")
