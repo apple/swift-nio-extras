@@ -92,7 +92,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = self.channel.readOutbound() {
             
-            let bodyString = outputBuffer.readString(length: standardDataString.count)
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
             XCTAssertEqual(standardDataString, bodyString)
             
             let additionalData = outputBuffer.readBytes(length: 1)
