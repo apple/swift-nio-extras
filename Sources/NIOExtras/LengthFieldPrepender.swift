@@ -26,7 +26,7 @@ public enum LengthFieldPrependerError: Error {
 /// For example, if you received a packet with the 3 byte length (BCD)...
 /// Given that the specified header length is 1 byte, there would be a single byte prepended which contains the number 3
 ///     +---+-----+
-///     | A | BCD | ('A' contains 0x0003)
+///     | A | BCD | ('A' contains 0x03)
 ///     +---+-----+
 /// This initial prepended byte is called the 'length field'.
 ///
