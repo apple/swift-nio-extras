@@ -31,3 +31,6 @@ functionality.
 - [`QuiescingHelper`](Sources/NIOExtras/QuiescingHelper.swift): Helps to quiesce
   a server by notifying user code when all previously open connections have closed.
 - [`LineBasedFrameDecoder`](Sources/NIOExtras/LineBasedFrameDecoder.swift) Splits incoming `ByteBuffer`s on line endings.
+- [`FixedLengthFrameDecoder`](Sources/NIOExtras/FixedLengthFrameDecoder.swift) Splits incoming `ByteBuffer`s by a fixed number of bytes.
+- [`LengthFieldBasedFrameDecoder`](Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift) Splits incoming `ByteBuffer`s by a number of bytes specified in a fixed length header contained within the buffer.
+- [`LengthFieldPrepender`](Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift) Prepends the number of bytes to outgoing `ByteBuffer`s as a fixed length header. Can be used in a codec pair with the `LengthFieldBasedFrameDecoder`.
