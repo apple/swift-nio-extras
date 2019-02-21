@@ -44,18 +44,20 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
         self.frameLength = frameLength
     }
 
-    public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard let slice = buffer.readSlice(length: frameLength) else {
             return .needMoreData
         }
 
-        ctx.fireChannelRead(self.wrapInboundOut(slice))
+        context.fireChannelRead(self.wrapInboundOut(slice))
         return .continue
     }
 
-    public func handlerRemoved(ctx: ChannelHandlerContext) {
-        if let buffer = cumulationBuffer, buffer.readableBytes > 0 {
-            ctx.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
+    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+        while case .continue = try self.decode(context: context, buffer: &buffer) {}
+        if buffer.readableBytes > 0 {
+            context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
+        return .needMoreData
     }
 }

@@ -40,13 +40,13 @@ class RequestResponseHandlerTest: XCTestCase {
     }
 
     func testSimpleRequestWorks() {
-        XCTAssertNoThrow(try self.channel.pipeline.add(handler: RequestResponseHandler<IOData, String>()).wait())
-        self.buffer.write(string: "hello")
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<IOData, String>()).wait())
+        self.buffer.writeString("hello")
 
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
         XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
 
-        let p: EventLoopPromise<String> = self.channel.eventLoop.newPromise()
+        let p: EventLoopPromise<String> = self.channel.eventLoop.makePromise()
         // write request
         XCTAssertNoThrow(try self.channel.writeOutbound((IOData.byteBuffer(self.buffer), p)))
         // write response
@@ -61,7 +61,7 @@ class RequestResponseHandlerTest: XCTestCase {
 
     func testEnqueingMultipleRequestsWorks() {
         struct DummyError: Error {}
-        XCTAssertNoThrow(try self.channel.pipeline.add(handler: RequestResponseHandler<IOData, Int>()).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<IOData, Int>()).wait())
 
         var futures: [EventLoopFuture<Int>] = []
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -69,9 +69,9 @@ class RequestResponseHandlerTest: XCTestCase {
 
         for reqId in 0..<5 {
             self.buffer.clear()
-            self.buffer.write(string: "\(reqId)")
+            self.buffer.writeString("\(reqId)")
 
-            let p: EventLoopPromise<Int> = self.channel.eventLoop.newPromise()
+            let p: EventLoopPromise<Int> = self.channel.eventLoop.makePromise()
             futures.append(p.futureResult)
 
             // write request
@@ -80,7 +80,7 @@ class RequestResponseHandlerTest: XCTestCase {
 
         // let's have 3 successful responses
         for reqIdExpected in 0..<3 {
-            switch self.channel.readOutbound() {
+            switch self.channel.readOutbound(as: IOData.self) {
             case .some(.byteBuffer(var buffer)):
                 if let reqId = buffer.readString(length: buffer.readableBytes).flatMap(Int.init) {
                     // write response
@@ -113,11 +113,11 @@ class RequestResponseHandlerTest: XCTestCase {
 
     func testRequestsEnqueuedAfterErrorAreFailed() {
         struct DummyError: Error {}
-        XCTAssertNoThrow(try self.channel.pipeline.add(handler: RequestResponseHandler<IOData, Void>()).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<IOData, Void>()).wait())
 
         self.channel.pipeline.fireErrorCaught(DummyError())
 
-        let p: EventLoopPromise<Void> = self.eventLoop.newPromise()
+        let p: EventLoopPromise<Void> = self.eventLoop.makePromise()
         XCTAssertThrowsError(try self.channel.writeOutbound((IOData.byteBuffer(self.buffer), p))) { error in
             XCTAssertNotNil(error as? DummyError)
         }
@@ -130,9 +130,9 @@ class RequestResponseHandlerTest: XCTestCase {
         struct DummyError1: Error {}
         struct DummyError2: Error {}
 
-        XCTAssertNoThrow(try self.channel.pipeline.add(handler: RequestResponseHandler<IOData, Void>()).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<IOData, Void>()).wait())
 
-        let p: EventLoopPromise<Void> = self.eventLoop.newPromise()
+        let p: EventLoopPromise<Void> = self.eventLoop.makePromise()
         // right now, everything's still okay so the enqueued request won't immediately be failed
         XCTAssertNoThrow(try self.channel.writeOutbound((IOData.byteBuffer(self.buffer), p)))
 

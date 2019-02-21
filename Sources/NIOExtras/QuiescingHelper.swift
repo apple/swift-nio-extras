@@ -63,7 +63,7 @@ private final class ChannelCollector {
         assert(self.lifecycleState == .shuttingDown)
 
         self.lifecycleState = .shutdownCompleted
-        self.fullyShutdownPromise?.succeed(result: ())
+        self.fullyShutdownPromise?.succeed(())
     }
 
     private func channelRemoved0(_ channel: Channel) {
@@ -101,7 +101,7 @@ private final class ChannelCollector {
 
         if let promise = promise {
             if let alreadyExistingPromise = self.fullyShutdownPromise {
-                alreadyExistingPromise.futureResult.cascade(promise: promise)
+                alreadyExistingPromise.futureResult.cascade(to: promise)
             } else {
                 self.fullyShutdownPromise = promise
             }
@@ -156,15 +156,15 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
         self.channelCollector = channelCollector
     }
 
-    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let channel = self.unwrapInboundIn(data)
         do {
             try self.channelCollector.channelAdded(channel)
             let closeFuture = channel.closeFuture
-            closeFuture.whenComplete {
+            closeFuture.whenComplete { (_: Result<(), Error>) in
                 self.channelCollector.channelRemoved(channel)
             }
-            ctx.fireChannelRead(data)
+            context.fireChannelRead(data)
         } catch ShutdownError.alreadyShutdown {
             channel.close(promise: nil)
         } catch {
@@ -211,7 +211,7 @@ public final class ServerQuiescingHelper {
     /// - parameters:
     ///   - group: The `EventLoopGroup` to use to allocate new promises and the like.
     public init(group: EventLoopGroup) {
-        self.channelCollectorPromise = group.next().newPromise()
+        self.channelCollectorPromise = group.next().makePromise()
     }
 
     /// Create the `ChannelHandler` for the server `channel` to collect all accepted child `Channel`s.
@@ -221,7 +221,7 @@ public final class ServerQuiescingHelper {
     /// - returns: a `ChannelHandler` that the user must add to the server `Channel`s pipeline
     public func makeServerChannelHandler(channel: Channel) -> ChannelHandler {
         let collector = ChannelCollector(serverChannel: channel)
-        self.channelCollectorPromise.succeed(result: collector)
+        self.channelCollectorPromise.succeed(collector)
         return CollectAcceptedChannelsHandler(channelCollector: collector)
     }
 
@@ -238,7 +238,7 @@ public final class ServerQuiescingHelper {
             channelCollector.initiateShutdown(promise: promise)
         }
         if let promise = promise {
-            f.cascadeFailure(promise: promise)
+            f.cascadeFailure(to: promise)
         }
     }
 }

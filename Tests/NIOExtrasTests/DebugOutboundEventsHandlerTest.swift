@@ -28,7 +28,7 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
         handlerUnderTest = DebugOutboundEventsHandler { event, _ in
             self.lastEvent = event
         }
-        try? channel.pipeline.add(handler: handlerUnderTest).wait()
+        try? channel.pipeline.addHandler(handlerUnderTest).wait()
     }
     
     override func tearDown() {

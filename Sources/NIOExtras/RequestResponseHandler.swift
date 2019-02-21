@@ -56,10 +56,10 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
     ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
     ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
     public init(initialBufferCapacity: Int = 4) {
-        self.promiseBuffer = CircularBuffer(initialRingCapacity: initialBufferCapacity)
+        self.promiseBuffer = CircularBuffer(initialCapacity: initialBufferCapacity)
     }
 
-    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         guard self.state.isOperational else {
             // we're in an error state, ignore further responses
             assert(self.promiseBuffer.count == 0)
@@ -69,10 +69,10 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
         let response = self.unwrapInboundIn(data)
         let promise = self.promiseBuffer.removeFirst()
 
-        promise.succeed(result: response)
+        promise.succeed(response)
     }
 
-    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+    public func errorCaught(context: ChannelHandlerContext, error: Error) {
         guard self.state.isOperational else {
             assert(self.promiseBuffer.count == 0)
             return
@@ -80,22 +80,22 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
         self.state = .error(error)
         let promiseBuffer = self.promiseBuffer
         self.promiseBuffer.removeAll()
-        ctx.close(promise: nil)
+        context.close(promise: nil)
         promiseBuffer.forEach {
-            $0.fail(error: error)
+            $0.fail(error)
         }
     }
 
-    public func write(ctx: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
         switch self.state {
         case .error(let error):
             assert(self.promiseBuffer.count == 0)
-            responsePromise.fail(error: error)
-            promise?.fail(error: error)
+            responsePromise.fail(error)
+            promise?.fail(error)
         case .operational:
             self.promiseBuffer.append(responsePromise)
-            ctx.write(self.wrapOutboundOut(request), promise: promise)
+            context.write(self.wrapOutboundOut(request), promise: promise)
         }
     }
 }

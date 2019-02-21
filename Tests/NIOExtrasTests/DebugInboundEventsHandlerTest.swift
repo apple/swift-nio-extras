@@ -28,7 +28,7 @@ class DebugInboundEventsHandlerTest: XCTestCase {
         handlerUnderTest = DebugInboundEventsHandler { event, _ in
             self.lastEvent = event
         }
-        try? channel.pipeline.add(handler: handlerUnderTest).wait()
+        try? channel.pipeline.addHandler(handlerUnderTest).wait()
     }
     
     override func tearDown() {
@@ -88,7 +88,7 @@ class DebugInboundEventsHandlerTest: XCTestCase {
     func testRead() {
         let messageString = "message"
         var expectedBuffer = ByteBufferAllocator().buffer(capacity: messageString.count)
-        expectedBuffer.set(string: messageString, at: 0)
+        expectedBuffer.setString(messageString, at: 0)
         let nioAny = NIOAny(expectedBuffer)
         channel.pipeline.fireChannelRead(nioAny)
         XCTAssertEqual(lastEvent, .read(data: nioAny))

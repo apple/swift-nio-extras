@@ -32,9 +32,7 @@ import NIO
 ///
 /// 'A' and 'E' will be the headers and will not be passed forward.
 ///
-
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
-    
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
     /// It is contained to lengths that can be converted to integer types.
@@ -95,7 +93,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         self.lengthFieldEndianness = lengthFieldEndianness
     }
     
-    public func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+    public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         
         if case .waitingForHeader = self.readState {
             try self.readNextLengthFieldToState(buffer: &buffer)
@@ -109,13 +107,17 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return .needMoreData
         }
         
-        ctx.fireChannelRead(self.wrapInboundOut(frameBuffer))
+        context.fireChannelRead(self.wrapInboundOut(frameBuffer))
 
         return .continue
     }
     
-    public func decodeLast(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        // work around the extreme brittleness of ByteToMessageDecoder
+    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+        // we'll just try to decode as much as we can as usually
+        while case .continue = try self.decode(context: context, buffer: &buffer) {}
+        if buffer.readableBytes > 0 {
+            context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
+        }
         return .needMoreData
     }
 
@@ -171,12 +173,6 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
-        }
-    }
-    
-    public func handlerRemoved(ctx: ChannelHandlerContext) {
-        if let buffer = cumulationBuffer, buffer.readableBytes > 0 {
-            ctx.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
     }
 }
