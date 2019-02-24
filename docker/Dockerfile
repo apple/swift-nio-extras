@@ -26,13 +26,14 @@ RUN touch $HOME/.ssh/known_hosts
 RUN ssh-keyscan github.com 2> /dev/null >> $HOME/.ssh/known_hosts
 
 # clang
-RUN apt-get install -y clang-3.9
+RUN apt-get update && apt-get install -y clang-3.9
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 100
 RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.9 100
 
 # modern curl, if needed
 ARG install_curl_from_source
-RUN [ ! -z $install_curl_from_source ] || apt-get install -y curl libcurl3 libz-dev
+RUN [ ! -z $install_curl_from_source ] || { apt-get update && apt-get install -y curl libcurl4-openssl-dev libz-dev; }
+RUN [ -z $install_curl_from_source ] || { apt-get update && apt-get install -y libssl-dev; }
 RUN [ -z $install_curl_from_source ] || apt-get install -y libssl-dev
 RUN [ -z $install_curl_from_source ] || mkdir $HOME/.curl
 RUN [ -z $install_curl_from_source ] || wget -q https://curl.haxx.se/download/curl-7.50.3.tar.gz -O $HOME/curl.tar.gz
@@ -48,8 +49,11 @@ RUN gem install jazzy --no-ri --no-rdoc
 
 # swift
 ARG swift_version=4.0.3
+ARG swift_flavour=RELEASE
+ARG swift_builds_suffix=release
+
 RUN mkdir $HOME/.swift
-RUN wget -q https://swift.org/builds/swift-${swift_version}-release/ubuntu$(echo $ubuntu_version | sed 's/\.//g')/swift-${swift_version}-RELEASE/swift-${swift_version}-RELEASE-ubuntu${ubuntu_version}.tar.gz -O $HOME/swift.tar.gz
+RUN wget -q "https://swift.org/builds/swift-${swift_version}-${swift_builds_suffix}/ubuntu$(echo $ubuntu_version | sed 's/\.//g')/swift-${swift_version}-${swift_flavour}/swift-${swift_version}-${swift_flavour}-ubuntu${ubuntu_version}.tar.gz" -O $HOME/swift.tar.gz
 RUN tar xzf $HOME/swift.tar.gz --directory $HOME/.swift --strip-components=1
 RUN echo 'export PATH="$HOME/.swift/usr/bin:$PATH"' >> $HOME/.profile
 RUN echo 'export LINUX_SOURCEKIT_LIB_PATH="$HOME/.swift/usr/lib"' >> $HOME/.profile
