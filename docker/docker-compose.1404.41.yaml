@@ -8,7 +8,6 @@ services:
       args:
         ubuntu_version : "14.04"
         swift_version : "4.1"
-        install_curl_from_source: "true"
 
   test:
     image: swift-nio-extras:14.04-4.1

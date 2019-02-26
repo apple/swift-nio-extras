@@ -30,22 +30,15 @@ RUN apt-get update && apt-get install -y clang-3.9
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 100
 RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.9 100
 
-# modern curl, if needed
-ARG install_curl_from_source
-RUN [ ! -z $install_curl_from_source ] || { apt-get update && apt-get install -y curl libcurl4-openssl-dev libz-dev; }
-RUN [ -z $install_curl_from_source ] || { apt-get update && apt-get install -y libssl-dev; }
-RUN [ -z $install_curl_from_source ] || apt-get install -y libssl-dev
-RUN [ -z $install_curl_from_source ] || mkdir $HOME/.curl
-RUN [ -z $install_curl_from_source ] || wget -q https://curl.haxx.se/download/curl-7.50.3.tar.gz -O $HOME/curl.tar.gz
-RUN [ -z $install_curl_from_source ] || tar xzf $HOME/curl.tar.gz --directory $HOME/.curl --strip-components=1
-RUN [ -z $install_curl_from_source ] || ( cd $HOME/.curl && ./configure --with-ssl && make && make install && cd - )
-RUN [ -z $install_curl_from_source ] || ldconfig
+# curl
+RUN apt-get update && apt-get install -y curl
 
-# ruby and jazzy for docs generation
-RUN apt-add-repository -y ppa:brightbox/ruby-ng
-RUN apt-get update
-RUN apt-get install -y ruby2.4 ruby2.4-dev libsqlite3-dev
-RUN gem install jazzy --no-ri --no-rdoc
+# ruby
+ARG skip_ruby_from_ppa
+RUN [ -n "$skip_ruby_from_ppa" ] || apt-add-repository -y ppa:brightbox/ruby-ng
+RUN [ -n "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby2.4 ruby2.4-dev; }
+RUN [ -z "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby ruby-dev; }
+RUN apt-get update && apt-get install -y libsqlite3-dev
 
 # swift
 ARG swift_version=4.0.3
