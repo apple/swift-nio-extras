@@ -95,13 +95,13 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         self.lengthFieldEndianness = lengthFieldEndianness
     }
 
-    public func write(ctx: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
 
         let dataBuffer = self.unwrapOutboundIn(data)
         let dataLength = dataBuffer.readableBytes
         
         guard dataLength <= self.lengthFieldLength.max else {
-            promise?.fail(error: LengthFieldPrependerError.messageDataTooLongForLengthField)
+            promise?.fail(LengthFieldPrependerError.messageDataTooLongForLengthField)
             return
         }
         
@@ -111,22 +111,22 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
             dataLengthBuffer = existingBuffer
             dataLengthBuffer.clear()
         } else {
-            dataLengthBuffer = ctx.channel.allocator.buffer(capacity: self.lengthFieldLength.length)
+            dataLengthBuffer = context.channel.allocator.buffer(capacity: self.lengthFieldLength.length)
             self.lengthBuffer = dataLengthBuffer
         }
 
         switch self.lengthFieldLength {
         case .one:
-            dataLengthBuffer.write(integer: UInt8(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.writeInteger(UInt8(dataLength), endianness: self.lengthFieldEndianness)
         case .two:
-            dataLengthBuffer.write(integer: UInt16(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.writeInteger(UInt16(dataLength), endianness: self.lengthFieldEndianness)
         case .four:
-            dataLengthBuffer.write(integer: UInt32(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.writeInteger(UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .eight:
-            dataLengthBuffer.write(integer: UInt64(dataLength), endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.writeInteger(UInt64(dataLength), endianness: self.lengthFieldEndianness)
         }
 
-        ctx.write(self.wrapOutboundOut(dataLengthBuffer), promise: nil)
-        ctx.write(data, promise: promise)
+        context.write(self.wrapOutboundOut(dataLengthBuffer), promise: nil)
+        context.write(data, promise: promise)
     }
 }

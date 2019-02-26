@@ -25,7 +25,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertTrue(channel.isActive)
         let quiesce = ServerQuiescingHelper(group: el)
         _ = quiesce.makeServerChannelHandler(channel: channel)
-        let p: EventLoopPromise<Void> = el.newPromise()
+        let p: EventLoopPromise<Void> = el.makePromise()
         quiesce.initiateShutdown(promise: p)
         XCTAssertNoThrow(try p.futureResult.wait())
         XCTAssertFalse(channel.isActive)
@@ -40,27 +40,27 @@ public class QuiescingHelperTest: XCTestCase {
                 self.promise = promise
             }
 
-            func userInboundEventTriggered(ctx: ChannelHandlerContext, event: Any) {
+            func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
                 if event is ChannelShouldQuiesceEvent {
-                    self.promise.succeed(result: ())
+                    self.promise.succeed(())
                 }
             }
         }
 
         let el = EmbeddedEventLoop()
-        let allShutdownPromise: EventLoopPromise<Void> = el.newPromise()
+        let allShutdownPromise: EventLoopPromise<Void> = el.makePromise()
         let serverChannel = EmbeddedChannel(handler: nil, loop: el)
         // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
         XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
         let quiesce = ServerQuiescingHelper(group: el)
         let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
-        XCTAssertNoThrow(try serverChannel.pipeline.add(handler: collectionHandler).wait())
+        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
         var waitForFutures: [EventLoopFuture<Void>] = []
         var childChannels: [Channel] = []
 
         // add a bunch of channels
         for _ in 0..<128 {
-            let waitForPromise: EventLoopPromise<()> = el.newPromise()
+            let waitForPromise: EventLoopPromise<()> = el.makePromise()
             let channel = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise), loop: el)
             waitForFutures.append(waitForPromise.futureResult)
             childChannels.append(channel)
@@ -75,7 +75,7 @@ public class QuiescingHelperTest: XCTestCase {
 
         el.run()
         // check that all the child channels have received the user event
-        XCTAssertNoThrow(try EventLoopFuture<Void>.andAll(waitForFutures, eventLoop: el).wait() as Void)
+        XCTAssertNoThrow(try EventLoopFuture<Void>.andAllSucceed(waitForFutures, on: el).wait() as Void)
 
         // now close all the child channels
         childChannels.forEach { $0.close(promise: nil) }

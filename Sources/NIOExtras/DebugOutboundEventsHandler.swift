@@ -38,47 +38,47 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         self.logger = logger
     }
     
-    public func register(ctx: ChannelHandlerContext, promise: EventLoopPromise<Void>?) {
-        logger(.register, ctx)
-        ctx.register(promise: promise)
+    public func register(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) {
+        logger(.register, context)
+        context.register(promise: promise)
     }
     
-    public func bind(ctx: ChannelHandlerContext, to address: SocketAddress, promise: EventLoopPromise<Void>?) {
-        logger(.bind(address: address), ctx)
-        ctx.bind(to: address, promise: promise)
+    public func bind(context: ChannelHandlerContext, to address: SocketAddress, promise: EventLoopPromise<Void>?) {
+        logger(.bind(address: address), context)
+        context.bind(to: address, promise: promise)
     }
     
-    public func connect(ctx: ChannelHandlerContext, to address: SocketAddress, promise: EventLoopPromise<Void>?) {
-        logger(.connect(address: address), ctx)
-        ctx.connect(to: address, promise: promise)
+    public func connect(context: ChannelHandlerContext, to address: SocketAddress, promise: EventLoopPromise<Void>?) {
+        logger(.connect(address: address), context)
+        context.connect(to: address, promise: promise)
     }
     
-    public func write(ctx: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        logger(.write(data: data), ctx)
-        ctx.write(data, promise: promise)
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        logger(.write(data: data), context)
+        context.write(data, promise: promise)
     }
     
-    public func flush(ctx: ChannelHandlerContext) {
-        logger(.flush, ctx)
-        ctx.flush()
+    public func flush(context: ChannelHandlerContext) {
+        logger(.flush, context)
+        context.flush()
     }
     
-    public func read(ctx: ChannelHandlerContext) {
-        logger(.read, ctx)
-        ctx.read()
+    public func read(context: ChannelHandlerContext) {
+        logger(.read, context)
+        context.read()
     }
     
-    public func close(ctx: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {
-        logger(.close(mode: mode), ctx)
-        ctx.close(mode: mode, promise: promise)
+    public func close(context: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {
+        logger(.close(mode: mode), context)
+        context.close(mode: mode, promise: promise)
     }
     
-    public func triggerUserOutboundEvent(ctx: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
-        logger(.triggerUserOutboundEvent(event: event), ctx)
-        ctx.triggerUserOutboundEvent(event, promise: promise)
+    public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
+        logger(.triggerUserOutboundEvent(event: event), context)
+        context.triggerUserOutboundEvent(event, promise: promise)
     }
 
-    public static func defaultPrint(event: Event, in ctx: ChannelHandlerContext) {
+    public static func defaultPrint(event: Event, in context: ChannelHandlerContext) {
         let message: String
         switch event {
         case .register:
@@ -99,7 +99,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         case .triggerUserOutboundEvent(let event):
             message = "Triggering user outbound event: { \(event) }"
         }
-        print(message + " in \(ctx.name)")
+        print(message + " in \(context.name)")
     }
     
 }

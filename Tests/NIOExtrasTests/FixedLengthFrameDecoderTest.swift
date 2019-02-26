@@ -22,10 +22,10 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        try channel.pipeline.add(handler: FixedLengthFrameDecoder(frameLength: frameLength)).wait()
+        try channel.pipeline.addHandler(ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))).wait()
 
         var buffer = channel.allocator.buffer(capacity: frameLength)
-        buffer.write(string: "xxxx")
+        buffer.writeString("xxxx")
         XCTAssertFalse(try channel.writeInbound(buffer))
         XCTAssertTrue(try channel.writeInbound(buffer))
 
@@ -38,10 +38,10 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        try channel.pipeline.add(handler: FixedLengthFrameDecoder(frameLength: frameLength)).wait()
+        try channel.pipeline.addHandler(ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))).wait()
 
         var buffer = channel.allocator.buffer(capacity: 19)
-        buffer.write(string: "xxxxxxxxaaaaaaaabbb")
+        buffer.writeString("xxxxxxxxaaaaaaaabbb")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
         var outputBuffer: ByteBuffer? = channel.readInbound()
@@ -52,24 +52,32 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         outputBuffer = channel.readInbound()
         XCTAssertNil(outputBuffer?.readString(length: frameLength))
-        XCTAssertFalse(try channel.finish())
+        XCTAssertThrowsError(try channel.finish()) { error in
+            if let error = error as? NIOExtrasErrors.LeftOverBytesError {
+                XCTAssertEqual(3, error.leftOverBytes.readableBytes)
+            } else {
+                XCTFail("unexpected error: \(error)")
+            }
+        }
     }
 
     public func testRemoveHandlerWhenBufferIsNotEmpty() throws {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        let handler = FixedLengthFrameDecoder(frameLength: frameLength)
-        try channel.pipeline.add(handler: handler).wait()
+        let handler = ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
+        try channel.pipeline.addHandler(handler).wait()
 
         var buffer = channel.allocator.buffer(capacity: 15)
-        buffer.write(string: "xxxxxxxxxxxxxxx")
+        buffer.writeString("xxxxxxxxxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
         var outputBuffer: ByteBuffer? = channel.readInbound()
         XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
 
-        _ = try channel.pipeline.remove(handler: handler).wait()
+        let removeFuture = channel.pipeline.removeHandler(handler)
+        (channel.eventLoop as! EmbeddedEventLoop).run()
+        XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertThrowsError(try channel.throwIfErrorCaught()) { error in
             guard let error = error as? NIOExtrasErrors.LeftOverBytesError else {
                 XCTFail()
@@ -77,7 +85,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
             }
 
             var expectedBuffer = channel.allocator.buffer(capacity: 7)
-            expectedBuffer.write(string: "xxxxxxx")
+            expectedBuffer.writeString("xxxxxxx")
             XCTAssertEqual(error.leftOverBytes, expectedBuffer)
         }
         XCTAssertFalse(try channel.finish())
@@ -87,42 +95,44 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        let handler = FixedLengthFrameDecoder(frameLength: frameLength)
-        try channel.pipeline.add(handler: handler).wait()
+        let handler = ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
+        try channel.pipeline.addHandler(handler).wait()
 
         var buffer = channel.allocator.buffer(capacity: 6)
-        buffer.write(string: "xxxxxxxx")
+        buffer.writeString("xxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
         var outputBuffer: ByteBuffer? = channel.readInbound()
         XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
 
-        _ = try channel.pipeline.remove(handler: handler).wait()
+        let removeFuture = channel.pipeline.removeHandler(handler)
+        (channel.eventLoop as! EmbeddedEventLoop).run()
+        XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
         XCTAssertFalse(try channel.finish())
     }
 
     func testCloseInChannelRead() {
-        let channel = EmbeddedChannel(handler: LengthFieldBasedFrameDecoder(lengthFieldLength: .four))
+        let channel = EmbeddedChannel(handler: ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .four)))
         class CloseInReadHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
 
             private var numberOfReads = 0
 
-            func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+            func channelRead(context: ChannelHandlerContext, data: NIOAny) {
                 self.numberOfReads += 1
                 XCTAssertEqual(1, self.numberOfReads)
                 XCTAssertEqual([UInt8(100)], Array(self.unwrapInboundIn(data).readableBytesView))
-                ctx.close().whenFailure { error in
+                context.close().whenFailure { error in
                     XCTFail("unexpected error: \(error)")
                 }
-                ctx.fireChannelRead(data)
+                context.fireChannelRead(data)
             }
         }
-        XCTAssertNoThrow(try channel.pipeline.add(handler: CloseInReadHandler()).wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(CloseInReadHandler()).wait())
 
         var buf = channel.allocator.buffer(capacity: 1024)
-        buf.write(bytes: [UInt8(0), 0, 0, 1, 100])
+        buf.writeBytes([UInt8(0), 0, 0, 1, 100])
         XCTAssertNoThrow(try channel.writeInbound(buf))
         XCTAssertEqual([100], Array((channel.readInbound() as ByteBuffer?)!.readableBytesView))
         XCTAssertNil(channel.readInbound())

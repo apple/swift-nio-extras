@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import _NIO1APIShims
 
 /// ChannelInboundHandler that prints all inbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See DebugOutboundEventsHandler for outbound events.
@@ -39,52 +40,52 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         self.logger = logger
     }
     
-    public func channelRegistered(ctx: ChannelHandlerContext) {
-        logger(.registered, ctx)
-        ctx.fireChannelRegistered()
+    public func channelRegistered(context: ChannelHandlerContext) {
+        logger(.registered, context)
+        context.fireChannelRegistered()
     }
     
-    public func channelUnregistered(ctx: ChannelHandlerContext) {
-        logger(.unregistered, ctx)
-        ctx.fireChannelUnregistered()
+    public func channelUnregistered(context: ChannelHandlerContext) {
+        logger(.unregistered, context)
+        context.fireChannelUnregistered()
     }
     
-    public func channelActive(ctx: ChannelHandlerContext) {
-        logger(.active, ctx)
-        ctx.fireChannelActive()
+    public func channelActive(context: ChannelHandlerContext) {
+        logger(.active, context)
+        context.fireChannelActive()
     }
     
-    public func channelInactive(ctx: ChannelHandlerContext) {
-        logger(.inactive, ctx)
-        ctx.fireChannelInactive()
+    public func channelInactive(context: ChannelHandlerContext) {
+        logger(.inactive, context)
+        context.fireChannelInactive()
     }
     
-    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        logger(.read(data: data), ctx)
-        ctx.fireChannelRead(data)
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        logger(.read(data: data), context)
+        context.fireChannelRead(data)
     }
     
-    public func channelReadComplete(ctx: ChannelHandlerContext) {
-        logger(.readComplete, ctx)
-        ctx.fireChannelReadComplete()
+    public func channelReadComplete(context: ChannelHandlerContext) {
+        logger(.readComplete, context)
+        context.fireChannelReadComplete()
     }
     
-    public func channelWritabilityChanged(ctx: ChannelHandlerContext) {
-        logger(.writabilityChanged(isWritable: ctx.channel.isWritable), ctx)
-        ctx.fireChannelWritabilityChanged()
+    public func channelWritabilityChanged(context: ChannelHandlerContext) {
+        logger(.writabilityChanged(isWritable: context.channel.isWritable), context)
+        context.fireChannelWritabilityChanged()
     }
     
-    public func userInboundEventTriggered(ctx: ChannelHandlerContext, event: Any) {
-        logger(.userInboundEventTriggered(event: event), ctx)
-        ctx.fireUserInboundEventTriggered(event)
+    public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        logger(.userInboundEventTriggered(event: event), context)
+        context.fireUserInboundEventTriggered(event)
     }
     
-    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        logger(.errorCaught(error), ctx)
-        ctx.fireErrorCaught(error)
+    public func errorCaught(context: ChannelHandlerContext, error: Error) {
+        logger(.errorCaught(error), context)
+        context.fireErrorCaught(error)
     }
     
-    public static func defaultPrint(event: Event, in ctx: ChannelHandlerContext) {
+    public static func defaultPrint(event: Event, in context: ChannelHandlerContext) {
         let message: String
         switch event {
         case .registered:
@@ -106,7 +107,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         case .errorCaught(let error):
             message = "Channel caught error: \(error)"
         }
-        print(message + " in \(ctx.name)")
+        print(message + " in \(context.name)")
     }
     
 }
