@@ -17,7 +17,6 @@ import XCTest
 import NIOExtras
 
 class LineBasedFrameDecoderTest: XCTestCase {
-    
     private var channel: EmbeddedChannel!
     private var decoder: LineBasedFrameDecoder!
     private var handler: ByteToMessageHandler<LineBasedFrameDecoder>!
@@ -48,8 +47,10 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.writeString("\n")
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        XCTAssertEqual("abcdefghij", outputBuffer?.readString(length: 10))
+        XCTAssertNoThrow(XCTAssertEqual("abcdefghij",
+                                        (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0[0..<10], as: Unicode.UTF8.self)
+        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -57,7 +58,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         var buffer = self.channel.allocator.buffer(capacity: 8)
         buffer.writeString("foo\r\nbar")
         XCTAssertTrue(try self.channel.writeInbound(buffer))
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
+        var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual(3, outputBuffer?.readableBytes)
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
         
@@ -82,7 +83,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.writeString("foo\n")
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
+        var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
         
         let removeFuture = self.channel.pipeline.removeHandler(self.handler)
@@ -97,7 +98,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.writeString("\n")
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
+        var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual("", outputBuffer?.readString(length: 0))
         XCTAssertFalse(try self.channel.finish())
     }

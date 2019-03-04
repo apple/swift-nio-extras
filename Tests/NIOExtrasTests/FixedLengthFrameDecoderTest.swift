@@ -29,8 +29,9 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         XCTAssertFalse(try channel.writeInbound(buffer))
         XCTAssertTrue(try channel.writeInbound(buffer))
 
-        var outputBuffer: ByteBuffer? = channel.readInbound()
-        XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
+        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0, as: Unicode.UTF8.self)
+        })
         XCTAssertFalse(try channel.finish())
     }
 
@@ -44,14 +45,15 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxxaaaaaaaabbb")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
-        var outputBuffer: ByteBuffer? = channel.readInbound()
-        XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
+        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0, as: Unicode.UTF8.self)
+            })
 
-        outputBuffer = channel.readInbound()
-        XCTAssertEqual("aaaaaaaa", outputBuffer?.readString(length: frameLength))
+        XCTAssertEqual("aaaaaaaa", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0, as: Unicode.UTF8.self)
+            })
 
-        outputBuffer = channel.readInbound()
-        XCTAssertNil(outputBuffer?.readString(length: frameLength))
+        XCTAssertNoThrow(XCTAssertNil(try channel.readInbound(as: ByteBuffer.self)))
         XCTAssertThrowsError(try channel.finish()) { error in
             if let error = error as? NIOExtrasErrors.LeftOverBytesError {
                 XCTAssertEqual(3, error.leftOverBytes.readableBytes)
@@ -72,8 +74,9 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxxxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
-        var outputBuffer: ByteBuffer? = channel.readInbound()
-        XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
+        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0, as: Unicode.UTF8.self)
+            })
 
         let removeFuture = channel.pipeline.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
@@ -102,8 +105,9 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer))
 
-        var outputBuffer: ByteBuffer? = channel.readInbound()
-        XCTAssertEqual("xxxxxxxx", outputBuffer?.readString(length: frameLength))
+        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+            String(decoding: $0, as: Unicode.UTF8.self)
+            })
 
         let removeFuture = channel.pipeline.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
@@ -134,8 +138,8 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         var buf = channel.allocator.buffer(capacity: 1024)
         buf.writeBytes([UInt8(0), 0, 0, 1, 100])
         XCTAssertNoThrow(try channel.writeInbound(buf))
-        XCTAssertEqual([100], Array((channel.readInbound() as ByteBuffer?)!.readableBytesView))
-        XCTAssertNil(channel.readInbound())
+        XCTAssertNoThrow(XCTAssertEqual([100], Array((try channel.readInbound() as ByteBuffer?)!.readableBytesView)))
+        XCTAssertNoThrow(XCTAssertNil(try channel.readInbound()))
 
     }
 }

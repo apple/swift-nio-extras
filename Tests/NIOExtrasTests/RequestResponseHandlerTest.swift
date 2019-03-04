@@ -52,14 +52,14 @@ class RequestResponseHandlerTest: XCTestCase {
         // write response
         XCTAssertNoThrow(try self.channel.writeInbound("okay"))
         // verify request was forwarded
-        XCTAssertEqual(IOData.byteBuffer(self.buffer), self.channel.readOutbound())
+        XCTAssertNoThrow(XCTAssertEqual(IOData.byteBuffer(self.buffer), try self.channel.readOutbound()))
         // verify response was not forwarded
-        XCTAssertEqual(nil, self.channel.readInbound() as IOData?)
+        XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
         // verify the promise got succeeded with the response
         XCTAssertNoThrow(XCTAssertEqual("okay", try p.futureResult.wait()))
     }
 
-    func testEnqueingMultipleRequestsWorks() {
+    func testEnqueingMultipleRequestsWorks() throws {
         struct DummyError: Error {}
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<IOData, Int>()).wait())
 
@@ -80,7 +80,7 @@ class RequestResponseHandlerTest: XCTestCase {
 
         // let's have 3 successful responses
         for reqIdExpected in 0..<3 {
-            switch self.channel.readOutbound(as: IOData.self) {
+            switch try self.channel.readOutbound(as: IOData.self) {
             case .some(.byteBuffer(var buffer)):
                 if let reqId = buffer.readString(length: buffer.readableBytes).flatMap(Int.init) {
                     // write response
@@ -108,7 +108,7 @@ class RequestResponseHandlerTest: XCTestCase {
         }
 
         // verify no response was not forwarded
-        XCTAssertEqual(nil, self.channel.readInbound() as IOData?)
+        XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
     }
 
     func testRequestsEnqueuedAfterErrorAreFailed() {
