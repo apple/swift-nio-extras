@@ -42,10 +42,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readBytes(length: dataBytes.count)
-        
-        XCTAssertEqual(dataBytes, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(dataBytes,
+                                        try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView.map {
+                                            $0
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -63,10 +63,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -84,10 +84,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -105,10 +105,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -126,10 +126,11 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
+
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -147,10 +148,11 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
+
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -167,10 +169,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -191,16 +193,16 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         buffer.writeString(secondFrameString)
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
-        var outputFirstFrameBuffer: ByteBuffer? = self.channel.readInbound()
-        
-        let outputFirstFrameData = outputFirstFrameBuffer?.readString(length: standardDataString.count)
-        XCTAssertEqual(standardDataString, outputFirstFrameData)
-        
-        var outputSecondFrameBuffer: ByteBuffer? = self.channel.readInbound()
-        
-        let outputSecondFrameData = outputSecondFrameBuffer?.readString(length: secondFrameString.count)
-        XCTAssertEqual(secondFrameString, outputSecondFrameData)
-        
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
+
+        XCTAssertNoThrow(XCTAssertEqual(secondFrameString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
+
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -222,7 +224,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertFalse(try self.channel.writeInbound(firstBuffer))
         
         // Read should fail because there is not yet enough data.
-        XCTAssertNil(self.channel.readInbound())
+        XCTAssertNoThrow(XCTAssertNil(try self.channel.readInbound()))
         
         var secondBuffer = self.channel.allocator.buffer(capacity: 1) // Byte 2 of 2 byte header header
         secondBuffer.writeInteger(frameDataLengthSecondByte, endianness: .little, as: UInt8.self)
@@ -230,7 +232,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertFalse(try self.channel.writeInbound(secondBuffer))
         
         // Read should fail because there is not yet enough data.
-        XCTAssertNil(self.channel.readInbound())
+        XCTAssertNoThrow(XCTAssertNil(try self.channel.readInbound()))
         
         // Write and try to read each byte of the data individually
         for (index, character) in standardDataString.enumerated() {
@@ -242,17 +244,16 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 
                 XCTAssertFalse(try self.channel.writeInbound(characterBuffer))
                 // Read should fail because there is not yet enough data.
-                XCTAssertNil(self.channel.readInbound())
+                XCTAssertNoThrow(XCTAssertNil(try self.channel.readInbound()))
             } else {
                 XCTAssertTrue(try self.channel.writeInbound(characterBuffer))
             }
         }
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        XCTAssertEqual(standardDataString, outputData)
-
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -325,15 +326,15 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try self.channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
         let removeFuture = self.channel.pipeline.removeHandler(self.decoderUnderTest)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
 
         
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertNoThrow(try self.channel.throwIfErrorCaught())
         XCTAssertFalse(try self.channel.finish())
     }
@@ -353,9 +354,6 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         XCTAssertTrue(try channel.writeInbound(buffer))
         
-        var outputBuffer: ByteBuffer? = self.channel.readInbound()
-        let outputData = outputBuffer?.readString(length: standardDataString.count)
-        
         let removeFuture = self.channel.pipeline.removeHandler(self.decoderUnderTest)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
@@ -371,7 +369,10 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             XCTAssertEqual(error.leftOverBytes, expectedBuffer)
         }
         
-        XCTAssertEqual(standardDataString, outputData)
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
         XCTAssertFalse(try self.channel.finish())
     }
 }
