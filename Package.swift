@@ -34,6 +34,7 @@ let package = Package(
     products: [
         .executable(name: "HTTPServerWithQuiescingDemo", targets: ["HTTPServerWithQuiescingDemo"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
+        .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", .branch("master")),
