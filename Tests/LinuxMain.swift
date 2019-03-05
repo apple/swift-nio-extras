@@ -24,11 +24,13 @@ import XCTest
 
 #if os(Linux) || os(FreeBSD)
    @testable import NIOExtrasTests
+   @testable import NIOHTTPCompressionTests
 
    XCTMain([
          testCase(DebugInboundEventsHandlerTest.allTests),
          testCase(DebugOutboundEventsHandlerTest.allTests),
          testCase(FixedLengthFrameDecoderTest.allTests),
+         testCase(HTTPResponseCompressorTest.allTests),
          testCase(LengthFieldBasedFrameDecoderTest.allTests),
          testCase(LengthFieldPrependerTest.allTests),
          testCase(LineBasedFrameDecoderTest.allTests),

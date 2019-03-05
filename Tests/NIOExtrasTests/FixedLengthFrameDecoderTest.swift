@@ -17,7 +17,6 @@ import NIO
 import NIOExtras
 
 class FixedLengthFrameDecoderTest: XCTestCase {
-
     public func testDecodeIfFewerBytesAreSent() throws {
         let channel = EmbeddedChannel()
 

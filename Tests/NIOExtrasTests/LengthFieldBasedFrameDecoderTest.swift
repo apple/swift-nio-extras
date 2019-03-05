@@ -196,12 +196,12 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(standardDataString,
                                         try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
                                             String(decoding: $0, as: Unicode.UTF8.self)
-                                        }))
+            }))
 
         XCTAssertNoThrow(XCTAssertEqual(secondFrameString,
                                         try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
                                             String(decoding: $0, as: Unicode.UTF8.self)
-                                        }))
+            }))
 
         XCTAssertFalse(try self.channel.finish())
     }
@@ -253,7 +253,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(standardDataString,
                                         try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
                                             String(decoding: $0, as: Unicode.UTF8.self)
-                                        }))
+            }))
         XCTAssertFalse(try self.channel.finish())
     }
     
@@ -334,7 +334,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(standardDataString,
                                         try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
                                             String(decoding: $0, as: Unicode.UTF8.self)
-                                        }))
+            }))
         XCTAssertNoThrow(try self.channel.throwIfErrorCaught())
         XCTAssertFalse(try self.channel.finish())
     }
@@ -372,7 +372,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(standardDataString,
                                         try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
                                             String(decoding: $0, as: Unicode.UTF8.self)
-                                        }))
+            }))
         XCTAssertFalse(try self.channel.finish())
     }
 }
