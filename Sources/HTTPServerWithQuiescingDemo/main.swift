@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
+
 import NIO
-import _NIO1APIShims
 import NIOHTTP1
 import NIOExtras
-import Dispatch
 
 private final class HTTPHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
