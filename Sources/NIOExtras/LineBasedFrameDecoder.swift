@@ -49,8 +49,6 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     }
     
     public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
-        // we'll just try to decode as much as we can as usually
-        while case .continue = try self.decode(context: context, buffer: &buffer) {}
         if buffer.readableBytes > 0 {
             context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
