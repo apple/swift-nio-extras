@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import _NIO1APIShims
 
 /// ChannelInboundHandler that prints all inbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See DebugOutboundEventsHandler for outbound events.
