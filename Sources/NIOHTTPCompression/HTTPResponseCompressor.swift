@@ -16,7 +16,7 @@ import CNIOExtrasZlib
 import NIO
 import NIOHTTP1
 
-extension String {
+extension StringProtocol {
     /// Test if this `Collection` starts with the unicode scalars of `needle`.
     ///
     /// - note: This will be faster than `String.startsWith` as no unicode normalisations are performed.
@@ -32,7 +32,7 @@ extension String {
 
 /// Given a header value, extracts the q value if there is one present. If one is not present,
 /// returns the default q value, 1.0.
-private func qValueFromHeader(_ text: String) -> Float {
+private func qValueFromHeader<S: StringProtocol>(_ text: S) -> Float {
     let headerParts = text.split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)
     guard headerParts.count > 1 && headerParts[1].count > 0 else {
         return 1
@@ -79,7 +79,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler {
     private var algorithm: CompressionAlgorithm?
 
     // A queue of accept headers.
-    private var acceptQueue = CircularBuffer<[String]>(initialCapacity: 8)
+    private var acceptQueue = CircularBuffer<[Substring]>(initialCapacity: 8)
 
     private var pendingResponse: PartialHTTPResponse!
     private var pendingWritePromise: EventLoopPromise<Void>!
