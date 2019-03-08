@@ -581,4 +581,21 @@ class HTTPResponseCompressorTest: XCTestCase {
         XCTAssertTrue(nfcEncodedEAigu.starts(with: nfdEncodedEAigu))
         XCTAssertTrue(nfdEncodedEAigu.starts(with: nfcEncodedEAigu))
     }
+
+    func testCanBeRemoved() throws {
+        let channel = try compressionChannel()
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertDeflatedResponse(channel: channel)
+
+        XCTAssertNoThrow(try channel.pipeline.context(handlerType: HTTPResponseCompressor.self).flatMap { context in
+            channel.pipeline.removeHandler(context: context)
+        }.wait())
+
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertUncompressedResponse(channel: channel)
+    }
 }
