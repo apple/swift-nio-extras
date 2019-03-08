@@ -16,17 +16,16 @@
 import PackageDescription
 
 var targets: [PackageDescription.Target] = [
-    .target(name: "NIOExtras", dependencies: ["NIO", "_NIO1APIShims"]),
+    .target(name: "NIOExtras", dependencies: ["NIO"]),
     .target(name: "NIOHTTPCompression", dependencies: ["NIO", "NIOHTTP1", "CNIOExtrasZlib"]),
-    .target(name: "HTTPServerWithQuiescingDemo", dependencies: ["NIOExtras", "NIOHTTP1", "_NIO1APIShims"]),
+    .target(name: "HTTPServerWithQuiescingDemo", dependencies: ["NIOExtras", "NIOHTTP1"]),
     .target(name: "CNIOExtrasZlib",
             dependencies: [],
             linkerSettings: [
                 .linkedLibrary("z")
             ]),
-    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "_NIO1APIShims"]),
-    .testTarget(name: "NIOHTTPCompressionTests", dependencies:
-    ["NIOHTTPCompression", "_NIO1APIShims"]),
+    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras"]),
+    .testTarget(name: "NIOHTTPCompressionTests", dependencies: ["NIOHTTPCompression"]),
 ]
 
 let package = Package(
