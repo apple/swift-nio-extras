@@ -50,6 +50,7 @@ extension HTTPResponseCompressorTest {
                 ("testStartsWithSameUnicodeScalarsWorksOnPrefix", testStartsWithSameUnicodeScalarsWorksOnPrefix),
                 ("testStartsWithSameUnicodeScalarsSaysNoForTheSameStringInDifferentNormalisations", testStartsWithSameUnicodeScalarsSaysNoForTheSameStringInDifferentNormalisations),
                 ("testStartsWithSaysYesForTheSameStringInDifferentNormalisations", testStartsWithSaysYesForTheSameStringInDifferentNormalisations),
+                ("testCanBeRemoved", testCanBeRemoved),
            ]
    }
 }
