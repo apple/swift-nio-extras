@@ -35,4 +35,4 @@ functionality.
 - [`LengthFieldBasedFrameDecoder`](Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift) Splits incoming `ByteBuffer`s by a number of bytes specified in a fixed length header contained within the buffer.
 - [`LengthFieldPrepender`](Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift) Prepends the number of bytes to outgoing `ByteBuffer`s as a fixed length header. Can be used in a codec pair with the `LengthFieldBasedFrameDecoder`.
 - [`RequestResponseHandler`](Sources/NIOExtras/RequestResponseHandler.swift) Matches a request and a promise with the corresponding response.
-- [`HTTPResponseCompressor`)(Sources/NIOHTTPCompression/HTTPResponseCompressor.swift) Compresses the body of every HTTP/1 response message.
+- [`HTTPResponseCompressor`](Sources/NIOHTTPCompression/HTTPResponseCompressor.swift) Compresses the body of every HTTP/1 response message.
