@@ -25,7 +25,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         self.channel = EmbeddedChannel()
         self.decoder = LineBasedFrameDecoder()
         self.handler = ByteToMessageHandler(self.decoder)
-        try? self.channel.pipeline.addHandler(self.handler).wait()
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.handler).wait())
     }
 
     override func tearDown() {
@@ -141,6 +141,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
 
             func channelRead(context: ChannelHandlerContext, data: NIOAny) {
                 let buffer = self.unwrapInboundIn(data)
+                context.fireChannelRead(data)
 
                 if buffer.readableBytes == 3 {
                     context.close(promise: nil)
@@ -159,9 +160,16 @@ class LineBasedFrameDecoderTest: XCTestCase {
         let handler = CloseWhenMyFavouriteMessageArrives(receivedLeftOversPromise: receivedLeftOversPromise)
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(handler).wait())
         var buffer = self.channel.allocator.buffer(capacity: 16)
-        buffer.writeString("a\nbb\nccc\ndddd\neeeee\nffffff\n")
+        buffer.writeString("a\nbb\nccc\ndddd\neeeee\nffffff\nXXX")
         XCTAssertNoThrow(try self.channel.writeInbound(buffer))
-        XCTAssertNoThrow(try XCTAssertEqual("dddd\neeeee\nffffff\n",
+        for s in ["a", "bb", "ccc", "dddd", "eeeee", "ffffff"] {
+            XCTAssertNoThrow(XCTAssertEqual(s,
+                                            (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }))
+        }
+        XCTAssertNoThrow(XCTAssertNil(try self.channel.readInbound(as: ByteBuffer.self)))
+        XCTAssertNoThrow(try XCTAssertEqual("XXX",
                                             String(decoding: receivedLeftOversPromise.futureResult.wait().readableBytesView,
                                                    as: UTF8.self)))
     }
