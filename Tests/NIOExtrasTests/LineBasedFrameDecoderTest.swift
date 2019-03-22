@@ -40,24 +40,24 @@ class LineBasedFrameDecoderTest: XCTestCase {
         try message.forEach {
             var buffer = self.channel.allocator.buffer(capacity: 1)
             buffer.writeString("\($0)")
-            XCTAssertFalse(try self.channel.writeInbound(buffer))
+            XCTAssertTrue(try self.channel.writeInbound(buffer).isEmpty)
         }
         // let's add `\n`
         var buffer = self.channel.allocator.buffer(capacity: 1)
         buffer.writeString("\n")
-        XCTAssertTrue(try self.channel.writeInbound(buffer))
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
         
         XCTAssertNoThrow(XCTAssertEqual("abcdefghij",
                                         (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
             String(decoding: $0[0..<10], as: Unicode.UTF8.self)
         }))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testRemoveHandlerWhenBufferIsNotEmpty() throws {
         var buffer = self.channel.allocator.buffer(capacity: 8)
         buffer.writeString("foo\r\nbar")
-        XCTAssertTrue(try self.channel.writeInbound(buffer))
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
         var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual(3, outputBuffer?.readableBytes)
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
@@ -75,13 +75,13 @@ class LineBasedFrameDecoderTest: XCTestCase {
             expectedBuffer.writeString("bar")
             XCTAssertEqual(error.leftOverBytes, expectedBuffer)
         }
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testRemoveHandlerWhenBufferIsEmpty() throws {
         var buffer = self.channel.allocator.buffer(capacity: 4)
         buffer.writeString("foo\n")
-        XCTAssertTrue(try self.channel.writeInbound(buffer))
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
         
         var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
@@ -90,24 +90,24 @@ class LineBasedFrameDecoderTest: XCTestCase {
         (self.channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertNoThrow(try self.channel.throwIfErrorCaught())
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEmptyLine() throws {
         var buffer = self.channel.allocator.buffer(capacity: 1)
         buffer.writeString("\n")
-        XCTAssertTrue(try self.channel.writeInbound(buffer))
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
         
         var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual("", outputBuffer?.readString(length: 0))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEmptyBuffer() throws {
         var buffer = self.channel.allocator.buffer(capacity: 1)
         buffer.writeString("")
-        XCTAssertFalse(try self.channel.writeInbound(buffer))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isEmpty)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testChannelInactiveWithLeftOverBytes() throws {
@@ -115,7 +115,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         var buffer = self.channel.allocator.buffer(capacity: 2)
         // read "abc" so the reader index is not 0
         buffer.writeString("hi")
-        XCTAssertFalse(try self.channel.writeInbound(buffer))
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isEmpty)
         
         try self.channel.close().wait()
         XCTAssertThrowsError(try self.channel.throwIfErrorCaught()) { error in

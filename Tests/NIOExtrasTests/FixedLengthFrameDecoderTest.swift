@@ -25,13 +25,13 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         var buffer = channel.allocator.buffer(capacity: frameLength)
         buffer.writeString("xxxx")
-        XCTAssertFalse(try channel.writeInbound(buffer))
-        XCTAssertTrue(try channel.writeInbound(buffer))
+        XCTAssertTrue(try channel.writeInbound(buffer).isEmpty)
+        XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
         XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
             String(decoding: $0, as: Unicode.UTF8.self)
         })
-        XCTAssertFalse(try channel.finish())
+        XCTAssertTrue(try channel.finish().isClean)
     }
 
     public func testDecodeIfMoreBytesAreSent() throws {
@@ -42,7 +42,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         var buffer = channel.allocator.buffer(capacity: 19)
         buffer.writeString("xxxxxxxxaaaaaaaabbb")
-        XCTAssertTrue(try channel.writeInbound(buffer))
+        XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
         XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
             String(decoding: $0, as: Unicode.UTF8.self)
@@ -71,7 +71,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         var buffer = channel.allocator.buffer(capacity: 15)
         buffer.writeString("xxxxxxxxxxxxxxx")
-        XCTAssertTrue(try channel.writeInbound(buffer))
+        XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
         XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
             String(decoding: $0, as: Unicode.UTF8.self)
@@ -90,7 +90,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
             expectedBuffer.writeString("xxxxxxx")
             XCTAssertEqual(error.leftOverBytes, expectedBuffer)
         }
-        XCTAssertFalse(try channel.finish())
+        XCTAssertTrue(try channel.finish().isClean)
     }
 
     public func testRemoveHandlerWhenBufferIsEmpty() throws {
@@ -102,7 +102,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         var buffer = channel.allocator.buffer(capacity: 6)
         buffer.writeString("xxxxxxxx")
-        XCTAssertTrue(try channel.writeInbound(buffer))
+        XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
         XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
             String(decoding: $0, as: Unicode.UTF8.self)
@@ -112,7 +112,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
-        XCTAssertFalse(try channel.finish())
+        XCTAssertTrue(try channel.finish().isClean)
     }
 
     func testCloseInChannelRead() {

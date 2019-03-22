@@ -33,7 +33,7 @@ class RequestResponseHandlerTest: XCTestCase {
         self.buffer = nil
         self.eventLoop = nil
         if self.channel.isActive {
-            XCTAssertNoThrow(XCTAssertFalse(try self.channel.finish()))
+            XCTAssertNoThrow(XCTAssertTrue(try self.channel.finish().isClean))
         }
 
         super.tearDown()
