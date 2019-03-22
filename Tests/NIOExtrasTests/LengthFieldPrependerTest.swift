@@ -60,7 +60,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithUInt16HeaderWithString() throws {
@@ -102,7 +102,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithUInt32HeaderWithString() throws {
@@ -144,7 +144,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithUInt64HeaderWithString() throws {
@@ -183,7 +183,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithInt64HeaderWithString() throws {
@@ -225,7 +225,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithUInt64HeaderStringBigEndian() throws {
@@ -267,7 +267,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEncodeWithInt64HeaderStringDefaultingToBigEndian() throws {
@@ -306,7 +306,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testEmptyBuffer() throws {
@@ -340,7 +340,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testLargeBuffer() throws {
@@ -381,7 +381,7 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
     
     func testTooLargeForLengthField() throws {
@@ -407,6 +407,6 @@ class LengthFieldPrependerTest: XCTestCase {
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
-        XCTAssertFalse(try self.channel.finish())
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 }
