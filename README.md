@@ -11,20 +11,19 @@ What makes a good contribution to NIOExtras?
 
 All code will go through code review like in the other repositories related to the SwiftNIO project.
 
-The policies about breaking API changes in this repository are not as strictly
-followed as in the other SwiftNIO repositories. We indicate this by starting
-with major version 0 (`0.x.y`). We will try to increment the minor version
-number whenever there is a breaking change until we release `1.0.0` when we will
-start to follow the usual SemVer requirements. We recommend that users depend on
-`.upToNextMinor` as we reserve the right to introduce breaking changes with
-minor version increments. For patch level increments, we might only introduce new
-functionality.
+`swift-nio-extras` part of the SwiftNIO 2 family of repositories and depends on the following:
 
-## Using NIOExtras:
+- [`swift-nio`](https://github.com/apple/swift-nio), version 2.0.0 or better.
+- Swift 5.0.
+- `zlib` and its development headers installed on the system. But don't worry, you'll find `zlib` on pretty much any UNIX system that can compile any sort of code.
 
-    dependencies: [
-        .package(url: "https://github.com/apple/swift-nio-extras.git", .upToNextMinor(from: "0.1.0")),
-    ],
+To depend on `swift-nio-extras`, put the following in the `dependencies` of your `Package.swift`:
+
+    .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
+
+### Support for older Swift versions
+
+On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-extras-0.1) branch, you can find the `swift-nio-extras` version for the SwiftNIO 1 family. It requires Swift 4.1 or better.
 
 ## Current Contents
 
