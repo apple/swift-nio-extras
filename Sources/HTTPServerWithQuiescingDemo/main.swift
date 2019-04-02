@@ -52,6 +52,10 @@ private final class HTTPHandler: ChannelInboundHandler {
             }
         }
     }
+    
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        print(error)
+    }
 }
 
 let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
@@ -70,6 +74,7 @@ signal(SIGINT, SIG_IGN)
 signalSource.resume()
 
 do {
+
     let serverChannel = try ServerBootstrap(group: group)
         .serverChannelOption(ChannelOptions.backlog, value: 256)
         .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)

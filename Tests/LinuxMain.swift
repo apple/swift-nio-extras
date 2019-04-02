@@ -36,5 +36,6 @@ import XCTest
          testCase(LineBasedFrameDecoderTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
+         testCase(WritePCAPHandlerTest.allTests),
     ])
 #endif
