@@ -35,3 +35,6 @@ On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-ext
 - [`LengthFieldPrepender`](Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift) Prepends the number of bytes to outgoing `ByteBuffer`s as a fixed length header. Can be used in a codec pair with the `LengthFieldBasedFrameDecoder`.
 - [`RequestResponseHandler`](Sources/NIOExtras/RequestResponseHandler.swift) Matches a request and a promise with the corresponding response.
 - [`HTTPResponseCompressor`](Sources/NIOHTTPCompression/HTTPResponseCompressor.swift) Compresses the body of every HTTP/1 response message.
+- [`DebugInboundsEventHandler`](Sources/NIOExtras/DebugInboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
+- [`DebugOutboundsEventHandler`](Sources/NIOExtras/DebugOutboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
+- [`WritePCAPHandler`](Sources/NIOExtras/WritePCAPHandler.swift) A `ChannelHandler` that writes `.pcap` containing the traffic of the `ChannelPipeline` that you can inspect with Wireshark/tcpdump.
