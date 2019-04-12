@@ -19,6 +19,7 @@ var targets: [PackageDescription.Target] = [
     .target(name: "NIOExtras", dependencies: ["NIO"]),
     .target(name: "NIOHTTPCompression", dependencies: ["NIO", "NIOHTTP1", "CNIOExtrasZlib"]),
     .target(name: "HTTPServerWithQuiescingDemo", dependencies: ["NIOExtras", "NIOHTTP1"]),
+    .target(name: "NIOWritePCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "CNIOExtrasZlib",
             dependencies: [],
             linkerSettings: [
@@ -32,6 +33,7 @@ let package = Package(
     name: "swift-nio-extras",
     products: [
         .executable(name: "HTTPServerWithQuiescingDemo", targets: ["HTTPServerWithQuiescingDemo"]),
+        .executable(name: "NIOWritePCAPDemo", targets: ["NIOWritePCAPDemo"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
