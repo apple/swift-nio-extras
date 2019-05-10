@@ -173,4 +173,17 @@ class LineBasedFrameDecoderTest: XCTestCase {
                                             String(decoding: receivedLeftOversPromise.futureResult.wait().readableBytesView,
                                                    as: UTF8.self)))
     }
+
+    func testDripFedCRLN() {
+        var buffer = self.channel.allocator.buffer(capacity: 1)
+
+        for byte in ["a", "\r", "\n"].flatMap({ $0.utf8 }) {
+            buffer.clear()
+            buffer.writeInteger(byte)
+            XCTAssertNoThrow(try self.channel.writeInbound(buffer))
+        }
+        buffer.clear()
+        buffer.writeString("a")
+        XCTAssertNoThrow(XCTAssertEqual(buffer, try self.channel.readInbound()))
+    }
 }
