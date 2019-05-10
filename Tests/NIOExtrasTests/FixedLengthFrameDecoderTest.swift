@@ -15,6 +15,7 @@
 import XCTest
 import NIO
 import NIOExtras
+import NIOTestUtils
 
 class FixedLengthFrameDecoderTest: XCTestCase {
     public func testDecodeIfFewerBytesAreSent() throws {
@@ -115,30 +116,22 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         XCTAssertTrue(try channel.finish().isClean)
     }
 
-    func testCloseInChannelRead() {
-        let channel = EmbeddedChannel(handler: ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .four)))
-        class CloseInReadHandler: ChannelInboundHandler {
-            typealias InboundIn = ByteBuffer
-
-            private var numberOfReads = 0
-
-            func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-                self.numberOfReads += 1
-                XCTAssertEqual(1, self.numberOfReads)
-                XCTAssertEqual([UInt8(100)], Array(self.unwrapInboundIn(data).readableBytesView))
-                context.close().whenFailure { error in
-                    XCTFail("unexpected error: \(error)")
-                }
-                context.fireChannelRead(data)
+    func testBasicValidation() {
+        for length in 1 ... 20 {
+            let inputs = [
+                String(decoding: Array(repeating: UInt8(ascii: "a"), count: length), as: Unicode.UTF8.self),
+                String(decoding: Array(repeating: UInt8(ascii: "b"), count: length), as: Unicode.UTF8.self),
+                String(decoding: Array(repeating: UInt8(ascii: "c"), count: length), as: Unicode.UTF8.self),
+            ]
+            func byteBuffer(_ string: String) -> ByteBuffer {
+                var buffer = ByteBufferAllocator().buffer(capacity: string.utf8.count)
+                buffer.writeString(string)
+                return buffer
             }
+            let inputOutputPairs: [(String, [ByteBuffer])] = inputs.map { ($0, [byteBuffer($0)]) }
+            XCTAssertNoThrow(try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: inputOutputPairs) {
+                FixedLengthFrameDecoder(frameLength: length)
+            })
         }
-        XCTAssertNoThrow(try channel.pipeline.addHandler(CloseInReadHandler()).wait())
-
-        var buf = channel.allocator.buffer(capacity: 1024)
-        buf.writeBytes([UInt8(0), 0, 0, 1, 100])
-        XCTAssertNoThrow(try channel.writeInbound(buf))
-        XCTAssertNoThrow(XCTAssertEqual([100], Array((try channel.readInbound() as ByteBuffer?)!.readableBytesView)))
-        XCTAssertNoThrow(XCTAssertNil(try channel.readInbound()))
-
     }
 }

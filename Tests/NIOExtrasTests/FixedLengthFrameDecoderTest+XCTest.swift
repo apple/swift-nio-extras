@@ -30,7 +30,7 @@ extension FixedLengthFrameDecoderTest {
                 ("testDecodeIfMoreBytesAreSent", testDecodeIfMoreBytesAreSent),
                 ("testRemoveHandlerWhenBufferIsNotEmpty", testRemoveHandlerWhenBufferIsNotEmpty),
                 ("testRemoveHandlerWhenBufferIsEmpty", testRemoveHandlerWhenBufferIsEmpty),
-                ("testCloseInChannelRead", testCloseInChannelRead),
+                ("testBasicValidation", testBasicValidation),
            ]
    }
 }
