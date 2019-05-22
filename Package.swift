@@ -25,7 +25,7 @@ var targets: [PackageDescription.Target] = [
             linkerSettings: [
                 .linkedLibrary("z")
             ]),
-    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "NIOTestUtils"]),
+    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "NIO", "NIOTestUtils"]),
     .testTarget(name: "NIOHTTPCompressionTests", dependencies: ["NIOHTTPCompression"]),
 ]
 

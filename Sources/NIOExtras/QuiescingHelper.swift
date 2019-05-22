@@ -107,7 +107,7 @@ private final class ChannelCollector {
             }
         }
 
-        self.serverChannel.close(promise: nil)
+        self.serverChannel.close().cascadeFailure(to: self.fullyShutdownPromise)
 
         for channel in self.openChannels.values {
             channel.eventLoop.execute {
@@ -154,6 +154,14 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
     /// Initialise with a `ChannelCollector` to add the received `Channels` to.
     init(channelCollector: ChannelCollector) {
         self.channelCollector = channelCollector
+    }
+
+    func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        if event is ChannelShouldQuiesceEvent {
+            // ServerQuiescingHelper will close us anyway
+            return
+        }
+        context.fireUserInboundEventTriggered(event)
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
