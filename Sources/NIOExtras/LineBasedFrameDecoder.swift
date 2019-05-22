@@ -61,7 +61,8 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
         // look for the delimiter
         if let delimiterIndex = view.firstIndex(of: 0x0A) { // '\n'
             let length = delimiterIndex - buffer.readerIndex
-            let dropCarriageReturn = delimiterIndex > view.startIndex && view[delimiterIndex - 1] == 0x0D // '\r'
+            let dropCarriageReturn = delimiterIndex > buffer.readableBytesView.startIndex &&
+                buffer.readableBytesView[delimiterIndex - 1] == 0x0D // '\r'
             let buff = buffer.readSlice(length: dropCarriageReturn ? length - 1 : length)
             // drop the delimiter (and trailing carriage return if appicable)
             buffer.moveReaderIndex(forwardBy: dropCarriageReturn ? 2 : 1)
