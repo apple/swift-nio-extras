@@ -25,7 +25,7 @@ var targets: [PackageDescription.Target] = [
             linkerSettings: [
                 .linkedLibrary("z")
             ]),
-    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras"]),
+    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "NIOTestUtils"]),
     .testTarget(name: "NIOHTTPCompressionTests", dependencies: ["NIOHTTPCompression"]),
 ]
 
@@ -38,7 +38,7 @@ let package = Package(
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.2.0"),
     ],
     targets: targets
 )

@@ -43,8 +43,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case four
         case eight
         
-        fileprivate var length: Int {
-            
+        var length: Int {
             switch self {
             case .one:
                 return 1

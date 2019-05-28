@@ -40,6 +40,8 @@ extension LengthFieldBasedFrameDecoderTest {
                 ("testDecodeWithUInt16HeaderWithPartialBody", testDecodeWithUInt16HeaderWithPartialBody),
                 ("testRemoveHandlerWhenBufferIsEmpty", testRemoveHandlerWhenBufferIsEmpty),
                 ("testRemoveHandlerWhenBufferIsNotEmpty", testRemoveHandlerWhenBufferIsNotEmpty),
+                ("testCloseInChannelRead", testCloseInChannelRead),
+                ("testBasicVerification", testBasicVerification),
            ]
    }
 }

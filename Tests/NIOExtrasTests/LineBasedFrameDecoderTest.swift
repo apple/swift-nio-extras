@@ -15,6 +15,7 @@
 import XCTest
 @testable import NIO // to inspect the cumulationBuffer
 import NIOExtras
+import NIOTestUtils
 
 class LineBasedFrameDecoderTest: XCTestCase {
     private var channel: EmbeddedChannel!
@@ -185,5 +186,31 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.clear()
         buffer.writeString("a")
         XCTAssertNoThrow(XCTAssertEqual(buffer, try self.channel.readInbound()))
+    }
+
+    func testBasicValidation() {
+        func byteBuffer(_ string: String) -> ByteBuffer {
+            var buffer = self.channel.allocator.buffer(capacity: string.utf8.count)
+            buffer.writeString(string)
+            return buffer
+        }
+
+        do {
+            try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: [
+                ("\n", [byteBuffer("")]),
+                ("\r\n", [byteBuffer("")]),
+                ("a\r\n", [byteBuffer("a")]),
+                ("a\n", [byteBuffer("a")]),
+                ("a\rb\n", [byteBuffer("a\rb")]),
+                ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
+                                                                     byteBuffer("Connection: close"),
+                                                                     byteBuffer("")])
+            ]) {
+                return LineBasedFrameDecoder()
+            }
+        } catch {
+            print(error)
+            XCTFail()
+        }
     }
 }

@@ -14,7 +14,8 @@
 
 import XCTest
 import NIO
-import NIOExtras
+@testable import NIOExtras
+import NIOTestUtils
 
 private let standardDataString = "abcde"
 
@@ -374,5 +375,84 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                                             String(decoding: $0, as: Unicode.UTF8.self)
             }))
         XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testCloseInChannelRead() {
+        let channel = EmbeddedChannel(handler: ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .four)))
+        class CloseInReadHandler: ChannelInboundHandler {
+            typealias InboundIn = ByteBuffer
+
+            private var numberOfReads = 0
+
+            func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+                self.numberOfReads += 1
+                XCTAssertEqual(1, self.numberOfReads)
+                XCTAssertEqual([UInt8(100)], Array(self.unwrapInboundIn(data).readableBytesView))
+                context.close().whenFailure { error in
+                    XCTFail("unexpected error: \(error)")
+                }
+                context.fireChannelRead(data)
+            }
+        }
+        XCTAssertNoThrow(try channel.pipeline.addHandler(CloseInReadHandler()).wait())
+
+        var buf = channel.allocator.buffer(capacity: 1024)
+        buf.writeBytes([UInt8(0), 0, 0, 1, 100])
+        XCTAssertNoThrow(try channel.writeInbound(buf))
+        XCTAssertNoThrow(XCTAssertEqual([100], Array((try channel.readInbound() as ByteBuffer?)!.readableBytesView)))
+        XCTAssertNoThrow(XCTAssertNil(try channel.readInbound()))
+    }
+
+    func testBasicVerification() {
+        let inputs: [(LengthFieldBasedFrameDecoder.ByteLength, [(Int, String)])] = [
+            (.one, [
+                (6, "abcdef"),
+                (0, ""),
+                (9, "123456789"),
+                (Int(UInt8.max),
+                 String(decoding: Array(repeating: UInt8(ascii: "X"), count: Int(UInt8.max)), as: Unicode.UTF8.self)),
+                ]),
+            (.two, [
+                (1, "a"),
+                (0, ""),
+                (9, "123456789"),
+                (307,
+                 String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
+                ]),
+            (.four, [
+                (1, "a"),
+                (0, ""),
+                (3, "333"),
+                (307,
+                 String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
+                ]),
+            (.eight, [
+                (1, "a"),
+                (0, ""),
+                (4, "aaaa"),
+                (307,
+                 String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
+                ]),
+        ]
+
+        for input in inputs {
+            let (lenBytes, inputData) = input
+
+            func byteBuffer(length: Int, string: String) -> ByteBuffer {
+                var buf = self.channel.allocator.buffer(capacity: string.utf8.count + 8)
+                buf.writeInteger(length)
+                buf.moveReaderIndex(forwardBy: 8 - lenBytes.length)
+                buf.writeString(string)
+                return buf
+            }
+
+            let inputOutputPairs = inputData.map { (input: (Int, String)) -> (ByteBuffer, [ByteBuffer]) in
+                let bytes = byteBuffer(length: input.0, string: input.1)
+                return (bytes, [bytes.getSlice(at: bytes.readerIndex + lenBytes.length, length: input.0)!])
+            }
+            XCTAssertNoThrow(try ByteToMessageDecoderVerifier.verifyDecoder(inputOutputPairs: inputOutputPairs) {
+                LengthFieldBasedFrameDecoder(lengthFieldLength: lenBytes)
+            })
+        }
     }
 }
