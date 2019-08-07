@@ -14,6 +14,7 @@
 
 import XCTest
 import NIO
+import NIOTestUtils
 @testable import NIOExtras
 
 public class QuiescingHelperTest: XCTestCase {
@@ -59,29 +60,78 @@ public class QuiescingHelperTest: XCTestCase {
         var childChannels: [Channel] = []
 
         // add a bunch of channels
-        for _ in 0..<128 {
+        for pretendPort in 1...128 {
             let waitForPromise: EventLoopPromise<()> = el.makePromise()
             let channel = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise), loop: el)
+            // activate the child chan
+            XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: pretendPort)).wait())
             waitForFutures.append(waitForPromise.futureResult)
             childChannels.append(channel)
             serverChannel.pipeline.fireChannelRead(NIOAny(channel))
         }
-        // check that the server channel is active before initiating the shutdown
+        // check that the server channel and all child channels are active before initiating the shutdown
         XCTAssertTrue(serverChannel.isActive)
+        XCTAssertTrue(childChannels.allSatisfy { $0.isActive })
         quiesce.initiateShutdown(promise: allShutdownPromise)
 
         // check that the server channel is closed as the first thing
         XCTAssertFalse(serverChannel.isActive)
 
         el.run()
-        // check that all the child channels have received the user event
+        // check that all the child channels have received the user event ...
         XCTAssertNoThrow(try EventLoopFuture<Void>.andAllSucceed(waitForFutures, on: el).wait() as Void)
+
+        // ... and are still active
+        XCTAssertTrue(childChannels.allSatisfy { $0.isActive })
 
         // now close all the child channels
         childChannels.forEach { $0.close(promise: nil) }
         el.run()
 
+        XCTAssertTrue(childChannels.allSatisfy { !$0.isActive })
+
         // check that the shutdown has completed
         XCTAssertNoThrow(try allShutdownPromise.futureResult.wait())
+    }
+
+    func testQuiescingDoesNotSwallowCloseErrorsFromAcceptHandler() {
+        // AcceptHandler is a `private class` so I can only implicitly get it by creating the real thing
+        let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        defer {
+            XCTAssertNoThrow(try group.syncShutdownGracefully())
+        }
+
+        let quiesce = ServerQuiescingHelper(group: group)
+
+        struct DummyError: Error {}
+        class MakeFirstCloseFailAndDontActuallyCloseHandler: ChannelOutboundHandler {
+            typealias OutboundIn = Any
+
+            var closes = 0
+
+            func close(context: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {
+                self.closes += 1
+                if self.closes == 1 {
+                    promise?.fail(DummyError())
+                } else {
+                    context.close(mode: mode, promise: promise)
+                }
+            }
+        }
+
+        let channel = try! ServerBootstrap(group: group).serverChannelInitializer { channel in
+            channel.pipeline.addHandler(MakeFirstCloseFailAndDontActuallyCloseHandler(), position: .first).flatMap {
+                channel.pipeline.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+            }
+        }.bind(host: "localhost", port: 0).wait()
+        defer {
+            XCTAssertNoThrow(try channel.close().wait())
+        }
+
+        let promise = channel.eventLoop.makePromise(of: Void.self)
+        quiesce.initiateShutdown(promise: promise)
+        XCTAssertThrowsError(try promise.futureResult.wait()) { error in
+            XCTAssert(error is DummyError)
+        }
     }
 }
