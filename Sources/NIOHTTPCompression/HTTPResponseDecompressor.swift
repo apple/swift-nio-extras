@@ -160,9 +160,8 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
 
 extension z_stream {
     mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws {
-        try input.readWithUnsafeMutableReadableBytes { (dataPtr: UnsafeMutableRawBufferPointer) -> Int in
-            let typedPtr = dataPtr.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            let typedDataPtr = UnsafeMutableBufferPointer(start: typedPtr, count: dataPtr.count)
+        try input.readWithUnsafeMutableReadableBytes { dataPtr in
+            let typedDataPtr = dataPtr.bindMemory(to: UInt8.self)
 
             self.avail_in = UInt32(typedDataPtr.count)
             self.next_in = typedDataPtr.baseAddress!
@@ -182,7 +181,7 @@ extension z_stream {
 
     private mutating func inflatePart(to buffer: inout ByteBuffer) throws {
         try buffer.writeWithUnsafeMutableBytes { outputPtr in
-            let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), count: outputPtr.count)
+            let typedOutputPtr = outputPtr.bindMemory(to: UInt8.self)
 
             self.avail_out = UInt32(typedOutputPtr.count)
             self.next_out = typedOutputPtr.baseAddress!
