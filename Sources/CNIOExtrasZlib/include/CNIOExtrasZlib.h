@@ -29,4 +29,8 @@ static inline int CNIOExtrasZlib_inflateInit2(z_streamp strm, int windowBits) {
     return inflateInit2(strm, windowBits);
 }
 
+static inline Bytef *CNIOExtrasZlib_voidPtr_to_BytefPtr(void *in) {
+    return (Bytef *)in;
+}
+
 #endif

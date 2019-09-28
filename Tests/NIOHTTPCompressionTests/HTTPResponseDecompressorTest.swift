@@ -21,7 +21,7 @@ import CNIOExtrasZlib
 class HTTPResponseDecompressorTest: XCTestCase {
     func testDecompressionNoLimit() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(HTTPResponseDecompressor(limit: .none)).wait()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
@@ -32,7 +32,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatio() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(HTTPResponseDecompressor(limit: .ratio(10))).wait()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(10))).wait()
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
@@ -40,7 +40,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as DecompressionError {
+        } catch let error as NIOHTTPResponseDecompressor.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -55,7 +55,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSize() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(HTTPResponseDecompressor(limit: .size(10))).wait()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(10))).wait()
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
@@ -63,7 +63,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as DecompressionError {
+        } catch let error as NIOHTTPResponseDecompressor.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -78,7 +78,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompression() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(HTTPResponseDecompressor(limit: .none)).wait()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
 
         var body = ""
         for _ in 1...1000 {
@@ -100,7 +100,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
             do {
                 try channel.writeInbound(HTTPClientResponsePart.body(compressed))
-            } catch let error as DecompressionError {
+            } catch let error as NIOHTTPResponseDecompressor.DecompressionError {
                 switch error {
                 case .limit:
                     // ok

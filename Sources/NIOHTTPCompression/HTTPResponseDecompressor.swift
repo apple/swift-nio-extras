@@ -16,38 +16,38 @@ import CNIOExtrasZlib
 import NIO
 import NIOHTTP1
 
-/// Specifies how to limit decompression inflation.
-public enum DecompressionLimit {
-    /// No limit will be set.
-    case none
-    /// Limit will be set on the request body size.
-    case size(Int)
-    /// Limit will be set on a ratio between compressed body size and decompressed result.
-    case ratio(Int)
-
-    func exceeded(compressed: Int, decompressed: Int) -> Bool {
-        switch self {
-        case .none:
-            return false
-        case .size(let allowed):
-            return compressed > allowed
-        case .ratio(let ratio):
-            return decompressed > compressed * ratio
-        }
-    }
-}
-
-public enum DecompressionError: Error {
-    case limit
-    case inflationError(Int32)
-    case initializationError(Int32)
-}
-
-public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
+public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias InboundIn = HTTPClientResponsePart
     public typealias InboundOut = HTTPClientResponsePart
     public typealias OutboundIn = HTTPClientRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
+
+    /// Specifies how to limit decompression inflation.
+    public enum DecompressionLimit {
+        /// No limit will be set.
+        case none
+        /// Limit will be set on the request body size.
+        case size(Int)
+        /// Limit will be set on a ratio between compressed body size and decompressed result.
+        case ratio(Int)
+
+        func exceeded(compressed: Int, decompressed: Int) -> Bool {
+            switch self {
+            case .none:
+                return false
+            case .size(let allowed):
+                return compressed > allowed
+            case .ratio(let ratio):
+                return decompressed > compressed * ratio
+            }
+        }
+    }
+
+    public enum DecompressionError: Error {
+        case limit
+        case inflationError(Int)
+        case initializationError(Int)
+    }
 
     private enum CompressionAlgorithm: String {
         case gzip
@@ -159,18 +159,16 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
 
         let rc = CNIOExtrasZlib_inflateInit2(&self.stream, encoding.window)
         guard rc == Z_OK else {
-            throw DecompressionError.initializationError(rc)
+            throw DecompressionError.initializationError(Int(rc))
         }
     }
 }
 
 extension z_stream {
     mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws {
-        try input.readWithUnsafeMutableReadableBytes { dataPtr in
-            let typedDataPtr = dataPtr.bindMemory(to: UInt8.self)
-
-            self.avail_in = UInt32(typedDataPtr.count)
-            self.next_in = typedDataPtr.baseAddress!
+        try input.readWithUnsafeMutableReadableBytes { pointer in
+            self.avail_in = UInt32(pointer.count)
+            self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
             defer {
                 self.avail_in = 0
@@ -181,23 +179,21 @@ extension z_stream {
 
             try self.inflatePart(to: &output)
 
-            return typedDataPtr.count - Int(self.avail_in)
+            return pointer.count - Int(self.avail_in)
         }
     }
 
     private mutating func inflatePart(to buffer: inout ByteBuffer) throws {
-        try buffer.writeWithUnsafeMutableBytes { outputPtr in
-            let typedOutputPtr = outputPtr.bindMemory(to: UInt8.self)
-
-            self.avail_out = UInt32(typedOutputPtr.count)
-            self.next_out = typedOutputPtr.baseAddress!
+        try buffer.writeWithUnsafeMutableBytes { pointer in
+            self.avail_out = UInt32(pointer.count)
+            self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
             let rc = inflate(&self, Z_NO_FLUSH)
             guard rc == Z_OK || rc == Z_STREAM_END else {
-                throw DecompressionError.inflationError(rc)
+                throw NIOHTTPResponseDecompressor.DecompressionError.inflationError(Int(rc))
             }
 
-            return typedOutputPtr.count - Int(self.avail_out)
+            return pointer.count - Int(self.avail_out)
         }
     }
 }
