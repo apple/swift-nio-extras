@@ -52,6 +52,26 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
     private enum CompressionAlgorithm: String {
         case gzip
         case deflate
+
+        init?(header: String?) {
+            switch header {
+            case .some("gzip"):
+                self = .gzip
+            case .some("deflate"):
+                self = .deflate
+            default:
+                return nil
+            }
+        }
+
+        var window: Int32 {
+            switch self {
+            case .deflate:
+                return 15
+            case .gzip:
+                return 15 + 16
+            }
+        }
     }
 
     private enum State {
@@ -86,15 +106,8 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         switch self.unwrapInboundIn(data) {
         case .head(let head):
-            let algorithm: CompressionAlgorithm?
             let contentType = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased()
-            if contentType == "gzip" {
-                algorithm = .gzip
-            } else if contentType == "deflate" {
-                algorithm = .deflate
-            } else {
-                algorithm = nil
-            }
+            let algorithm = CompressionAlgorithm(header: contentType)
 
             let length = head.headers[canonicalForm: "Content-Length"].first.flatMap { Int($0) }
 
@@ -103,6 +116,7 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
                     try self.initializeDecoder(encoding: algorithm, length: length)
                 } catch {
                     context.fireErrorCaught(error)
+                    return
                 }
             }
 
@@ -143,15 +157,7 @@ public final class HTTPResponseDecompressor: ChannelDuplexHandler, RemovableChan
         self.stream.zfree = nil
         self.stream.opaque = nil
 
-        let window: Int32
-        switch encoding {
-        case .gzip:
-            window = 15 + 16
-        default:
-            window = 15
-        }
-
-        let rc = CNIOExtrasZlib_inflateInit2(&self.stream, window)
+        let rc = CNIOExtrasZlib_inflateInit2(&self.stream, encoding.window)
         guard rc == Z_OK else {
             throw DecompressionError.initializationError(rc)
         }
