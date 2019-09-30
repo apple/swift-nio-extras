@@ -23,16 +23,24 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// Specifies how to limit decompression inflation.
-    public enum DecompressionLimit {
+    public struct DecompressionLimit {
+        enum Limit {
+            case none
+            case size(Int)
+            case ratio(Int)
+        }
+
+        var limit: Limit
+
         /// No limit will be set.
-        case none
+        public static let none = DecompressionLimit(limit: .none)
         /// Limit will be set on the request body size.
-        case size(Int)
+        public static func size(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .size(value)) }
         /// Limit will be set on a ratio between compressed body size and decompressed result.
-        case ratio(Int)
+        public static func ratio(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .ratio(value)) }
 
         func exceeded(compressed: Int, decompressed: Int) -> Bool {
-            switch self {
+            switch self.limit {
             case .none:
                 return false
             case .size(let allowed):
