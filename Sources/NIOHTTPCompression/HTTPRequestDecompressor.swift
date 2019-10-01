@@ -17,10 +17,10 @@ import NIOHTTP1
 import NIO
 
 public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
-    public typealias InboundIn = HTTPClientRequestPart
-    public typealias InboundOut = HTTPClientRequestPart
-    public typealias OutboundIn = HTTPClientResponsePart
-    public typealias OutboundOut = HTTPClientResponsePart
+    public typealias InboundIn = HTTPServerRequestPart
+    public typealias InboundOut = HTTPServerRequestPart
+    public typealias OutboundIn = HTTPServerResponsePart
+    public typealias OutboundOut = HTTPServerResponsePart
 
     private enum CompressionAlgorithm: String {
         case gzip
@@ -65,7 +65,6 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
         case limit
         case inflationError(Int32)
         case initalizationError(Int32)
-        case unsupportedBodyType
     }
 
     private struct Compression {
@@ -106,15 +105,7 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
             }
 
             context.fireChannelRead(data)
-        case .body(let part):
-            var body: ByteBuffer
-            switch part {
-            case let .byteBuffer(buffer): body = buffer
-            default:
-                context.fireErrorCaught(DecompressionError.unsupportedBodyType)
-                return
-            }
-
+        case .body(var part):
             guard let compression = self.compression else {
                 context.fireChannelRead(data)
                 return
@@ -123,14 +114,14 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
             while part.readableBytes > 0 {
                 do {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    try self.stream.inflatePart(input: &body, output: &buffer)
+                    try self.stream.inflatePart(input: &part, output: &buffer)
                     self.inflated += buffer.readableBytes
 
                     if self.limit.exceeded(compressed: compression.contentLength, decompressed: self.inflated) {
                         throw DecompressionError.limit
                     }
 
-                    context.fireChannelRead(self.wrapInboundOut(.body(.byteBuffer(buffer))))
+                    context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 } catch let error {
                     context.fireErrorCaught(error)
                     return
