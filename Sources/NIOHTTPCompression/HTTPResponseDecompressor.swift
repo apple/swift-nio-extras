@@ -153,7 +153,12 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                 context.fireChannelRead(data)
             }
         case .end:
-            deflateEnd(&self.stream)
+            switch self.state {
+            case .compressed:
+                inflateEnd(&self.stream)
+            default:
+                break
+            }
             context.fireChannelRead(data)
         }
     }
