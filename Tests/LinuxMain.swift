@@ -31,6 +31,7 @@ import XCTest
          testCase(DebugOutboundEventsHandlerTest.allTests),
          testCase(FixedLengthFrameDecoderTest.allTests),
          testCase(HTTPResponseCompressorTest.allTests),
+         testCase(HTTPResponseDecompressorTest.allTests),
          testCase(JSONRPCFramingContentLengthHeaderDecoderTests.allTests),
          testCase(JSONRPCFramingContentLengthHeaderEncoderTests.allTests),
          testCase(LengthFieldBasedFrameDecoderTest.allTests),
