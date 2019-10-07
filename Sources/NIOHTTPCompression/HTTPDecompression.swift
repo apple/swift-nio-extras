@@ -18,13 +18,13 @@ import NIO
 public enum NIOHTTPDecompression {
     /// Specifies how to limit decompression inflation.
     public struct DecompressionLimit {
-        enum Limit {
+        private enum Limit {
             case none
             case size(Int)
             case ratio(Int)
         }
 
-        var limit: Limit
+        private var limit: Limit
 
         /// No limit will be set.
         public static let none = DecompressionLimit(limit: .none)
@@ -77,19 +77,12 @@ public enum NIOHTTPDecompression {
     }
 }
 
-
 struct Decompressor {
-    enum State {
-        case empty
-        case compressed(NIOHTTPDecompression.CompressionAlgorithm, Int)
-    }
+    private let limit: NIOHTTPDecompression.DecompressionLimit
+    private var stream = z_stream()
+    private var inflated = 0
 
-    let limit: NIOHTTPDecompression.DecompressionLimit
-    var state = State.empty
-    var stream = z_stream()
-    var inflated = 0
-
-    public init(limit: NIOHTTPDecompression.DecompressionLimit) {
+    init(limit: NIOHTTPDecompression.DecompressionLimit) {
         self.limit = limit
     }
 
@@ -103,8 +96,6 @@ struct Decompressor {
     }
 
     mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm, length: Int) throws {
-        self.state = .compressed(encoding, length)
-
         self.stream.zalloc = nil
         self.stream.zfree = nil
         self.stream.opaque = nil

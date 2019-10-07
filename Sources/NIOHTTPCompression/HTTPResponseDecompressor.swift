@@ -21,6 +21,12 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     public typealias OutboundIn = HTTPClientRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
+    private enum State {
+        case empty
+        case compressed(NIOHTTPDecompression.CompressionAlgorithm, Int)
+    }
+
+    private var state = State.empty
     private var decompressor: Decompressor
 
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
@@ -52,6 +58,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
             if let algorithm = algorithm, let length = length {
                 do {
+                    self.state = .compressed(algorithm, length)
                     try self.decompressor.initializeDecoder(encoding: algorithm, length: length)
                 } catch {
                     context.fireErrorCaught(error)
@@ -61,7 +68,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
             context.fireChannelRead(data)
         case .body(var part):
-            switch self.decompressor.state {
+            switch self.state {
             case .compressed(_, let originalLength):
                 while part.readableBytes > 0 {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
@@ -78,7 +85,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                 context.fireChannelRead(data)
             }
         case .end:
-            switch self.decompressor.state {
+            switch self.state {
             case .compressed:
                 self.decompressor.deinitializeDecoder()
             default:
