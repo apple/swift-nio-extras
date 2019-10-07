@@ -75,45 +75,44 @@ public enum NIOHTTPDecompression {
             }
         }
     }
-}
 
-struct Decompressor {
-    private let limit: NIOHTTPDecompression.DecompressionLimit
-    private var stream = z_stream()
-    private var inflated = 0
+    struct Decompressor {
+        private let limit: NIOHTTPDecompression.DecompressionLimit
+        private var stream = z_stream()
+        private var inflated = 0
 
-    init(limit: NIOHTTPDecompression.DecompressionLimit) {
-        self.limit = limit
-    }
+        init(limit: NIOHTTPDecompression.DecompressionLimit) {
+            self.limit = limit
+        }
 
-    mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, originalLength: Int) throws {
-        try self.stream.inflatePart(input: &part, output: &buffer)
-        self.inflated += buffer.readableBytes
+        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, originalLength: Int) throws {
+            self.inflated += try self.stream.inflatePart(input: &part, output: &buffer)
 
-        if self.limit.exceeded(compressed: originalLength, decompressed: self.inflated) {
-            throw NIOHTTPDecompression.DecompressionError.limit
+            if self.limit.exceeded(compressed: originalLength, decompressed: self.inflated) {
+                throw NIOHTTPDecompression.DecompressionError.limit
+            }
+        }
+
+        mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm, length: Int) throws {
+            self.stream.zalloc = nil
+            self.stream.zfree = nil
+            self.stream.opaque = nil
+
+            let rc = CNIOExtrasZlib_inflateInit2(&self.stream, encoding.window)
+            guard rc == Z_OK else {
+                throw NIOHTTPDecompression.DecompressionError.initializationError(Int(rc))
+            }
+        }
+
+        mutating func deinitializeDecoder() {
+            inflateEnd(&self.stream)
         }
     }
-
-    mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm, length: Int) throws {
-        self.stream.zalloc = nil
-        self.stream.zfree = nil
-        self.stream.opaque = nil
-
-        let rc = CNIOExtrasZlib_inflateInit2(&self.stream, encoding.window)
-        guard rc == Z_OK else {
-            throw NIOHTTPDecompression.DecompressionError.initializationError(Int(rc))
-        }
-    }
-
-    mutating func deinitializeDecoder() {
-        inflateEnd(&self.stream)
-    }
 }
-
 
 extension z_stream {
-    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws {
+    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> Int {
+        var written = 0
         try input.readWithUnsafeMutableReadableBytes { pointer in
             self.avail_in = UInt32(pointer.count)
             self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
@@ -125,14 +124,15 @@ extension z_stream {
                 self.next_out = nil
             }
 
-            try self.inflatePart(to: &output)
+            written += try self.inflatePart(to: &output)
 
             return pointer.count - Int(self.avail_in)
         }
+        return written
     }
 
-    private mutating func inflatePart(to buffer: inout ByteBuffer) throws {
-        try buffer.writeWithUnsafeMutableBytes { pointer in
+    private mutating func inflatePart(to buffer: inout ByteBuffer) throws -> Int {
+        return try buffer.writeWithUnsafeMutableBytes { pointer in
             self.avail_out = UInt32(pointer.count)
             self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 

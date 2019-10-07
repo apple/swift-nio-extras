@@ -27,10 +27,10 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     }
 
     private var state = State.empty
-    private var decompressor: Decompressor
+    private var decompressor: NIOHTTPDecompression.Decompressor
 
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
-        self.decompressor = Decompressor(limit: limit)
+        self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
