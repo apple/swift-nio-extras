@@ -72,13 +72,13 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
                     return
                 }
             }
-        case .end(let headers):
+        case .end:
             if self.compression != nil {
                 self.decompressor.deinitializeDecoder()
                 self.compression = nil
             }
 
-            context.fireChannelRead(self.wrapInboundOut(.end(headers)))
+            context.fireChannelRead(data)
         }
     }
 }
