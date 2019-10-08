@@ -86,6 +86,8 @@ public enum NIOHTTPDecompression {
         }
 
         mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, originalLength: Int) throws {
+            buffer.reserveCapacity(part.readableBytes * 2)
+
             self.inflated += try self.stream.inflatePart(input: &part, output: &buffer)
 
             if self.limit.exceeded(compressed: originalLength, decompressed: self.inflated) {
