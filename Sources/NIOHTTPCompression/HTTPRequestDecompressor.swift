@@ -75,6 +75,7 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
         case .end(let headers):
             if self.compression != nil {
                 self.decompressor.deinitializeDecoder()
+                self.compression = nil
             }
 
             context.fireChannelRead(self.wrapInboundOut(.end(headers)))
