@@ -30,7 +30,7 @@ private final class DecompressedAssert: ChannelInboundHandler {
         case .body(let buffer):
             let string = buffer.getString(at: buffer.readerIndex, length: buffer.readableBytes)
             guard string == testString else {
-                context.fireErrorCaught(NIOHTTPRequestDecompressor.DecompressionError.inflationError(-42))
+                context.fireErrorCaught(NIOHTTPDecompression.DecompressionError.inflationError(42))
                 return
             }
         default: context.fireChannelRead(data)
@@ -44,11 +44,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
         try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
         try channel.pipeline.addHandler(DecompressedAssert()).wait()
 
-        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "13")])
-        try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
-
         let buffer = ByteBuffer.of(string: testString)
         let compressed = compress(buffer, "gzip")
+
+        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "\(compressed.readableBytes)")])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
@@ -65,7 +65,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-        } catch let error as NIOHTTPRequestDecompressor.DecompressionError {
+        } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -88,7 +88,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-        } catch let error as NIOHTTPRequestDecompressor.DecompressionError {
+        } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -122,7 +122,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
             do {
                 try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-            } catch let error as NIOHTTPRequestDecompressor.DecompressionError {
+            } catch let error as NIOHTTPDecompression.DecompressionError {
                 switch error {
                 case .limit:
                     // ok
