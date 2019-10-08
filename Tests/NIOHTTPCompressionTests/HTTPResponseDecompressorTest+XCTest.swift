@@ -23,13 +23,14 @@ import XCTest
 ///
 
 extension HTTPResponseDecompressorTest {
-    static var allTests : [(String, (HTTPResponseDecompressorTest) -> () throws -> Void)] {
-        return [
-            ("testDecompressionNoLimit", testDecompressionNoLimit),
-            ("testDecompressionLimitRatio", testDecompressionLimitRatio),
-            ("testDecompressionLimitSize", testDecompressionLimitSize),
-            ("testDecompression", testDecompression)
-        ]
-    }
+
+   static var allTests : [(String, (HTTPResponseDecompressorTest) -> () throws -> Void)] {
+      return [
+                ("testDecompressionNoLimit", testDecompressionNoLimit),
+                ("testDecompressionLimitRatio", testDecompressionLimitRatio),
+                ("testDecompressionLimitSize", testDecompressionLimitSize),
+                ("testDecompression", testDecompression),
+           ]
+   }
 }
 
