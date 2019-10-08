@@ -147,36 +147,36 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
     }
 }
 
-extension z_stream {
-    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws {
-        try input.readWithUnsafeMutableReadableBytes { pointer in
-            self.avail_in = UInt32(pointer.count)
-            self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
-
-            defer {
-                self.avail_in = 0
-                self.next_in = nil
-                self.avail_out = 0
-                self.next_out = nil
-            }
-
-            try self.inflatePart(to: &output)
-
-            return pointer.count - Int(self.avail_in)
-        }
-    }
-
-    private mutating func inflatePart(to buffer: inout ByteBuffer) throws {
-        try buffer.writeWithUnsafeMutableBytes { pointer in
-            self.avail_out = UInt32(pointer.count)
-            self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
-
-            let result = inflate(&self, Z_NO_FLUSH)
-            guard result == Z_OK || result == Z_STREAM_END else {
-                throw NIOHTTPRequestDecompressor.DecompressionError.inflationError(result)
-            }
-
-            return pointer.count - Int(self.avail_out)
-        }
-    }
-}
+//extension z_stream {
+//    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws {
+//        try input.readWithUnsafeMutableReadableBytes { pointer in
+//            self.avail_in = UInt32(pointer.count)
+//            self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
+//
+//            defer {
+//                self.avail_in = 0
+//                self.next_in = nil
+//                self.avail_out = 0
+//                self.next_out = nil
+//            }
+//
+//            try self.inflatePart(to: &output)
+//
+//            return pointer.count - Int(self.avail_in)
+//        }
+//    }
+//
+//    private mutating func inflatePart(to buffer: inout ByteBuffer) throws {
+//        try buffer.writeWithUnsafeMutableBytes { pointer in
+//            self.avail_out = UInt32(pointer.count)
+//            self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
+//
+//            let result = inflate(&self, Z_NO_FLUSH)
+//            guard result == Z_OK || result == Z_STREAM_END else {
+//                throw NIOHTTPRequestDecompressor.DecompressionError.inflationError(result)
+//            }
+//
+//            return pointer.count - Int(self.avail_out)
+//        }
+//    }
+//}

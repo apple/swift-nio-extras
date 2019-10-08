@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// HTTPResponseCompressorTest+XCTest.swift
+// HTTPResponseDecompressorTest+XCTest.swift
 //
 import XCTest
 
@@ -23,7 +23,6 @@ import XCTest
 ///
 
 extension HTTPResponseDecompressorTest {
-
     static var allTests : [(String, (HTTPResponseDecompressorTest) -> () throws -> Void)] {
         return [
             ("testDecompressionNoLimit", testDecompressionNoLimit),
