@@ -314,7 +314,7 @@ private struct PartialHTTPResponse {
         var outputBuffer = allocator.buffer(capacity: bufferSize)
 
         // Now do the one-shot compression. All the data should have been consumed.
-        compressor.oneShotDeflate(from: &body, to: &outputBuffer, minimumCapacity: bufferSize, flag: flag)
+        compressor.oneShotDeflate(from: &body, to: &outputBuffer, flag: flag)
         precondition(body.readableBytes == 0)
         precondition(outputBuffer.readableBytes > 0)
         return outputBuffer
@@ -355,7 +355,7 @@ private extension z_stream {
     /// Executes deflate from one buffer to another buffer. The advantage of this method is that it
     /// will ensure that the stream is "safe" after each call (that is, that the stream does not have
     /// pointers to byte buffers any longer).
-    mutating func oneShotDeflate(from: inout ByteBuffer, to: inout ByteBuffer, minimumCapacity: Int, flag: Int32) {
+    mutating func oneShotDeflate(from: inout ByteBuffer, to: inout ByteBuffer, flag: Int32) {
         defer {
             self.avail_in = 0
             self.next_in = nil
@@ -371,7 +371,7 @@ private extension z_stream {
             self.avail_in = UInt32(typedDataPtr.count)
             self.next_in = typedDataPtr.baseAddress!
 
-            let rc = deflateToBuffer(buffer: &to, minimumCapacity: minimumCapacity, flag: flag)
+            let rc = deflateToBuffer(buffer: &to, flag: flag)
             precondition(rc == Z_OK || rc == Z_STREAM_END, "One-shot compression failed: \(rc)")
 
             return typedDataPtr.count - Int(self.avail_in)
@@ -381,10 +381,10 @@ private extension z_stream {
     /// A private function that sets the deflate target buffer and then calls deflate.
     /// This relies on having the input set by the previous caller: it will use whatever input was
     /// configured.
-    private mutating func deflateToBuffer(buffer: inout ByteBuffer, minimumCapacity: Int, flag: Int32) -> Int32 {
+    private mutating func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
         var rc = Z_OK
 
-        buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: minimumCapacity) { outputPtr in
+        buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: buffer.capacity) { outputPtr in
             let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
                                                             count: outputPtr.count)
             self.avail_out = UInt32(typedOutputPtr.count)

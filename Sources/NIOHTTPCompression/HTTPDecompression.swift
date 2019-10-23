@@ -86,7 +86,7 @@ public enum NIOHTTPDecompression {
         }
 
         mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, originalLength: Int) throws {
-            self.inflated += try self.stream.inflatePart(input: &part, output: &buffer, minimumCapacity: part.readableBytes * 2)
+            self.inflated += try self.stream.inflatePart(input: &part, output: &buffer)
 
             if self.limit.exceeded(compressed: originalLength, decompressed: self.inflated) {
                 throw NIOHTTPDecompression.DecompressionError.limit
@@ -111,7 +111,8 @@ public enum NIOHTTPDecompression {
 }
 
 extension z_stream {
-    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer, minimumCapacity: Int) throws -> Int {
+    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> Int {
+        let minimumCapacity = input.readableBytes * 2
         var written = 0
         try input.readWithUnsafeMutableReadableBytes { pointer in
             self.avail_in = UInt32(pointer.count)
