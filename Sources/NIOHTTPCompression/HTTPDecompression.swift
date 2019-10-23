@@ -134,7 +134,7 @@ extension z_stream {
     }
 
     private mutating func inflatePart(to buffer: inout ByteBuffer) throws -> Int {
-        return try buffer.writeWithUnsafeMutableBytes { pointer in
+        return try buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { pointer in
             self.avail_out = UInt32(pointer.count)
             self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 

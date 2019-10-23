@@ -384,7 +384,7 @@ private extension z_stream {
     private mutating func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
         var rc = Z_OK
 
-        buffer.writeWithUnsafeMutableBytes { outputPtr in
+        buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { outputPtr in
             let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
                                                             count: outputPtr.count)
             self.avail_out = UInt32(typedOutputPtr.count)

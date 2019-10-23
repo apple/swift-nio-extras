@@ -66,7 +66,7 @@ private extension ByteBuffer {
 
     @discardableResult
     mutating func writeWithUnsafeMutableUInt8Bytes(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Int) rethrows -> Int {
-        return try self.writeWithUnsafeMutableBytes { (ptr: UnsafeMutableRawBufferPointer) -> Int in
+        return try self.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { (ptr: UnsafeMutableRawBufferPointer) -> Int in
             let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
             let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
             return try body(inputBufferPointer)
