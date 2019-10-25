@@ -102,7 +102,7 @@ class WritePCAPHandlerTest: XCTestCase {
         }
     }
 
-    func testConnectIssuesThreePacketsForIPv4() {
+    func testConnectIssuesThreePacketsForIPv4() throws {
         XCTAssertEqual([], self.accumulatedPackets)
         self.channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())
@@ -117,7 +117,7 @@ class WritePCAPHandlerTest: XCTestCase {
             XCTAssertNotNil(record) // we must have been able to parse a record
             XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
             XCTAssertEqual(2, record?.pcapProtocolID) // 2 is IPv4
-            if let ipPacket = record?.payload.readTCPIPv4() {
+            if let ipPacket = try record?.payload.readTCPIPv4() {
                 ipPackets.append(ipPacket)
                 XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
                 XCTAssertEqual(40, ipPacket.wholeIPPacketLength) // in IPv4 it's payload + IP + TCP header
@@ -155,7 +155,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(0, buffer?.readableBytes) // there shouldn't be anything else left
     }
 
-    func testConnectIssuesThreePacketsForIPv6() {
+    func testConnectIssuesThreePacketsForIPv6() throws {
         XCTAssertEqual([], self.accumulatedPackets)
         self.channel.localAddress = try! SocketAddress(ipAddress: "1:2:3:4:5:6:7:8", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "::1", port: 5678)).wait())
@@ -170,7 +170,7 @@ class WritePCAPHandlerTest: XCTestCase {
             XCTAssertNotNil(record) // we must have been able to parse a record
             XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
             XCTAssertEqual(24, record?.pcapProtocolID) // 24 is IPv6
-            if let ipPacket = record?.payload.readTCPIPv6() {
+            if let ipPacket = try record?.payload.readTCPIPv6() {
                 ipPackets.append(ipPacket)
                 XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
                 XCTAssertEqual(20, ipPacket.payloadLength) // in IPv6 it's just the payload, ie. payload + TCP header
@@ -208,7 +208,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(0, buffer?.readableBytes) // there shouldn't be anything else left
     }
     
-    func testAcceptConnectionFromRemote() {
+    func testAcceptConnectionFromRemote() throws {
         self.mode = .server
         
         XCTAssertEqual([], self.accumulatedPackets)
@@ -226,7 +226,7 @@ class WritePCAPHandlerTest: XCTestCase {
             XCTAssertNotNil(record) // we must have been able to parse a record
             XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
             XCTAssertEqual(2, record?.pcapProtocolID) // 2 is IPv4
-            if let ipPacket = record?.payload.readTCPIPv4() {
+            if let ipPacket = try record?.payload.readTCPIPv4() {
                 ipPackets.append(ipPacket)
                 XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
             }
@@ -263,7 +263,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(0, buffer?.readableBytes) // there shouldn't be anything else left
     }
     
-    func testCloseOriginatingFromLocal() {
+    func testCloseOriginatingFromLocal() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.1.1.1", port: 1)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "2.2.2.2", port: 2)
         XCTAssertNoThrow(try self.channel.close().wait())
@@ -279,7 +279,7 @@ class WritePCAPHandlerTest: XCTestCase {
         for var record in records {
             XCTAssertNotNil(record) // we must have been able to parse a record
             XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
-            if let ipPacket = record?.payload.readTCPIPv4() {
+            if let ipPacket = try record?.payload.readTCPIPv4() {
                 ipPackets.append(ipPacket)
                 XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
             }
@@ -313,7 +313,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual([.ack], ipPackets[2].tcpHeader.flags)
     }
     
-    func testCloseOriginatingFromRemote() {
+    func testCloseOriginatingFromRemote() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.1.1.1", port: 1)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "2.2.2.2", port: 2)
         self.channel.pipeline.fireChannelInactive()
@@ -329,7 +329,7 @@ class WritePCAPHandlerTest: XCTestCase {
         for var record in records {
             XCTAssertNotNil(record) // we must have been able to parse a record
             XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
-            if let ipPacket = record?.payload.readTCPIPv4() {
+            if let ipPacket = try record?.payload.readTCPIPv4() {
                 ipPackets.append(ipPacket)
                 XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
             }
@@ -363,7 +363,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual([.ack], ipPackets[2].tcpHeader.flags)
     }
     
-    func testInboundData() {
+    func testInboundData() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
         self.scratchBuffer.writeStaticString("hello")
@@ -379,7 +379,7 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket = payload.payload.readTCPIPv4() else {
+        guard let tcpIPPacket = try payload.payload.readTCPIPv4() else {
             XCTFail("couldn't read TCP/IPv4 packet")
             return
         }
@@ -388,7 +388,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual("hello", String(decoding: tcpIPPacket.tcpPayload.readableBytesView, as: Unicode.UTF8.self))
     }
     
-    func testOutboundData() {
+    func testOutboundData() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
         self.scratchBuffer.writeStaticString("hello")
@@ -404,7 +404,7 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket = payload.payload.readTCPIPv4() else {
+        guard let tcpIPPacket = try payload.payload.readTCPIPv4() else {
             XCTFail("couldn't read TCP/IPv4 packet")
             return
         }
@@ -413,7 +413,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual("hello", String(decoding: tcpIPPacket.tcpPayload.readableBytesView, as: Unicode.UTF8.self))
     }
     
-    func testOversizedInboundDataComesAsTwoPacketsIPv4() {
+    func testOversizedInboundDataComesAsTwoPacketsIPv4() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
         let expectedData = String(repeating: "X", count: Int(UInt16.max) * 2 - 300)
@@ -430,7 +430,8 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket1 = payload1.payload.readTCPIPv4(), let tcpIPPacket2 = payload2.payload.readTCPIPv4() else {
+        guard let tcpIPPacket1 = try payload1.payload.readTCPIPv4(),
+            let tcpIPPacket2 = try payload2.payload.readTCPIPv4() else {
             XCTFail("couldn't read TCP/IPv4 packets")
             return
         }
@@ -443,7 +444,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(expectedData, actualData)
     }
     
-    func testOversizedInboundDataComesAsTwoPacketsIPv6() {
+    func testOversizedInboundDataComesAsTwoPacketsIPv6() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "::1", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "::2", port: 2222)
         let expectedData = String(repeating: "X", count: Int(UInt16.max) * 2 - 300)
@@ -460,7 +461,8 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket1 = payload1.payload.readTCPIPv6(), let tcpIPPacket2 = payload2.payload.readTCPIPv6() else {
+        guard let tcpIPPacket1 = try payload1.payload.readTCPIPv6(),
+            let tcpIPPacket2 = try payload2.payload.readTCPIPv6() else {
             XCTFail("couldn't read TCP/IPv6 packets")
             return
         }
@@ -473,7 +475,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(expectedData, actualData)
     }
     
-    func testOversizedOutboundDataComesAsTwoPacketsIPv4() {
+    func testOversizedOutboundDataComesAsTwoPacketsIPv4() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
         let expectedData = String(repeating: "X", count: Int(UInt16.max) * 2 - 300)
@@ -490,7 +492,8 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket1 = payload1.payload.readTCPIPv4(), let tcpIPPacket2 = payload2.payload.readTCPIPv4() else {
+        guard let tcpIPPacket1 = try payload1.payload.readTCPIPv4(),
+            let tcpIPPacket2 = try payload2.payload.readTCPIPv4() else {
             XCTFail("couldn't read TCP/IPv4 packets")
             return
         }
@@ -503,7 +506,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(expectedData, actualData)
     }
     
-    func testOversizedOutboundDataComesAsTwoPacketsIPv6() {
+    func testOversizedOutboundDataComesAsTwoPacketsIPv6() throws {
         self.channel.localAddress = try! SocketAddress(ipAddress: "::1", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "::2", port: 2222)
         let expectedData = String(repeating: "X", count: Int(UInt16.max) * 2 - 300)
@@ -520,7 +523,8 @@ class WritePCAPHandlerTest: XCTestCase {
             return
         }
         XCTAssertEqual(0, packetBytes.readableBytes) // check nothing is left over
-        guard let tcpIPPacket1 = payload1.payload.readTCPIPv6(), let tcpIPPacket2 = payload2.payload.readTCPIPv6() else {
+        guard let tcpIPPacket1 = try payload1.payload.readTCPIPv6(),
+            let tcpIPPacket2 = try payload2.payload.readTCPIPv6() else {
             XCTFail("couldn't read TCP/IPv6 packets")
             return
         }
@@ -560,7 +564,9 @@ struct TCPIPv6Packet {
 
 extension ByteBuffer {
     // read & parse a TCP packet, containing everything belonging to it (including payload)
-    mutating func readTCPHeader() -> TCPHeader? {
+    mutating func readTCPHeader() throws -> TCPHeader? {
+        struct ParsingError: Error {}
+
         let saveSelf = self
         guard let srcPort = self.readInteger(as: UInt16.self),
             let dstPort = self.readInteger(as: UInt16.self),
@@ -569,11 +575,14 @@ extension ByteBuffer {
             let flagsAndFriends = self.readInteger(as: UInt16.self), // data offset + reserved bits + fancy stuff
             let _ = self.readInteger(as: UInt16.self), // window size
             let _ = self.readInteger(as: UInt16.self), // checksum
-            let _ = self.readInteger(as: UInt16.self), // urgent pointer
-            (flagsAndFriends & (0xf << 12)) == (0x5 << 12) /* check that the data offset is right */ else {
+            let _ = self.readInteger(as: UInt16.self) /* urgent pointer */ else {
                 self = saveSelf
                 return nil
         }
+        guard (flagsAndFriends & (0xf << 12)) == (0x5 << 12) /* check that the data offset is right */ else {
+            throw ParsingError()
+        }
+
         return TCPHeader(flags: .init(rawValue: UInt8(flagsAndFriends & 0xfff)),
                          ackNumber: ackNo == 0 ? nil : Int(ackNo),
                          sequenceNumber: Int(seqNo),
@@ -582,7 +591,9 @@ extension ByteBuffer {
     }
     
     // read & parse a TCP/IPv4 packet, containing everything belonging to it (including payload)
-    mutating func readTCPIPv4() -> TCPIPv4Packet? {
+    mutating func readTCPIPv4() throws -> TCPIPv4Packet? {
+        struct ParsingError: Error {}
+
         let saveSelf = self
         guard let version = self.readInteger(as: UInt8.self),
             let _ = self.readInteger(as: UInt8.self), // DSCP
@@ -594,13 +605,15 @@ extension ByteBuffer {
             let _ = self.readInteger(as: UInt16.self), // checksum
             let srcRaw = self.readInteger(endianness: .host, as: UInt32.self),
             let dstRaw = self.readInteger(endianness: .host, as: UInt32.self),
-            version == 0x45,
-            innerProtocolID == 6, // TCP is 6
             var payload = self.readSlice(length: Int(ipv4WholeLength - 20)),
-            let tcp = payload.readTCPHeader() else {
+            let tcp = try payload.readTCPHeader() else {
                 self = saveSelf
                 return nil
         }
+        guard version == 0x45, innerProtocolID == 6 /* TCP is 6 */ else {
+            throw ParsingError()
+        }
+
         let src = in_addr(s_addr: srcRaw)
         let dst = in_addr(s_addr: dstRaw)
         return TCPIPv4Packet(src: src,
@@ -611,20 +624,21 @@ extension ByteBuffer {
     }
     
     // read & parse a TCP/IPv6 packet, containing everything belonging to it (including payload)
-    mutating func readTCPIPv6() -> TCPIPv6Packet? {
+    mutating func readTCPIPv6() throws -> TCPIPv6Packet? {
         let saveSelf = self
         guard let versionAndFancyStuff = self.readInteger(as: UInt32.self), // IP version (6) & fancy stuff
             let payloadLength = self.readInteger(as: UInt16.self),
             let innerProtocolID = self.readInteger(as: UInt8.self), // TCP
             let _ = self.readInteger(as: UInt8.self), // hop limit (like TTL)
-            versionAndFancyStuff >> 28 == 6, // IPv_6_
-            innerProtocolID == 6, /* TCP is 6 */
             var srcAddrBuffer = self.readSlice(length: MemoryLayout<in6_addr>.size),
             var dstAddrBuffer = self.readSlice(length: MemoryLayout<in6_addr>.size),
             var payload = self.readSlice(length: Int(payloadLength)),
-            let tcp = payload.readTCPHeader() else {
+            let tcp = try payload.readTCPHeader() else {
                 self = saveSelf
                 return nil
+        }
+        guard versionAndFancyStuff >> 28 == 6 /* IPv_6_ */, innerProtocolID == 6 /* TCP is 6 */ else {
+            return nil
         }
         
         var srcAddress = in6_addr()
