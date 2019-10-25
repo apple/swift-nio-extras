@@ -156,7 +156,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
             stream.avail_in = UInt32(typedDataPtr.count)
             stream.next_in = typedDataPtr.baseAddress!
 
-            buffer.writeWithUnsafeMutableBytes { outputPtr in
+            buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { outputPtr in
                 let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
                                                                 count: outputPtr.count)
                 stream.avail_out = UInt32(typedOutputPtr.count)
