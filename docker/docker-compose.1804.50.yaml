@@ -6,9 +6,8 @@ services:
     image: swift-nio-extras:18.04-5.0
     build:
       args:
-        ubuntu_version: "18.04"
+        ubuntu_version: "bionic"
         swift_version: "5.0"
-        skip_ruby_from_ppa: "true"
 
   test:
     command: /bin/bash -cl "swift test -Xswiftc -warnings-as-errors"

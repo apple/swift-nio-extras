@@ -6,9 +6,8 @@ services:
     image: swift-nio-extras:16.04-5.1
     build:
       args:
-        ubuntu_version: "16.04"
+        ubuntu_version: "xenial"
         swift_version: "5.1"
-        skip_ruby_from_ppa: "true"
 
   test:
     command: /bin/bash -cl "swift test -Xswiftc -warnings-as-errors --sanitize=thread"
