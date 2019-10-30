@@ -51,7 +51,7 @@ function usage() {
     echo >&2
     echo >&2 "Examples:"
     echo >&2
-    echo >&2 "Check between master and tag 2.1.1 of swift-nio-extras:"
+    echo >&2 "Check between master and tag 1.2.0 of swift-nio-extras:"
     echo >&2 "  $0 https://github.com/apple/swift-nio-extras master 1.2.0"
     echo >&2
     echo >&2 "Check between HEAD and commit 64cf63d7 using the provided toolchain:"
