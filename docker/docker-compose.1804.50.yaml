@@ -10,5 +10,4 @@ services:
         swift_version: "5.0"
 
   test:
-    command: /bin/bash -xcl "swift test -Xswiftc -warnings-as-errors"
     image: swift-nio-extras:18.04-5.0

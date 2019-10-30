@@ -10,5 +10,6 @@ services:
         swift_version: "5.1"
 
   test:
-    command: /bin/bash -xcl "swift test -Xswiftc -warnings-as-errors --sanitize=thread"
     image: swift-nio-extras:16.04-5.1
+    environment:
+      - SANITIZER_ARG=--sanitize=thread
