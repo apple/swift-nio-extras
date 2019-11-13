@@ -14,7 +14,7 @@
 
 import XCTest
 import CNIOExtrasZlib
-@testable import NIO
+import NIO
 @testable import NIOHTTP1
 @testable import NIOHTTPCompression
 

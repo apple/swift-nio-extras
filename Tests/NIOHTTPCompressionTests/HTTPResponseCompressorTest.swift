@@ -14,8 +14,9 @@
 
 import XCTest
 import CNIOExtrasZlib
-@testable import NIO
-@testable import NIOHTTP1
+import NIO
+import NIOHTTP1
+import NIOConcurrencyHelpers
 @testable import NIOHTTPCompression
 
 private class PromiseOrderer {
@@ -334,8 +335,8 @@ class HTTPResponseCompressorTest: XCTestCase {
 
     private func compressionChannel() throws -> EmbeddedChannel {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseEncoder()).wait())
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor()).wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseEncoder(), name: "encoder").wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor(), name: "compressor").wait())
         return channel
     }
 
@@ -522,7 +523,8 @@ class HTTPResponseCompressorTest: XCTestCase {
                 XCTFail("\(err)")
             }
         }
-        channel.pipeline.removeHandlers()
+
+        XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
 
         do {
             try writePromise.futureResult.wait()
@@ -538,8 +540,10 @@ class HTTPResponseCompressorTest: XCTestCase {
         let head = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1), status: .ok)
         let writePromise = channel.eventLoop.makePromise(of: Void.self)
         channel.writeAndFlush(NIOAny(HTTPServerResponsePart.head(head)), promise: writePromise)
-        channel.pipeline.removeHandlers()
-        try writePromise.futureResult.wait()
+
+        XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "encoder").wait())
+        XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
+        XCTAssertNoThrow(try writePromise.futureResult.wait())
     }
 
     func testStartsWithSameUnicodeScalarsWorksOnEmptyStrings() throws {
@@ -597,5 +601,34 @@ class HTTPResponseCompressorTest: XCTestCase {
 
         try sendRequest(acceptEncoding: "deflate", channel: channel)
         try assertUncompressedResponse(channel: channel)
+    }
+}
+
+extension EventLoopFuture {
+    var isFulfilled: Bool {
+        if self.eventLoop.inEventLoop {
+            // Easy, we're on the EventLoop. Let's just use our knowledge that we run completed future callbacks
+            // immediately.
+            var fulfilled = false
+            self.whenComplete { _ in
+                fulfilled = true
+            }
+            return fulfilled
+        } else {
+            let lock = Lock()
+            let group = DispatchGroup()
+            var fulfilled = false // protected by lock
+
+            group.enter()
+            self.eventLoop.execute {
+                let isFulfilled = self.isFulfilled // This will now enter the above branch.
+                lock.withLock {
+                    fulfilled = isFulfilled
+                }
+                group.leave()
+            }
+            group.wait() // this is very nasty but this is for tests only, so...
+            return lock.withLock { fulfilled }
+        }
     }
 }
