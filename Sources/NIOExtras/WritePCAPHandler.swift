@@ -361,33 +361,31 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        defer {
-            context.write(data, promise: promise)
-        }
-        guard self.closeState == .notClosing else {
-            return
-        }
-        
-        let data = self.unwrapInboundIn(data)
-        self.buffer.clear()
-        do {
-            var data = data
-            while var payloadToSend = self.takeSensiblySizedPayload(buffer: &data) {
-                try self.buffer.writePCAPRecord(.init(payloadLength: payloadToSend.readableBytes,
-                                                      src: self.localAddress(context: context),
-                                                      dst: self.remoteAddress(context: context),
-                                                      tcp: TCPHeader(flags: [],
-                                                                     ackNumber: nil,
-                                                                     sequenceNumber: self.writtenOutboundBytes,
-                                                                     srcPort: .init(self.localAddress(context: context).port!),
-                                                                     dstPort: .init(self.remoteAddress(context: context).port!))))
-                self.writtenOutboundBytes += payloadToSend.readableBytes
-                self.buffer.writeBuffer(&payloadToSend)
+        let promise = promise ?? context.eventLoop.makePromise()
+        let buffer = self.unwrapInboundIn(data)
+
+        promise.futureResult.whenSuccess {
+            do {
+                var buffer = buffer
+                self.buffer.clear()
+                while var payloadToSend = self.takeSensiblySizedPayload(buffer: &buffer) {
+                    try self.buffer.writePCAPRecord(.init(payloadLength: payloadToSend.readableBytes,
+                                                          src: self.localAddress(context: context),
+                                                          dst: self.remoteAddress(context: context),
+                                                          tcp: TCPHeader(flags: [],
+                                                                         ackNumber: nil,
+                                                                         sequenceNumber: self.writtenOutboundBytes,
+                                                                         srcPort: .init(self.localAddress(context: context).port!),
+                                                                         dstPort: .init(self.remoteAddress(context: context).port!))))
+                    self.writtenOutboundBytes += payloadToSend.readableBytes
+                    self.buffer.writeBuffer(&payloadToSend)
+                }
+                self.writeBuffer(self.buffer)
+            } catch {
+                context.fireErrorCaught(error)
             }
-            self.writeBuffer(self.buffer)
-        } catch {
-            context.fireErrorCaught(error)
         }
+        context.write(data, promise: promise)
     }
     
     public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {

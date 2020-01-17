@@ -537,6 +537,84 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(expectedData, actualData)
     }
 
+    func testUnflushedOutboundDataIsNotWritten() throws {
+        self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
+        self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
+        self.scratchBuffer.writeStaticString("hello")
+        XCTAssertNoThrow(try self.channel.writeOutbound(self.scratchBuffer))
+        self.channel.write(self.scratchBuffer, promise: nil)
+
+        XCTAssertEqual(1, self.accumulatedPackets.count)
+        var packet1Bytes = self.accumulatedPackets.first
+        XCTAssertNotNil(packet1Bytes?.readPCAPRecord())
+
+        self.channel.flush()
+        XCTAssertEqual(2, self.accumulatedPackets.count)
+        var packet2Bytes = self.accumulatedPackets.dropFirst().first
+        XCTAssertNotNil(packet2Bytes?.readPCAPRecord())
+    }
+
+    func testDataWrittenAfterCloseIsDiscarded() throws {
+        self.channel.localAddress = try! SocketAddress(ipAddress: "::1", port: 1111)
+        self.channel.remoteAddress = try! SocketAddress(ipAddress: "::2", port: 2222)
+        self.scratchBuffer.writeStaticString("hello")
+        XCTAssertNoThrow(try self.channel.writeOutbound(self.scratchBuffer))
+        self.channel.write(self.scratchBuffer, promise: nil)
+
+        XCTAssertEqual(1, self.accumulatedPackets.count)
+        var write1Bytes = self.accumulatedPackets.first
+        XCTAssertNotNil(write1Bytes?.readPCAPRecord())
+        XCTAssertEqual(0, write1Bytes?.readableBytes) // nothing left
+
+        XCTAssertNoThrow(try self.channel.finish())
+        XCTAssertEqual(2 /* the TCP connection FIN dance */, self.accumulatedPackets.count)
+        var write2Bytes = self.accumulatedPackets.dropFirst().first
+
+        let records = [write2Bytes?.readPCAPRecord() /* FIN */,
+                       write2Bytes?.readPCAPRecord() /* FIN+ACK */,
+                       write2Bytes?.readPCAPRecord() /* ACK */]
+        XCTAssertEqual(0, write2Bytes?.readableBytes) // nothing left
+        var ipPackets: [TCPIPv6Packet] = []
+        for var record in records {
+            XCTAssertNotNil(record) // we must have been able to parse a record
+            XCTAssertGreaterThan(record?.payload.readableBytes ?? -1, 0) // there must be some TCP/IP packet in there
+            if let ipPacket = try record?.payload.readTCPIPv6() {
+                ipPackets.append(ipPacket)
+                XCTAssertEqual(0, ipPacket.tcpPayload.readableBytes)
+            }
+        }
+
+        // FIN, local should be source, remote is destination
+        self.assertEqual(expectedAddress: self.channel?.localAddress,
+                         actualIPv6Address: ipPackets[0].src,
+                         actualPort: ipPackets[0].tcpHeader.srcPort)
+        self.assertEqual(expectedAddress: self.channel?.remoteAddress,
+                         actualIPv6Address: ipPackets[0].dst,
+                         actualPort: ipPackets[0].tcpHeader.dstPort)
+        XCTAssertEqual([.fin], ipPackets[0].tcpHeader.flags)
+        XCTAssertEqual(20 /* just the TCP header */, ipPackets[0].payloadLength)
+
+        // FIN+ACK, local should be destination, remote should be source
+        self.assertEqual(expectedAddress: self.channel?.remoteAddress,
+                         actualIPv6Address: ipPackets[1].src,
+                         actualPort: ipPackets[1].tcpHeader.srcPort)
+        self.assertEqual(expectedAddress: self.channel?.localAddress,
+                         actualIPv6Address: ipPackets[1].dst,
+                         actualPort: ipPackets[1].tcpHeader.dstPort)
+        XCTAssertEqual([.fin, .ack], ipPackets[1].tcpHeader.flags)
+        XCTAssertEqual(20 /* just the TCP header */, ipPackets[1].payloadLength)
+
+        // ACK
+        self.assertEqual(expectedAddress: self.channel?.localAddress,
+                         actualIPv6Address: ipPackets[0].src,
+                         actualPort: ipPackets[0].tcpHeader.srcPort)
+        self.assertEqual(expectedAddress: self.channel?.remoteAddress,
+                         actualIPv6Address: ipPackets[0].dst,
+                         actualPort: ipPackets[0].tcpHeader.dstPort)
+        XCTAssertEqual([.ack], ipPackets[2].tcpHeader.flags)
+        XCTAssertEqual(20 /* just the TCP header */, ipPackets[2].payloadLength)
+    }
+
 }
 
 struct PCAPRecord {
