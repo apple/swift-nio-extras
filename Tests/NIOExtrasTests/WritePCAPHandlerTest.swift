@@ -42,12 +42,13 @@ class WritePCAPHandlerTest: XCTestCase {
     
     override func setUp() {
         self.accumulatedPackets = []
-        self.channel = EmbeddedChannel(handler: NIOWritePCAPHandler(mode: .client,
-                                                                    fakeLocalAddress: nil,
-                                                                    fakeRemoteAddress: nil,
-                                                                    fileSink: {
-            self.accumulatedPackets.append($0)
-        }))
+        self.channel = EmbeddedChannel()
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client,
+                                                                                  fakeLocalAddress: nil,
+                                                                                  fakeRemoteAddress: nil,
+                                                                                  fileSink: {
+                                                                                    self.accumulatedPackets.append($0)
+            }), name: "NIOWritePCAPHandler").wait())
         self.scratchBuffer = self.channel.allocator.buffer(capacity: 128)
     }
     
@@ -613,6 +614,30 @@ class WritePCAPHandlerTest: XCTestCase {
                          actualPort: ipPackets[0].tcpHeader.dstPort)
         XCTAssertEqual([.ack], ipPackets[2].tcpHeader.flags)
         XCTAssertEqual(20 /* just the TCP header */, ipPackets[2].payloadLength)
+    }
+
+    func testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue() throws {
+        XCTAssertNoThrow(try self.channel.pipeline.removeHandler(name: "NIOWritePCAPHandler").wait())
+        let settings = NIOWritePCAPHandler.Settings(emitPCAPWrites: .whenIssued)
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client,
+                                                                                  fakeLocalAddress: nil,
+                                                                                  fakeRemoteAddress: nil,
+                                                                                  settings: settings,
+                                                                                  fileSink: {
+                                                                                    self.accumulatedPackets.append($0)
+        })).wait())
+        self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
+        self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
+        self.scratchBuffer.writeStaticString("hello")
+        XCTAssertNoThrow(try self.channel.writeOutbound(self.scratchBuffer))
+
+        // this is unflushed, yet we check it'll still be written because we set `settings.emitPCAPWrites = .whenIssued`
+        self.channel.write(self.scratchBuffer, promise: nil)
+        XCTAssertEqual(2, self.accumulatedPackets.count)
+        var packet1Bytes = self.accumulatedPackets.first
+        XCTAssertNotNil(packet1Bytes?.readPCAPRecord())
+        var packet2Bytes = self.accumulatedPackets.dropFirst().first
+        XCTAssertNotNil(packet2Bytes?.readPCAPRecord())
     }
 
 }
