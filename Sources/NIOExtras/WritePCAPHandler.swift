@@ -121,10 +121,46 @@ struct PCAPRecordHeader {
 ///
 /// `NIOWritePCAPHandler` will also work with Unix Domain Sockets in which case it will still synthesize a TCP packet
 /// capture with local address `111.111.111.111` (port `1111`) and remote address `222.222.222.222` (port `2222`).
-public class NIOWritePCAPHandler {
+public class NIOWritePCAPHandler: RemovableChannelHandler {
     public enum Mode {
         case client
         case server
+    }
+
+    /// Settings for `NIOWritePCAPHandler`.
+    public struct Settings {
+        /// When to issue data into the `.pcap` file.
+        public enum EmitPCAP {
+            /// Write the data immediately when `NIOWritePCAPHandler` saw the event on the `ChannelPipeline`.
+            ///
+            /// For writes this means when the `write` event is triggered. Please note that this will write potentially
+            /// unflushed data into the `.pcap` file.
+            ///
+            /// If in doubt, prefer `.whenCompleted`.
+            case whenIssued
+
+            /// Write the data when the event completed.
+            ///
+            /// For writes this means when the `write` promise is succeeded. The `whenCompleted` mode mirrors most
+            /// closely what's actually sent over the wire.
+            case whenCompleted
+        }
+
+        /// When to emit the data from the `write` event into the `.pcap` file.
+        public var emitPCAPWrites: EmitPCAP
+
+        /// Default settings for the `NIOWritePCAPHandler`.
+        public init() {
+            self = .init(emitPCAPWrites: .whenCompleted)
+        }
+
+        /// Settings with customization.
+        ///
+        /// - parameters:
+        ///    - emitPCAPWrites: When to issue the writes into the `.pcap` file, see `EmitPCAP`.
+        public init(emitPCAPWrites: EmitPCAP) {
+            self.emitPCAPWrites = emitPCAPWrites
+        }
     }
 
     private enum CloseState {
@@ -136,11 +172,12 @@ public class NIOWritePCAPHandler {
     private let fileSink: (ByteBuffer) -> Void
     private let mode: Mode
     private let maxPayloadSize = Int(UInt16.max - 40 /* needs to fit into the IPv4 header which adds 40 */)
+    private let settings: Settings
     private var buffer: ByteBuffer!
     private var readInboundBytes = 0
     private var writtenOutboundBytes = 0
     private var closeState = CloseState.notClosing
-    
+
     private static let fakeLocalAddress = try! SocketAddress(ipAddress: "111.111.111.111", port: 1111)
     private static let fakeRemoteAddress = try! SocketAddress(ipAddress: "222.222.222.222", port: 2222)
     
@@ -158,13 +195,16 @@ public class NIOWritePCAPHandler {
     /// - parameters:
     ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.
     ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
+    ///     - settings: The settings for the `NIOWritePCAPHandler`.
     ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
     ///                 written to disk or elsewhere. See `NIOSynchronizedFileSink` for a convenient way to write to
     ///                 disk.
     public init(mode: Mode,
                 fakeLocalAddress: SocketAddress? = nil,
                 fakeRemoteAddress: SocketAddress? = nil,
+                settings: Settings,
                 fileSink: @escaping (ByteBuffer) -> Void) {
+        self.settings = settings
         self.fileSink = fileSink
         self.mode = mode
         if let fakeLocalAddress = fakeLocalAddress {
@@ -173,6 +213,25 @@ public class NIOWritePCAPHandler {
         if let fakeRemoteAddress = fakeRemoteAddress {
             self.remoteAddress = fakeRemoteAddress
         }
+    }
+
+    /// Initialize a `NIOWritePCAPHandler` with default settings.
+    ///
+    /// - parameters:
+    ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.
+    ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
+    ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
+    ///                 written to disk or elsewhere. See `NIOSynchronizedFileSink` for a convenient way to write to
+    ///                 disk.
+    public convenience init(mode: Mode,
+                            fakeLocalAddress: SocketAddress? = nil,
+                            fakeRemoteAddress: SocketAddress? = nil,
+                            fileSink: @escaping (ByteBuffer) -> Void) {
+        self.init(mode: mode,
+                  fakeLocalAddress: fakeLocalAddress,
+                  fakeRemoteAddress: fakeRemoteAddress,
+                  settings: Settings(),
+                  fileSink: fileSink)
     }
     
     private func writeBuffer(_ buffer: ByteBuffer) {
@@ -361,12 +420,10 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let promise = promise ?? context.eventLoop.makePromise()
-        let buffer = self.unwrapInboundIn(data)
+        var buffer = self.unwrapInboundIn(data)
 
-        promise.futureResult.whenSuccess {
+        func emitWrites() {
             do {
-                var buffer = buffer
                 self.buffer.clear()
                 while var payloadToSend = self.takeSensiblySizedPayload(buffer: &buffer) {
                     try self.buffer.writePCAPRecord(.init(payloadLength: payloadToSend.readableBytes,
@@ -385,7 +442,18 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
                 context.fireErrorCaught(error)
             }
         }
-        context.write(data, promise: promise)
+
+        switch self.settings.emitPCAPWrites {
+        case .whenCompleted:
+            let promise = promise ?? context.eventLoop.makePromise()
+            promise.futureResult.whenSuccess {
+                emitWrites()
+            }
+            context.write(data, promise: promise)
+        case .whenIssued:
+            emitWrites()
+            context.write(data, promise: promise)
+        }
     }
     
     public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {

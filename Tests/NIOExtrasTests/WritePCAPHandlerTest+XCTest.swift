@@ -39,6 +39,7 @@ extension WritePCAPHandlerTest {
                 ("testOversizedOutboundDataComesAsTwoPacketsIPv6", testOversizedOutboundDataComesAsTwoPacketsIPv6),
                 ("testUnflushedOutboundDataIsNotWritten", testUnflushedOutboundDataIsNotWritten),
                 ("testDataWrittenAfterCloseIsDiscarded", testDataWrittenAfterCloseIsDiscarded),
+                ("testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue", testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue),
            ]
    }
 }
