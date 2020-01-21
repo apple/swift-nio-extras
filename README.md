@@ -19,7 +19,9 @@ All code will go through code review like in the other repositories related to t
 
 To depend on `swift-nio-extras`, put the following in the `dependencies` of your `Package.swift`:
 
-    .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
+```swift
+.package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.0.0"),
+```
 
 ### Support for older Swift versions
 
