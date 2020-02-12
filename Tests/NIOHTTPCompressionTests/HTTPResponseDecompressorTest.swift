@@ -34,22 +34,28 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let channel = EmbeddedChannel()
         try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(10))).wait()
 
-        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
-        try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
+        let headersArray = [
+            HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")]),
+            HTTPHeaders([("Content-Encoding", "deflate")])
+        ]
+        
+        for headers in headersArray {
+            try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
 
-        let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        do {
-            try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError {
-            switch error {
-            case .limit:
-                // ok
-                break
-            default:
+            let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
+            do {
+                try channel.writeInbound(HTTPClientResponsePart.body(body))
+            } catch let error as NIOHTTPDecompression.DecompressionError {
+                switch error {
+                case .limit:
+                    // ok
+                    break
+                default:
+                    XCTFail("Unexptected error: \(error)")
+                }
+            } catch {
                 XCTFail("Unexptected error: \(error)")
             }
-        } catch {
-            XCTFail("Unexptected error: \(error)")
         }
     }
 
@@ -57,22 +63,28 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let channel = EmbeddedChannel()
         try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(10))).wait()
 
-        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
-        try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
+        let headersArray = [
+            HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")]),
+            HTTPHeaders([("Content-Encoding", "deflate")])
+        ]
+        
+        for headers in headersArray {
+            try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
 
-        let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        do {
-            try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError {
-            switch error {
-            case .limit:
-                // ok
-                break
-            default:
+            let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
+            do {
+                try channel.writeInbound(HTTPClientResponsePart.body(body))
+            } catch let error as NIOHTTPDecompression.DecompressionError {
+                switch error {
+                case .limit:
+                    // ok
+                    break
+                default:
+                    XCTFail("Unexptected error: \(error)")
+                }
+            } catch {
                 XCTFail("Unexptected error: \(error)")
             }
-        } catch {
-            XCTFail("Unexptected error: \(error)")
         }
     }
 
@@ -115,7 +127,46 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
+    
+    func testDecompressionWithoutContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
 
+        let expectedBody = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+
+        for algorithm in [nil, "gzip", "deflate"] {
+            let compressed: ByteBuffer
+            var headers = HTTPHeaders()
+            if let algorithm = algorithm {
+                headers.add(name: "Content-Encoding", value: algorithm)
+                compressed = compress(ByteBuffer.of(string: expectedBody), algorithm)
+            } else {
+                compressed = ByteBuffer.of(string: expectedBody)
+            }
+
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
+            
+            XCTAssertNoThrow(try channel.readInbound(as: Any.self))
+            
+            
+            if case .body(let buffer) = try channel.readInbound(as: HTTPClientResponsePart.self) {
+                let bodyData = Data(buffer.readableBytesView)
+                guard let bodyString = String(data: bodyData, encoding: .utf8) else {
+                    XCTFail("Impossible to decode string decompressed from algorithm: \(algorithm ?? "non-compressed")")
+                    return
+                }
+                
+                XCTAssertEqual(bodyString, expectedBody, "Decompressed string not equal to expected result from algorithm \(algorithm ?? "non-compressed")")
+                
+            } else {
+                XCTFail("Unexpected response part")
+            }
+        }
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
+    }
+    
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
         var stream = z_stream()
 
