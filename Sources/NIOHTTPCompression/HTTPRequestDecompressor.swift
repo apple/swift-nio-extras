@@ -46,7 +46,7 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
                 let length = head.headers[canonicalForm: "Content-Length"].first.flatMap({ Int($0) })
             {
                 do {
-                    try self.decompressor.initializeDecoder(encoding: algorithm, length: length)
+                    try self.decompressor.initializeDecoder(encoding: algorithm)
                     self.compression = Compression(algorithm: algorithm, contentLength: length)
                 } catch let error {
                     context.fireErrorCaught(error)
@@ -64,7 +64,7 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
             while part.readableBytes > 0 {
                 do {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    try self.decompressor.decompress(part: &part, buffer: &buffer, originalLength: compression.contentLength)
+                    try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.contentLength)
 
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 } catch let error {
