@@ -38,5 +38,5 @@ On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-ext
 - [`RequestResponseHandler`](Sources/NIOExtras/RequestResponseHandler.swift) Matches a request and a promise with the corresponding response.
 - [`HTTPResponseCompressor`](Sources/NIOHTTPCompression/HTTPResponseCompressor.swift) Compresses the body of every HTTP/1 response message.
 - [`DebugInboundsEventHandler`](Sources/NIOExtras/DebugInboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
-- [`DebugOutboundsEventHandler`](Sources/NIOExtras/DebugOutboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
+- [`DebugOutboundsEventHandler`](Sources/NIOExtras/DebugOutboundEventsHandler.swift) Prints out all outbound events that travel through the `ChannelPipeline`.
 - [`WritePCAPHandler`](Sources/NIOExtras/WritePCAPHandler.swift) A `ChannelHandler` that writes `.pcap` containing the traffic of the `ChannelPipeline` that you can inspect with Wireshark/tcpdump.
