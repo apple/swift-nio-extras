@@ -13,3 +13,6 @@ services:
     image: swift-nio-extras:16.04-5.1
     environment:
       - SANITIZER_ARG=--sanitize=thread
+
+  shell:
+    image: swift-nio-extras:16.04-5.1
