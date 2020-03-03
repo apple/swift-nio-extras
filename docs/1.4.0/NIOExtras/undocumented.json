@@ -1,0 +1,404 @@
+{
+  "warnings": [
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 22,
+      "symbol": "DebugInboundEventsHandler.InboudOut",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 24,
+      "symbol": "DebugInboundEventsHandler.Event",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 25,
+      "symbol": "DebugInboundEventsHandler.Event.registered",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 26,
+      "symbol": "DebugInboundEventsHandler.Event.unregistered",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 27,
+      "symbol": "DebugInboundEventsHandler.Event.active",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 28,
+      "symbol": "DebugInboundEventsHandler.Event.inactive",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 29,
+      "symbol": "DebugInboundEventsHandler.Event.read(data:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 30,
+      "symbol": "DebugInboundEventsHandler.Event.readComplete",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 31,
+      "symbol": "DebugInboundEventsHandler.Event.writabilityChanged(isWritable:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 32,
+      "symbol": "DebugInboundEventsHandler.Event.userInboundEventTriggered(event:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 33,
+      "symbol": "DebugInboundEventsHandler.Event.errorCaught(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 38,
+      "symbol": "DebugInboundEventsHandler.init(logger:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugInboundEventsHandler.swift",
+      "line": 87,
+      "symbol": "DebugInboundEventsHandler.defaultPrint(event:in:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 24,
+      "symbol": "DebugOutboundEventsHandler.Event",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 25,
+      "symbol": "DebugOutboundEventsHandler.Event.register",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 26,
+      "symbol": "DebugOutboundEventsHandler.Event.bind(address:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 27,
+      "symbol": "DebugOutboundEventsHandler.Event.connect(address:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 28,
+      "symbol": "DebugOutboundEventsHandler.Event.write(data:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 29,
+      "symbol": "DebugOutboundEventsHandler.Event.flush",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 30,
+      "symbol": "DebugOutboundEventsHandler.Event.read",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 31,
+      "symbol": "DebugOutboundEventsHandler.Event.close(mode:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 32,
+      "symbol": "DebugOutboundEventsHandler.Event.triggerUserOutboundEvent(event:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 37,
+      "symbol": "DebugOutboundEventsHandler.init(logger:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/DebugOutboundEventsHandler.swift",
+      "line": 81,
+      "symbol": "DebugOutboundEventsHandler.defaultPrint(event:in:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/FixedLengthFrameDecoder.swift",
+      "line": 32,
+      "symbol": "FixedLengthFrameDecoder.InboundIn",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/FixedLengthFrameDecoder.swift",
+      "line": 35,
+      "symbol": "FixedLengthFrameDecoder.cumulationBuffer",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/JSONRPCFraming+ContentLengthHeader.swift",
+      "line": 28,
+      "symbol": "NIOJSONRPCFraming.ContentLengthHeaderFrameEncoder.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/JSONRPCFraming+ContentLengthHeader.swift",
+      "line": 80,
+      "symbol": "NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/JSONRPCFraming.swift",
+      "line": 15,
+      "symbol": "NIOJSONRPCFraming",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/JSONRPCFraming.swift",
+      "line": 17,
+      "symbol": "NIOJSONRPCFraming",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 41,
+      "symbol": "LengthFieldBasedFrameDecoder.ByteLength.one",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 42,
+      "symbol": "LengthFieldBasedFrameDecoder.ByteLength.two",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 43,
+      "symbol": "LengthFieldBasedFrameDecoder.ByteLength.four",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 44,
+      "symbol": "LengthFieldBasedFrameDecoder.ByteLength.eight",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 70,
+      "symbol": "LengthFieldBasedFrameDecoder.InboundIn",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldBasedFrameDecoder.swift",
+      "line": 73,
+      "symbol": "LengthFieldBasedFrameDecoder.cumulationBuffer",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 17,
+      "symbol": "LengthFieldPrependerError",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 18,
+      "symbol": "LengthFieldPrependerError.messageDataTooLongForLengthField",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 40,
+      "symbol": "LengthFieldPrepender.ByteLength.one",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 41,
+      "symbol": "LengthFieldPrepender.ByteLength.two",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 42,
+      "symbol": "LengthFieldPrepender.ByteLength.four",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LengthFieldPrepender.swift",
+      "line": 43,
+      "symbol": "LengthFieldPrepender.ByteLength.eight",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LineBasedFrameDecoder.swift",
+      "line": 34,
+      "symbol": "LineBasedFrameDecoder.InboundIn",
+      "symbol_kind": "source.lang.swift.decl.typealias",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LineBasedFrameDecoder.swift",
+      "line": 36,
+      "symbol": "LineBasedFrameDecoder.cumulationBuffer",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/LineBasedFrameDecoder.swift",
+      "line": 40,
+      "symbol": "LineBasedFrameDecoder.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/NIOExtrasError.swift",
+      "line": 16,
+      "symbol": "NIOExtrasError",
+      "symbol_kind": "source.lang.swift.decl.protocol",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/NIOExtrasError.swift",
+      "line": 23,
+      "symbol": "NIOExtrasErrors.LeftOverBytesError.leftOverBytes",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 125,
+      "symbol": "NIOWritePCAPHandler.Mode",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 126,
+      "symbol": "NIOWritePCAPHandler.Mode.client",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 127,
+      "symbol": "NIOWritePCAPHandler.Mode.server",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 187,
+      "symbol": "NIOWritePCAPHandler.pcapFileHeader",
+      "symbol_kind": "source.lang.swift.decl.var.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 599,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.FileWritingMode",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 600,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.FileWritingMode.appendToExistingPCAPFile",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 601,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.FileWritingMode.createNewPCAPFile",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 604,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.Error",
+      "symbol_kind": "source.lang.swift.decl.struct",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 605,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.Error.errorCode",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOExtras/WritePCAPHandler.swift",
+      "line": 685,
+      "symbol": "NIOWritePCAPHandler.SynchronizedFileSink.write(buffer:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/code"
+}

@@ -1,0 +1,96 @@
+{
+  "warnings": [
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPDecompression.swift",
+      "line": 18,
+      "symbol": "NIOHTTPDecompression",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPDecompression.swift",
+      "line": 48,
+      "symbol": "NIOHTTPDecompression.DecompressionError",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPDecompression.swift",
+      "line": 49,
+      "symbol": "NIOHTTPDecompression.DecompressionError.limit",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPDecompression.swift",
+      "line": 50,
+      "symbol": "NIOHTTPDecompression.DecompressionError.inflationError(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPDecompression.swift",
+      "line": 51,
+      "symbol": "NIOHTTPDecompression.DecompressionError.initializationError(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPRequestDecompressor.swift",
+      "line": 19,
+      "symbol": "NIOHTTPRequestDecompressor",
+      "symbol_kind": "source.lang.swift.decl.class",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPRequestDecompressor.swift",
+      "line": 33,
+      "symbol": "NIOHTTPRequestDecompressor.init(limit:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseCompressor.swift",
+      "line": 66,
+      "symbol": "HTTPResponseCompressor.CompressionError",
+      "symbol_kind": "source.lang.swift.decl.enum",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseCompressor.swift",
+      "line": 67,
+      "symbol": "HTTPResponseCompressor.CompressionError.uncompressedWritesPending",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseCompressor.swift",
+      "line": 68,
+      "symbol": "HTTPResponseCompressor.CompressionError.noDataToWrite",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseCompressor.swift",
+      "line": 89,
+      "symbol": "HTTPResponseCompressor.init(initialByteBufferCapacity:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseDecompressor.swift",
+      "line": 18,
+      "symbol": "NIOHTTPResponseDecompressor",
+      "symbol_kind": "source.lang.swift.decl.class",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOHTTPCompression/HTTPResponseDecompressor.swift",
+      "line": 32,
+      "symbol": "NIOHTTPResponseDecompressor.init(limit:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/code"
+}
