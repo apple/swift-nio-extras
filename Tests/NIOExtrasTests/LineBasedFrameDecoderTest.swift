@@ -206,7 +206,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
                                                                  byteBuffer("")])
         ]) {
             return LineBasedFrameDecoder()
-        }) {error in
+        }) { error in
             print(error)
             XCTFail()
         }

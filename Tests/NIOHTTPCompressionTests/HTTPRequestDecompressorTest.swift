@@ -64,7 +64,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let compressed = compress(buffer, "gzip")
         
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
-            XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+           if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                // Okay
+            } else {
+                XCTFail("Unexptected error: \(error)")
+            }
         }
     }
 
@@ -79,7 +83,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let compressed = compress(buffer, "gzip")
         
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
-            XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+            if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                // Okay
+            } else {
+                XCTFail("Unexptected error: \(error)")
+            }
         }
     }
 
@@ -105,7 +113,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
             )
             
             XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
-                XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+                if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                    // Okay
+                } else {
+                    XCTFail("Unexptected error: \(error)")
+                }
             }
         }
 

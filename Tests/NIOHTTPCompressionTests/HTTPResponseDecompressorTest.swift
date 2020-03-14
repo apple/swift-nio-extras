@@ -40,7 +40,11 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         
         XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(body))){ error in
-            XCTAssertEqual(.limit,  error as? NIOHTTPDecompression.DecompressionError)
+            if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                // Okay
+            } else {
+                XCTFail("Unexptected error: \(error)")
+            }
         }
     }
 
@@ -54,7 +58,11 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         
         XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(body))) {error in
-            XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+            if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                // Okay
+            } else {
+                XCTFail("Unexptected error: \(error)")
+            }
         }
     }
 
@@ -80,8 +88,12 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
             
-            XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(compressed))){error in
-                XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+            XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(compressed))){ error in
+                if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+                    // Okay
+                } else {
+                    XCTFail("Unexptected error: \(error)")
+                }
             }
         }
 
