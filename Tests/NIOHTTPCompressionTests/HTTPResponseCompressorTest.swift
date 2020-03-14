@@ -525,10 +525,8 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
 
         XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
-
-        do {
-            try writePromise.futureResult.wait()
-        } catch {
+        
+        XCTAssertThrowsError(try writePromise.futureResult.wait()) {error in
             // We don't care about errors here, we just need to block the
             // test until we're done.
         }
