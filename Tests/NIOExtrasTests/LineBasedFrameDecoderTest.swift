@@ -194,21 +194,19 @@ class LineBasedFrameDecoderTest: XCTestCase {
             buffer.writeString(string)
             return buffer
         }
-
-        do {
-            try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: [
-                ("\n", [byteBuffer("")]),
-                ("\r\n", [byteBuffer("")]),
-                ("a\r\n", [byteBuffer("a")]),
-                ("a\n", [byteBuffer("a")]),
-                ("a\rb\n", [byteBuffer("a\rb")]),
-                ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
-                                                                     byteBuffer("Connection: close"),
-                                                                     byteBuffer("")])
-            ]) {
-                return LineBasedFrameDecoder()
-            }
-        } catch {
+        
+        XCTAssertThrowsError(try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: [
+            ("\n", [byteBuffer("")]),
+            ("\r\n", [byteBuffer("")]),
+            ("a\r\n", [byteBuffer("a")]),
+            ("a\n", [byteBuffer("a")]),
+            ("a\rb\n", [byteBuffer("a\rb")]),
+            ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
+                                                                 byteBuffer("Connection: close"),
+                                                                 byteBuffer("")])
+        ]) {
+            return LineBasedFrameDecoder()
+        }) {error in
             print(error)
             XCTFail()
         }
