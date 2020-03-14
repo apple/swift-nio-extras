@@ -399,11 +399,8 @@ class LengthFieldPrependerTest: XCTestCase {
         var buffer = self.channel.allocator.buffer(capacity: contents.count)
         buffer.writeBytes(contents)
         
-        do {
-            try self.channel.writeAndFlush(buffer).wait()
-        } catch {
-            XCTAssertEqual(LengthFieldPrependerError.messageDataTooLongForLengthField,
-                           error as? LengthFieldPrependerError)
+        XCTAssertThrowsError(try self.channel.writeAndFlush(buffer).wait() ) { error in
+            XCTAssertEqual(.messageDataTooLongForLengthField, error as? LengthFieldPrependerError)
         }
         
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
