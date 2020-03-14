@@ -74,6 +74,10 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 XCTFail("Unexptected error: \(error)")
             }
         }
+        
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
+            XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
+        }
     }
 
     func testDecompressionLimitSize() throws {
