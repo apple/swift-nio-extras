@@ -38,18 +38,9 @@ class HTTPResponseDecompressorTest: XCTestCase {
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
 
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        do {
-            try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError {
-            switch error {
-            case .limit:
-                // ok
-                break
-            default:
-                XCTFail("Unexptected error: \(error)")
-            }
-        } catch {
-            XCTFail("Unexptected error: \(error)")
+        
+        XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(body))){ error in
+            XCTAssertEqual(.limit,  error as? NIOHTTPDecompression.DecompressionError)
         }
     }
 
@@ -61,18 +52,9 @@ class HTTPResponseDecompressorTest: XCTestCase {
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
 
         let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        do {
-            try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError {
-            switch error {
-            case .limit:
-                // ok
-                break
-            default:
-                XCTFail("Unexptected error: \(error)")
-            }
-        } catch {
-            XCTFail("Unexptected error: \(error)")
+        
+        XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(body))) {error in
+            XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
         }
     }
 
@@ -97,19 +79,9 @@ class HTTPResponseDecompressorTest: XCTestCase {
             headers.add(name: "Content-Length", value: "\(compressed.readableBytes)")
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
-
-            do {
-                try channel.writeInbound(HTTPClientResponsePart.body(compressed))
-            } catch let error as NIOHTTPDecompression.DecompressionError {
-                switch error {
-                case .limit:
-                    // ok
-                    break
-                default:
-                    XCTFail("Unexptected error: \(error)")
-                }
-            } catch {
-                XCTFail("Unexptected error: \(error)")
+            
+            XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(compressed))){error in
+                XCTAssertEqual(.limit, error as? NIOHTTPDecompression.DecompressionError)
             }
         }
 
