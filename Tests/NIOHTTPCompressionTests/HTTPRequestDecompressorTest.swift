@@ -63,7 +63,9 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let buffer = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         let compressed = compress(buffer, "gzip")
         
-        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
+        do {
+            try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+        } catch {
            if case .limit = error as? NIOHTTPDecompression.DecompressionError {
                 // Okay
             } else {
@@ -82,8 +84,10 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let buffer = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
         let compressed = compress(buffer, "gzip")
         
-        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
-            if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+        do {
+            try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+        } catch {
+           if case .limit = error as? NIOHTTPDecompression.DecompressionError {
                 // Okay
             } else {
                 XCTFail("Unexptected error: \(error)")
@@ -112,8 +116,10 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
             )
             
-            XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed))) { error in
-                if case .limit = error as? NIOHTTPDecompression.DecompressionError {
+            do {
+                try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+            } catch {
+               if case .limit = error as? NIOHTTPDecompression.DecompressionError {
                     // Okay
                 } else {
                     XCTFail("Unexptected error: \(error)")
