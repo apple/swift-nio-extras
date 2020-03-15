@@ -195,7 +195,8 @@ class LineBasedFrameDecoderTest: XCTestCase {
             return buffer
         }
         
-        XCTAssertThrowsError(try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: [
+        do {
+            try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: [
             ("\n", [byteBuffer("")]),
             ("\r\n", [byteBuffer("")]),
             ("a\r\n", [byteBuffer("a")]),
@@ -204,11 +205,11 @@ class LineBasedFrameDecoderTest: XCTestCase {
             ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
                                                                  byteBuffer("Connection: close"),
                                                                  byteBuffer("")])
-        ]) {
+            ]){
             return LineBasedFrameDecoder()
-        }) { error in
+        }} catch {
             print(error)
-            XCTFail()
+            XCTFail("Unexptected error: \(error)")
         }
     }
 }
