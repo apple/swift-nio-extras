@@ -205,10 +205,9 @@ class LineBasedFrameDecoderTest: XCTestCase {
                 ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
                                                                      byteBuffer("Connection: close"),
                                                                      byteBuffer("")])
-                ]){
+            ]){
                 return LineBasedFrameDecoder()
             }
-
         } catch {
             print(error)
             XCTFail("Unexpected error: \(error)")
