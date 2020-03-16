@@ -211,7 +211,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
 
         } catch {
             print(error)
-            XCTFail("Unexptected error: \(error)")
+            XCTFail("Unexpected error: \(error)")
         }
     }
 }
