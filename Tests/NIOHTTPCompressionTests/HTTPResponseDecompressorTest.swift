@@ -41,12 +41,16 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch {
-            if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                // Okay
-            } else {
+        } catch let error as NIOHTTPDecompression.DecompressionError{
+            switch error {
+            case .limit:
+                // ok
+                break
+            default:
                 XCTFail("Unexptected error: \(error)")
             }
+        } catch {
+            XCTFail("Unexptected error: \(error)")
         }
     }
 
@@ -61,12 +65,16 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch {
-            if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                // Okay
-            } else {
+        } catch let error as NIOHTTPDecompression.DecompressionError{
+            switch error {
+            case .limit:
+                // ok
+                break
+            default:
                 XCTFail("Unexptected error: \(error)")
             }
+        } catch {
+            XCTFail("Unexptected error: \(error)")
         }
     }
 
@@ -94,12 +102,16 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
             do {
                 try channel.writeInbound(HTTPClientResponsePart.body(compressed))
-            } catch {
-                if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                    // Okay
-                } else {
+            } catch let error as NIOHTTPDecompression.DecompressionError{
+                switch error {
+                case .limit:
+                    // ok
+                    break
+                default:
                     XCTFail("Unexptected error: \(error)")
                 }
+            } catch {
+                XCTFail("Unexptected error: \(error)")
             }
         }
 

@@ -65,10 +65,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-        } catch {
-           if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                // Okay
-            } else {
+        } catch let error as NIOHTTPDecompression.DecompressionError {
+            switch error {
+            case .limit:
+                // ok
+            default:
                 XCTFail("Unexptected error: \(error)")
             }
         }
@@ -86,10 +87,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-        } catch {
-           if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                // Okay
-            } else {
+        } catch let error as NIOHTTPDecompression.DecompressionError {
+            switch error {
+            case .limit:
+                // ok
+            default:
                 XCTFail("Unexptected error: \(error)")
             }
         }
@@ -118,10 +120,11 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
             do {
                 try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-            } catch {
-               if case .some(.limit) = error as? NIOHTTPDecompression.DecompressionError {
-                    // Okay
-                } else {
+            } catch let error as NIOHTTPDecompression.DecompressionError {
+                switch error {
+                case .limit:
+                    // ok
+                default:
                     XCTFail("Unexptected error: \(error)")
                 }
             }
