@@ -525,7 +525,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
 
         XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
-        
+
         do {
             try writePromise.futureResult.wait()
         } catch {
