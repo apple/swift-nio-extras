@@ -69,6 +69,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
             switch error {
             case .limit:
                 // ok
+                break
             default:
                 XCTFail("Unexptected error: \(error)")
             }
@@ -91,6 +92,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
             switch error {
             case .limit:
                 // ok
+                break
             default:
                 XCTFail("Unexptected error: \(error)")
             }
@@ -124,6 +126,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 switch error {
                 case .limit:
                     // ok
+                    break
                 default:
                     XCTFail("Unexptected error: \(error)")
                 }

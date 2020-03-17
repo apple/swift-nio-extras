@@ -41,7 +41,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError{
+        } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -65,7 +65,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
-        } catch let error as NIOHTTPDecompression.DecompressionError{
+        } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
                 // ok
@@ -102,7 +102,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
             do {
                 try channel.writeInbound(HTTPClientResponsePart.body(compressed))
-            } catch let error as NIOHTTPDecompression.DecompressionError{
+            } catch let error as NIOHTTPDecompression.DecompressionError {
                 switch error {
                 case .limit:
                     // ok
