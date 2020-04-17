@@ -79,6 +79,7 @@ For the API documentation of the other repositories in the SwiftNIO family check
 - [`swift-nio` API docs](https://apple.github.io/swift-nio)
 - [`swift-nio-ssl` API docs](https://apple.github.io/swift-nio-ssl)
 - [`swift-nio-http2` API docs](https://apple.github.io/swift-nio-http2)
+- [`swift-nio-extras` API docs](https://apple.github.io/swift-nio-extras/docs/current/NIOExtras/index.html)
 
 EOF
 
