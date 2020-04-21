@@ -30,6 +30,7 @@ import XCTest
          testCase(DebugInboundEventsHandlerTest.allTests),
          testCase(DebugOutboundEventsHandlerTest.allTests),
          testCase(FixedLengthFrameDecoderTest.allTests),
+         testCase(HTTPRequestCompressorTest.allTests),
          testCase(HTTPRequestDecompressorTest.allTests),
          testCase(HTTPResponseCompressorTest.allTests),
          testCase(HTTPResponseDecompressorTest.allTests),

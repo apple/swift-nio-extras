@@ -63,20 +63,8 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     public typealias OutboundIn = HTTPServerResponsePart
     public typealias OutboundOut = HTTPServerResponsePart
 
-    public enum CompressionError: Error {
-        case uncompressedWritesPending
-        case noDataToWrite
-    }
-
-    fileprivate enum CompressionAlgorithm: String {
-        case gzip = "gzip"
-        case deflate = "deflate"
-    }
-
-    // Private variable for storing stream data.
-    private var stream = z_stream()
-
-    private var algorithm: CompressionAlgorithm?
+    private var compressor: HTTPCompression.Compressor
+    private var algorithm: HTTPCompression.CompressionAlgorithm?
 
     // A queue of accept headers.
     private var acceptQueue = CircularBuffer<[Substring]>(initialCapacity: 8)
@@ -88,6 +76,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
 
     public init(initialByteBufferCapacity: Int = 1024) {
         self.initialByteBufferCapacity = initialByteBufferCapacity
+        self.compressor = HTTPCompression.Compressor()
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -96,11 +85,8 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
-        pendingWritePromise?.fail(CompressionError.uncompressedWritesPending)
-        if algorithm != nil {
-            deinitializeEncoder()
-            algorithm = nil
-        }
+        pendingWritePromise?.fail(HTTPCompression.CompressionError.uncompressedWritesPending)
+        compressor.shutdownIfActive()
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -115,19 +101,18 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         let httpData = unwrapOutboundIn(data)
         switch httpData {
         case .head(var responseHead):
-            algorithm = compressionAlgorithm()
-            guard algorithm != nil else {
+            guard let algorithm = compressionAlgorithm() else {
                 context.write(wrapOutboundOut(.head(responseHead)), promise: promise)
                 return
             }
             // Previous handlers in the pipeline might have already set this header even though
             // they should not as it is compressor responsibility to decide what encoding to use
-            responseHead.headers.replaceOrAdd(name: "Content-Encoding", value: algorithm!.rawValue)
-            initializeEncoder(encoding: algorithm!)
+            responseHead.headers.replaceOrAdd(name: "Content-Encoding", value: algorithm.rawValue)
+            compressor.initialize(encoding: algorithm)
             pendingResponse.bufferResponseHead(responseHead)
             pendingWritePromise.futureResult.cascade(to: promise)
         case .body(let body):
-            if algorithm != nil {
+            if compressor.isActive {
                 pendingResponse.bufferBodyPart(body)
                 pendingWritePromise.futureResult.cascade(to: promise)
             } else {
@@ -136,7 +121,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         case .end:
             // This compress is not done in flush because we need to be done with the
             // compressor now.
-            guard algorithm != nil else {
+            guard compressor.isActive else {
                 context.write(data, promise: promise)
                 return
             }
@@ -144,8 +129,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
             pendingResponse.bufferResponseEnd(httpData)
             pendingWritePromise.futureResult.cascade(to: promise)
             emitPendingWrites(context: context)
-            algorithm = nil
-            deinitializeEncoder()
+            compressor.shutdown()
         }
     }
 
@@ -158,7 +142,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// Returns the compression algorithm to use, or nil if the next response
     /// should not be compressed.
-    private func compressionAlgorithm() -> CompressionAlgorithm? {
+    private func compressionAlgorithm() -> HTTPCompression.CompressionAlgorithm? {
         let acceptHeaders = acceptQueue.removeFirst()
 
         var gzipQValue: Float = -1
@@ -187,38 +171,12 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         return nil
     }
 
-    /// Set up the encoder for compressing data according to a specific
-    /// algorithm.
-    private func initializeEncoder(encoding: CompressionAlgorithm) {
-        // zlib docs say: The application must initialize zalloc, zfree and opaque before calling the init function.
-        stream.zalloc = nil
-        stream.zfree = nil
-        stream.opaque = nil
-
-        let windowBits: Int32
-        switch encoding {
-        case .deflate:
-            windowBits = 15
-        case .gzip:
-            windowBits = 16 + 15
-        }
-
-        let rc = CNIOExtrasZlib_deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowBits, 8, Z_DEFAULT_STRATEGY)
-        precondition(rc == Z_OK, "Unexpected return from zlib init: \(rc)")
-    }
-
-    private func deinitializeEncoder() {
-        // We deliberately discard the result here because we just want to free up
-        // the pending data.
-        deflateEnd(&stream)
-    }
-
     /// Emits all pending buffered writes to the network, optionally compressing the
     /// data. Resets the pending write buffer and promise.
     ///
     /// Called either when a HTTP end message is received or our flush() method is called.
     private func emitPendingWrites(context: ChannelHandlerContext) {
-        let writesToEmit = pendingResponse.flush(compressor: &stream, allocator: context.channel.allocator)
+        let writesToEmit = pendingResponse.flush(compressor: &compressor, allocator: context.channel.allocator)
         var pendingPromise = pendingWritePromise
 
         if let writeHead = writesToEmit.0 {
@@ -239,7 +197,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         // If we still have the pending promise, we never emitted a write. Fail the promise,
         // as anything that is listening for its data somehow lost it.
         if let stillPendingPromise = pendingPromise {
-            stillPendingPromise.fail(CompressionError.noDataToWrite)
+            stillPendingPromise.fail(HTTPCompression.CompressionError.noDataToWrite)
         }
 
         // Reset the pending promise.
@@ -302,7 +260,7 @@ private struct PartialHTTPResponse {
         body.reserveCapacity(initialBufferSize)
     }
 
-    mutating private func compressBody(compressor: inout z_stream, allocator: ByteBufferAllocator, flag: Int32) -> ByteBuffer? {
+    /*mutating private func compressBody(compressor: inout z_stream, allocator: ByteBufferAllocator, flag: Int32) -> ByteBuffer? {
         guard body.readableBytes > 0 else {
             return nil
         }
@@ -318,7 +276,7 @@ private struct PartialHTTPResponse {
         precondition(body.readableBytes == 0)
         precondition(outputBuffer.readableBytes > 0)
         return outputBuffer
-    }
+    }*/
 
     /// Flushes the buffered data into its constituent parts.
     ///
@@ -333,66 +291,24 @@ private struct PartialHTTPResponse {
     ///
     /// Calling this function resets the buffer, freeing any excess memory allocated in the internal
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
-    mutating func flush(compressor: inout z_stream, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
-        let flag = mustFlush ? Z_FINISH : Z_SYNC_FLUSH
-
-        let body = compressBody(compressor: &compressor, allocator: allocator, flag: flag)
-        if let bodyLength = body?.readableBytes, isCompleteResponse && bodyLength > 0 {
-            head!.headers.remove(name: "transfer-encoding")
-            head!.headers.replaceOrAdd(name: "content-length", value: "\(bodyLength)")
-        } else if head != nil && head!.status.mayHaveResponseBody {
-            head!.headers.remove(name: "content-length")
-            head!.headers.replaceOrAdd(name: "transfer-encoding", value: "chunked")
+    mutating func flush(compressor: inout HTTPCompression.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
+        var outputBody: ByteBuffer? = nil
+        if self.body.readableBytes > 0 {
+            let compressedBody = compressor.compress(inputBuffer: &self.body, allocator: allocator, finalise: mustFlush)
+            if isCompleteResponse {
+                head!.headers.remove(name: "transfer-encoding")
+                head!.headers.replaceOrAdd(name: "content-length", value: "\(compressedBody.readableBytes)")
+            }
+            else if head != nil && head!.status.mayHaveResponseBody {
+                head!.headers.remove(name: "content-length")
+                head!.headers.replaceOrAdd(name: "transfer-encoding", value: "chunked")
+            }
+            outputBody = compressedBody
         }
 
-        let response = (head, body, end)
+        let response = (head, outputBody, end)
         clear()
         return response
     }
 }
 
-private extension z_stream {
-    /// Executes deflate from one buffer to another buffer. The advantage of this method is that it
-    /// will ensure that the stream is "safe" after each call (that is, that the stream does not have
-    /// pointers to byte buffers any longer).
-    mutating func oneShotDeflate(from: inout ByteBuffer, to: inout ByteBuffer, flag: Int32) {
-        defer {
-            self.avail_in = 0
-            self.next_in = nil
-            self.avail_out = 0
-            self.next_out = nil
-        }
-
-        from.readWithUnsafeMutableReadableBytes { dataPtr in
-            let typedPtr = dataPtr.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            let typedDataPtr = UnsafeMutableBufferPointer(start: typedPtr,
-                                                          count: dataPtr.count)
-
-            self.avail_in = UInt32(typedDataPtr.count)
-            self.next_in = typedDataPtr.baseAddress!
-
-            let rc = deflateToBuffer(buffer: &to, flag: flag)
-            precondition(rc == Z_OK || rc == Z_STREAM_END, "One-shot compression failed: \(rc)")
-
-            return typedDataPtr.count - Int(self.avail_in)
-        }
-    }
-
-    /// A private function that sets the deflate target buffer and then calls deflate.
-    /// This relies on having the input set by the previous caller: it will use whatever input was
-    /// configured.
-    private mutating func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
-        var rc = Z_OK
-
-        buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: buffer.capacity) { outputPtr in
-            let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
-                                                            count: outputPtr.count)
-            self.avail_out = UInt32(typedOutputPtr.count)
-            self.next_out = typedOutputPtr.baseAddress!
-            rc = deflate(&self, flag)
-            return typedOutputPtr.count - Int(self.avail_out)
-        }
-
-        return rc
-    }
-}
