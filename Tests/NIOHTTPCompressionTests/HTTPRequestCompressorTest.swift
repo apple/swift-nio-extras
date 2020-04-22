@@ -72,13 +72,15 @@ class HTTPRequestCompressorTest: XCTestCase {
         try promiseArray.waitUntilComplete()
     }
 
-    func read(from channel: EmbeddedChannel) throws -> ByteBuffer {
+    func read(from channel: EmbeddedChannel) throws -> (head: HTTPRequestHead, body: ByteBuffer) {
+        var requestHead: HTTPRequestHead!
         var byteBuffer = channel.allocator.buffer(capacity: 0)
         channel.pipeline.read()
         loop: while let requestPart: HTTPClientRequestPart = try channel.readOutbound() {
             switch requestPart {
-            case .head(_):
-                break
+            case .head(let head):
+                requestHead = head
+
             case .body(let data):
                 if case .byteBuffer(var buffer) = data {
                     byteBuffer.writeBuffer(&buffer)
@@ -87,7 +89,7 @@ class HTTPRequestCompressorTest: XCTestCase {
                 break loop
             }
         }
-        return byteBuffer
+        return (head: requestHead, body: byteBuffer)
     }
     
     func readVerifyPart(from channel: EmbeddedChannel, verify: (HTTPClientRequestPart)->()) throws {
@@ -133,9 +135,10 @@ class HTTPRequestCompressorTest: XCTestCase {
         _ = try write(body: [buffer], to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffer, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
 
     func testMultipleBuffers() throws {
@@ -154,9 +157,10 @@ class HTTPRequestCompressorTest: XCTestCase {
         try write(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
     
     func testMultipleBuffersDeflate() throws {
@@ -175,9 +179,10 @@ class HTTPRequestCompressorTest: XCTestCase {
         try write(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressDeflate(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressDeflate(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "deflate")
     }
     
     func testMultipleBuffersWithFlushes() throws {
@@ -196,9 +201,12 @@ class HTTPRequestCompressorTest: XCTestCase {
         try writeWithIntermittantFlush(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
+        XCTAssertEqual(result.head.headers["transfer-encoding"].first, "chunked")
+        XCTAssertNil(result.head.headers["content-size"].first)
     }
 
     func testFlushAfterHead() throws {
@@ -219,9 +227,10 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffer, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
     
     func testFlushBeforeEnd() throws {
@@ -242,9 +251,10 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffer, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
     
     func testDoubleFlush() throws {
@@ -266,9 +276,10 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result, outputBuffer: &uncompressedBuffer)
+        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
         
         XCTAssertEqual(buffer, uncompressedBuffer)
+        XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
     
     func testNoBody() throws {

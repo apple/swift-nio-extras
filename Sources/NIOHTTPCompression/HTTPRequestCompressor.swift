@@ -140,6 +140,8 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     public func flush(context: ChannelHandlerContext) {
         switch state {
         case .head(var head):
+            // given we are flushing the head now we have to assume we have a body and set Content-Encoding
+            head.headers.replaceOrAdd(name: "Content-Encoding", value: self.encoding.description)
             head.headers.remove(name: "Content-Length")
             head.headers.replaceOrAdd(name: "Transfer-Encoding", value: "chunked")
             context.write(wrapOutboundOut(.head(head)), promise: pendingWritePromise)
