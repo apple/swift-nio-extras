@@ -76,12 +76,20 @@ public enum NIOHTTPCompressionSettings {
         mutating func compress(inputBuffer: inout ByteBuffer, allocator: ByteBufferAllocator, finalise: Bool) -> ByteBuffer {
             assert(isActive)
             let flags = finalise ? Z_FINISH : Z_SYNC_FLUSH
+            // don't compress an empty buffer if we aren't finishing the compress
             guard inputBuffer.readableBytes > 0 || finalise == true else { return allocator.buffer(capacity: 0) }
             // deflateBound() provides an upper limit on the number of bytes the input can
             // compress to. We add 5 bytes to handle the fact that Z_SYNC_FLUSH will append
             // an empty stored block that is 5 bytes long.
+            // From zlib docs (https://www.zlib.net/manual.html)
+            // If the parameter flush is set to Z_SYNC_FLUSH, all pending output is flushed to the output buffer and the output is
+            // aligned on a byte boundary, so that the decompressor can get all input data available so far. (In particular avail_in
+            // is zero after the call if enough output space has been provided before the call.) Flushing may degrade compression for
+            // some compression algorithms and so it should be used only when necessary. This completes the current deflate block and
+            // follows it with an empty stored block that is three bits plus filler bits to the next byte, followed by four bytes
+            // (00 00 ff ff).
             let bufferSize = Int(deflateBound(&stream, UInt(inputBuffer.readableBytes)))
-            var outputBuffer = allocator.buffer(capacity: bufferSize)
+            var outputBuffer = allocator.buffer(capacity: bufferSize + 5)
             stream.oneShotDeflate(from: &inputBuffer, to: &outputBuffer, flag: flags)
             return outputBuffer
         }
