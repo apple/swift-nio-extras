@@ -63,8 +63,14 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     public typealias OutboundIn = HTTPServerResponsePart
     public typealias OutboundOut = HTTPServerResponsePart
 
-    private var compressor: HTTPCompression.Compressor
-    private var algorithm: HTTPCompression.CompressionAlgorithm?
+
+    public enum CompressionError: Error {
+        case uncompressedWritesPending
+        case noDataToWrite
+    }
+    
+    private var compressor: NIOHTTPCompressionSettings.Compressor
+    private var algorithm: NIOHTTPCompressionSettings.CompressionAlgorithm?
 
     // A queue of accept headers.
     private var acceptQueue = CircularBuffer<[Substring]>(initialCapacity: 8)
@@ -76,7 +82,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
 
     public init(initialByteBufferCapacity: Int = 1024) {
         self.initialByteBufferCapacity = initialByteBufferCapacity
-        self.compressor = HTTPCompression.Compressor()
+        self.compressor = NIOHTTPCompressionSettings.Compressor()
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -85,7 +91,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
-        pendingWritePromise?.fail(HTTPCompression.CompressionError.uncompressedWritesPending)
+        pendingWritePromise?.fail(CompressionError.uncompressedWritesPending)
         compressor.shutdownIfActive()
     }
 
@@ -107,7 +113,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
             }
             // Previous handlers in the pipeline might have already set this header even though
             // they should not as it is compressor responsibility to decide what encoding to use
-            responseHead.headers.replaceOrAdd(name: "Content-Encoding", value: algorithm.rawValue)
+            responseHead.headers.replaceOrAdd(name: "Content-Encoding", value: algorithm.description)
             compressor.initialize(encoding: algorithm)
             pendingResponse.bufferResponseHead(responseHead)
             pendingWritePromise.futureResult.cascade(to: promise)
@@ -142,7 +148,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// Returns the compression algorithm to use, or nil if the next response
     /// should not be compressed.
-    private func compressionAlgorithm() -> HTTPCompression.CompressionAlgorithm? {
+    private func compressionAlgorithm() -> NIOHTTPCompressionSettings.CompressionAlgorithm? {
         let acceptHeaders = acceptQueue.removeFirst()
 
         var gzipQValue: Float = -1
@@ -197,7 +203,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         // If we still have the pending promise, we never emitted a write. Fail the promise,
         // as anything that is listening for its data somehow lost it.
         if let stillPendingPromise = pendingPromise {
-            stillPendingPromise.fail(HTTPCompression.CompressionError.noDataToWrite)
+            stillPendingPromise.fail(CompressionError.noDataToWrite)
         }
 
         // Reset the pending promise.
@@ -260,24 +266,6 @@ private struct PartialHTTPResponse {
         body.reserveCapacity(initialBufferSize)
     }
 
-    /*mutating private func compressBody(compressor: inout z_stream, allocator: ByteBufferAllocator, flag: Int32) -> ByteBuffer? {
-        guard body.readableBytes > 0 else {
-            return nil
-        }
-
-        // deflateBound() provides an upper limit on the number of bytes the input can
-        // compress to. We add 5 bytes to handle the fact that Z_SYNC_FLUSH will append
-        // an empty stored block that is 5 bytes long.
-        let bufferSize = Int(deflateBound(&compressor, UInt(body.readableBytes)))
-        var outputBuffer = allocator.buffer(capacity: bufferSize)
-
-        // Now do the one-shot compression. All the data should have been consumed.
-        compressor.oneShotDeflate(from: &body, to: &outputBuffer, flag: flag)
-        precondition(body.readableBytes == 0)
-        precondition(outputBuffer.readableBytes > 0)
-        return outputBuffer
-    }*/
-
     /// Flushes the buffered data into its constituent parts.
     ///
     /// Returns a three-tuple of a HTTP response head, compressed body bytes, and any end that
@@ -291,7 +279,7 @@ private struct PartialHTTPResponse {
     ///
     /// Calling this function resets the buffer, freeing any excess memory allocated in the internal
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
-    mutating func flush(compressor: inout HTTPCompression.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
+    mutating func flush(compressor: inout NIOHTTPCompressionSettings.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
         var outputBody: ByteBuffer? = nil
         if self.body.readableBytes > 0 {
             let compressedBody = compressor.compress(inputBuffer: &self.body, allocator: allocator, finalise: mustFlush)

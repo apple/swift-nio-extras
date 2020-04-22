@@ -16,7 +16,17 @@ import CNIOExtrasZlib
 import NIO
 import NIOHTTP1
 
-public final class HTTPRequestCompressor: ChannelOutboundHandler, RemovableChannelHandler {
+/// A HTTPResponseCompressor is a outbound channel handler that handles automatic streaming compression of
+/// HTTP requests.
+///
+/// This compressor supports gzip and deflate. It works best if many writes are made between flushes.
+///
+/// Note that this compressor performs the compression on the event loop thread. This means that compressing
+/// some resources, particularly those that do not benefit from compression or that could have been compressed
+/// ahead-of-time instead of dynamically, could be a waste of CPU time and latency for relatively minimal
+/// benefit. This channel handler should be present in the pipeline only for dynamically-generated and
+/// highly-compressible content, which will see the biggest benefits from streaming compression.
+public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableChannelHandler {
     public typealias OutboundIn = HTTPClientRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
@@ -35,20 +45,20 @@ public final class HTTPRequestCompressor: ChannelOutboundHandler, RemovableChann
     }
 
     /// encoding algorithm to use
-    var encoding: HTTPCompression.CompressionAlgorithm
+    var encoding: NIOHTTPCompressionSettings.CompressionAlgorithm
     /// handler state
     var state: State
     /// compression handler
-    var compressor: HTTPCompression.Compressor
+    var compressor: NIOHTTPCompressionSettings.Compressor
     /// pending write promise
     var pendingWritePromise: EventLoopPromise<Void>!
     
     /// Initialize a NIOHTTPRequestCompressor
     /// - Parameter encoding: Compression algorithm to use
-    public init(encoding: HTTPCompression.CompressionAlgorithm) {
+    public init(encoding: NIOHTTPCompressionSettings.CompressionAlgorithm) {
         self.encoding = encoding
         self.state = .idle
-        self.compressor = HTTPCompression.Compressor()
+        self.compressor = NIOHTTPCompressionSettings.Compressor()
     }
     
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -56,7 +66,7 @@ public final class HTTPRequestCompressor: ChannelOutboundHandler, RemovableChann
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
-        pendingWritePromise.fail(HTTPCompression.CompressionError.uncompressedWritesPending)
+        pendingWritePromise.fail(NIOHTTPCompressionSettings.CompressionError.uncompressedWritesPending)
         compressor.shutdownIfActive()
     }
 
@@ -85,7 +95,7 @@ public final class HTTPRequestCompressor: ChannelOutboundHandler, RemovableChann
                 // We only have a head, this is the first body part
                 guard case .byteBuffer(let part) = buffer else { preconditionFailure("Expected a ByteBuffer") }
                 // now we have a body lets add the content-encoding header
-                head.headers.replaceOrAdd(name: "Content-Encoding", value: self.encoding.rawValue)
+                head.headers.replaceOrAdd(name: "Content-Encoding", value: self.encoding.description)
                 state = .body(head, part)
             case .body(let head, var body):
                 // we have a head and a body, extend the body with this body part

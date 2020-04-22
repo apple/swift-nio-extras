@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2020 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,92 +18,12 @@ import NIO
 import NIOHTTP1
 @testable import NIOHTTPCompression
 
-struct PromiseArray {
-    var promises: [EventLoopPromise<Void>]
-    let eventLoop: EventLoop
-    
-    init(on eventLoop: EventLoop) {
-        self.promises = []
-        self.eventLoop = eventLoop
-    }
-    
-    mutating func makePromise() -> EventLoopPromise<Void> {
-        let promise: EventLoopPromise<Void> = eventLoop.makePromise()
-        self.promises.append(promise)
-        return promise
-    }
-    
-    func waitUntilComplete() throws {
-        let resultFutures = promises.map { $0.futureResult }
-        _ = try EventLoopFuture.whenAllComplete(resultFutures, on: eventLoop).wait()
-    }
-}
-
-private extension ByteBuffer {
-    @discardableResult
-    mutating func withUnsafeMutableReadableUInt8Bytes<T>(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> T) rethrows -> T {
-        return try self.withUnsafeMutableReadableBytes { (ptr: UnsafeMutableRawBufferPointer) -> T in
-            let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
-            return try body(inputBufferPointer)
-        }
-    }
-
-    @discardableResult
-    mutating func writeWithUnsafeMutableUInt8Bytes(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Int) rethrows -> Int {
-        return try self.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { (ptr: UnsafeMutableRawBufferPointer) -> Int in
-            let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
-            return try body(inputBufferPointer)
-        }
-    }
-}
-
-private extension z_stream {
-    static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
-        decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 15)
-    }
-
-    static func decompressGzip(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
-        decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 16 + 15)
-    }
-
-    private static func decompress(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer, windowSize: Int32) {
-        compressedBytes.withUnsafeMutableReadableUInt8Bytes { inputPointer in
-            outputBuffer.writeWithUnsafeMutableUInt8Bytes { outputPointer -> Int in
-                var stream = z_stream()
-
-                // zlib requires we initialize next_in, avail_in, zalloc, zfree and opaque before calling inflateInit2.
-                stream.next_in = inputPointer.baseAddress!
-                stream.avail_in = UInt32(inputPointer.count)
-                stream.next_out = outputPointer.baseAddress!
-                stream.avail_out = UInt32(outputPointer.count)
-                stream.zalloc = nil
-                stream.zfree = nil
-                stream.opaque = nil
-
-                var rc = CNIOExtrasZlib_inflateInit2(&stream, windowSize)
-                precondition(rc == Z_OK)
-
-                rc = inflate(&stream, Z_FINISH)
-                XCTAssertEqual(rc, Z_STREAM_END)
-                XCTAssertEqual(stream.avail_in, 0)
-
-                rc = inflateEnd(&stream)
-                XCTAssertEqual(rc, Z_OK)
-
-                return outputPointer.count - Int(stream.avail_out)
-            }
-        }
-    }
-}
-
 class HTTPRequestCompressorTest: XCTestCase {
     
-    func compressionChannel(_ compression: HTTPCompression.CompressionAlgorithm = .gzip) throws -> EmbeddedChannel {
+    func compressionChannel(_ compression: NIOHTTPCompressionSettings.CompressionAlgorithm = .gzip) throws -> EmbeddedChannel {
         let channel = EmbeddedChannel()
         //XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPRequestEncoder(), name: "encoder").wait())
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPRequestCompressor(encoding: compression), name: "compressor").wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPRequestCompressor(encoding: compression), name: "compressor").wait())
         return channel
     }
     
@@ -369,6 +289,86 @@ class HTTPRequestCompressorTest: XCTestCase {
                 XCTFail("Shouldn't return a body")
             case .end:
                 break
+            }
+        }
+    }
+}
+
+struct PromiseArray {
+    var promises: [EventLoopPromise<Void>]
+    let eventLoop: EventLoop
+    
+    init(on eventLoop: EventLoop) {
+        self.promises = []
+        self.eventLoop = eventLoop
+    }
+    
+    mutating func makePromise() -> EventLoopPromise<Void> {
+        let promise: EventLoopPromise<Void> = eventLoop.makePromise()
+        self.promises.append(promise)
+        return promise
+    }
+    
+    func waitUntilComplete() throws {
+        let resultFutures = promises.map { $0.futureResult }
+        _ = try EventLoopFuture.whenAllComplete(resultFutures, on: eventLoop).wait()
+    }
+}
+
+private extension ByteBuffer {
+    @discardableResult
+    mutating func withUnsafeMutableReadableUInt8Bytes<T>(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> T) rethrows -> T {
+        return try self.withUnsafeMutableReadableBytes { (ptr: UnsafeMutableRawBufferPointer) -> T in
+            let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
+            let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
+            return try body(inputBufferPointer)
+        }
+    }
+
+    @discardableResult
+    mutating func writeWithUnsafeMutableUInt8Bytes(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Int) rethrows -> Int {
+        return try self.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { (ptr: UnsafeMutableRawBufferPointer) -> Int in
+            let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
+            let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
+            return try body(inputBufferPointer)
+        }
+    }
+}
+
+private extension z_stream {
+    static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
+        decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 15)
+    }
+
+    static func decompressGzip(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
+        decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 16 + 15)
+    }
+
+    private static func decompress(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer, windowSize: Int32) {
+        compressedBytes.withUnsafeMutableReadableUInt8Bytes { inputPointer in
+            outputBuffer.writeWithUnsafeMutableUInt8Bytes { outputPointer -> Int in
+                var stream = z_stream()
+
+                // zlib requires we initialize next_in, avail_in, zalloc, zfree and opaque before calling inflateInit2.
+                stream.next_in = inputPointer.baseAddress!
+                stream.avail_in = UInt32(inputPointer.count)
+                stream.next_out = outputPointer.baseAddress!
+                stream.avail_out = UInt32(outputPointer.count)
+                stream.zalloc = nil
+                stream.zfree = nil
+                stream.opaque = nil
+
+                var rc = CNIOExtrasZlib_inflateInit2(&stream, windowSize)
+                precondition(rc == Z_OK)
+
+                rc = inflate(&stream, Z_FINISH)
+                XCTAssertEqual(rc, Z_STREAM_END)
+                XCTAssertEqual(stream.avail_in, 0)
+
+                rc = inflateEnd(&stream)
+                XCTAssertEqual(rc, Z_OK)
+
+                return outputPointer.count - Int(stream.avail_out)
             }
         }
     }

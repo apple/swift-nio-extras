@@ -15,18 +15,36 @@
 import CNIOExtrasZlib
 import NIO
 
-public enum HTTPCompression {
+public enum NIOHTTPCompressionSettings {
 
-    public enum CompressionAlgorithm: String {
-        case gzip
-        case deflate
+    public struct CompressionAlgorithm: CustomStringConvertible {
+        enum Algorithm: String {
+            case gzip
+            case deflate
+        }
+        let algorithm: Algorithm
+        
+        /// return as String
+        public var description: String { return algorithm.rawValue }
+        
+        public static var gzip = CompressionAlgorithm(algorithm: .gzip)
+        public static var deflate = CompressionAlgorithm(algorithm: .deflate)
     }
-    
-    public enum CompressionError: Error {
-        case uncompressedWritesPending
-        case noDataToWrite
+        
+    public struct CompressionError: Error, CustomStringConvertible, Equatable {
+        enum ErrorType: String {
+            case uncompressedWritesPending
+            case noDataToWrite
+        }
+        let error: ErrorType
+        
+        /// return as String
+        public var description: String { return error.rawValue }
+        
+        public static var uncompressedWritesPending = CompressionError(error: .uncompressedWritesPending)
+        public static var noDataToWrite = CompressionError(error: .noDataToWrite)
     }
-
+        
     struct Compressor {
         private var stream = z_stream()
         var isActive = false
@@ -44,7 +62,7 @@ public enum HTTPCompression {
             stream.opaque = nil
 
             let windowBits: Int32
-            switch encoding {
+            switch encoding.algorithm {
             case .deflate:
                 windowBits = 15
             case .gzip:

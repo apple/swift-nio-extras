@@ -516,7 +516,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTFail("Write succeeded")
         }.whenFailure { err in
             switch err {
-            case HTTPCompression.CompressionError.uncompressedWritesPending:
+            case HTTPResponseCompressor.CompressionError.uncompressedWritesPending:
                 ()
                 // ok
             default:
