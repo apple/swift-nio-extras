@@ -27,8 +27,8 @@ public enum NIOHTTPCompressionSettings {
         /// return as String
         public var description: String { return algorithm.rawValue }
         
-        public static var gzip = CompressionAlgorithm(algorithm: .gzip)
-        public static var deflate = CompressionAlgorithm(algorithm: .deflate)
+        public static let gzip = CompressionAlgorithm(algorithm: .gzip)
+        public static let deflate = CompressionAlgorithm(algorithm: .deflate)
     }
         
     public struct CompressionError: Error, CustomStringConvertible, Equatable {
@@ -41,8 +41,8 @@ public enum NIOHTTPCompressionSettings {
         /// return as String
         public var description: String { return error.rawValue }
         
-        public static var uncompressedWritesPending = CompressionError(error: .uncompressedWritesPending)
-        public static var noDataToWrite = CompressionError(error: .noDataToWrite)
+        public static let uncompressedWritesPending = CompressionError(error: .uncompressedWritesPending)
+        public static let noDataToWrite = CompressionError(error: .noDataToWrite)
     }
         
     struct Compressor {
