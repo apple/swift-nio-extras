@@ -45,20 +45,20 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     }
 
     /// encoding algorithm to use
-    var encoding: NIOHTTPCompressionSettings.CompressionAlgorithm
+    var encoding: NIOCompression.Algorithm
     /// handler state
     var state: State
     /// compression handler
-    var compressor: NIOHTTPCompressionSettings.Compressor
+    var compressor: NIOCompression.Compressor
     /// pending write promise
     var pendingWritePromise: EventLoopPromise<Void>!
     
     /// Initialize a NIOHTTPRequestCompressor
     /// - Parameter encoding: Compression algorithm to use
-    public init(encoding: NIOHTTPCompressionSettings.CompressionAlgorithm) {
+    public init(encoding: NIOCompression.Algorithm) {
         self.encoding = encoding
         self.state = .idle
-        self.compressor = NIOHTTPCompressionSettings.Compressor()
+        self.compressor = NIOCompression.Compressor()
     }
     
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -66,7 +66,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
-        pendingWritePromise.fail(NIOHTTPCompressionSettings.CompressionError.uncompressedWritesPending)
+        pendingWritePromise.fail(NIOCompression.Error.uncompressedWritesPending)
         compressor.shutdownIfActive()
     }
 

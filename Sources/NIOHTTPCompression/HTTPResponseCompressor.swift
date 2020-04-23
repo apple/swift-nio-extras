@@ -69,8 +69,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         case noDataToWrite
     }
     
-    private var compressor: NIOHTTPCompressionSettings.Compressor
-    private var algorithm: NIOHTTPCompressionSettings.CompressionAlgorithm?
+    private var compressor: NIOCompression.Compressor
 
     // A queue of accept headers.
     private var acceptQueue = CircularBuffer<[Substring]>(initialCapacity: 8)
@@ -82,7 +81,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
 
     public init(initialByteBufferCapacity: Int = 1024) {
         self.initialByteBufferCapacity = initialByteBufferCapacity
-        self.compressor = NIOHTTPCompressionSettings.Compressor()
+        self.compressor = NIOCompression.Compressor()
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
@@ -148,7 +147,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// Returns the compression algorithm to use, or nil if the next response
     /// should not be compressed.
-    private func compressionAlgorithm() -> NIOHTTPCompressionSettings.CompressionAlgorithm? {
+    private func compressionAlgorithm() -> NIOCompression.Algorithm? {
         let acceptHeaders = acceptQueue.removeFirst()
 
         var gzipQValue: Float = -1
@@ -279,7 +278,7 @@ private struct PartialHTTPResponse {
     ///
     /// Calling this function resets the buffer, freeing any excess memory allocated in the internal
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
-    mutating func flush(compressor: inout NIOHTTPCompressionSettings.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
+    mutating func flush(compressor: inout NIOCompression.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
         var outputBody: ByteBuffer? = nil
         if self.body.readableBytes > 0 {
             let compressedBody = compressor.compress(inputBuffer: &self.body, allocator: allocator, finalise: mustFlush)

@@ -15,34 +15,34 @@
 import CNIOExtrasZlib
 import NIO
 
-public enum NIOHTTPCompressionSettings {
+public enum NIOCompression {
 
-    public struct CompressionAlgorithm: CustomStringConvertible {
-        enum Algorithm: String {
+    public struct Algorithm: CustomStringConvertible, Equatable {
+        fileprivate enum AlgorithmEnum: String {
             case gzip
             case deflate
         }
-        let algorithm: Algorithm
+        fileprivate let algorithm: AlgorithmEnum
         
         /// return as String
         public var description: String { return algorithm.rawValue }
         
-        public static let gzip = CompressionAlgorithm(algorithm: .gzip)
-        public static let deflate = CompressionAlgorithm(algorithm: .deflate)
+        public static let gzip = Algorithm(algorithm: .gzip)
+        public static let deflate = Algorithm(algorithm: .deflate)
     }
         
-    public struct CompressionError: Error, CustomStringConvertible, Equatable {
-        enum ErrorType: String {
+    public struct Error: Swift.Error, CustomStringConvertible, Equatable {
+        fileprivate enum ErrorEnum: String {
             case uncompressedWritesPending
             case noDataToWrite
         }
-        let error: ErrorType
+        fileprivate let error: ErrorEnum
         
         /// return as String
         public var description: String { return error.rawValue }
         
-        public static let uncompressedWritesPending = CompressionError(error: .uncompressedWritesPending)
-        public static let noDataToWrite = CompressionError(error: .noDataToWrite)
+        public static let uncompressedWritesPending = Error(error: .uncompressedWritesPending)
+        public static let noDataToWrite = Error(error: .noDataToWrite)
     }
         
     struct Compressor {
@@ -53,7 +53,7 @@ public enum NIOHTTPCompressionSettings {
 
         /// Set up the encoder for compressing data according to a specific
         /// algorithm.
-        mutating func initialize(encoding: CompressionAlgorithm) {
+        mutating func initialize(encoding: Algorithm) {
             assert(!isActive)
             isActive = true
             // zlib docs say: The application must initialize zalloc, zfree and opaque before calling the init function.
