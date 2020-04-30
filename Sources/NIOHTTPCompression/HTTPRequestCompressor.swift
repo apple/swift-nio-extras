@@ -16,7 +16,7 @@ import CNIOExtrasZlib
 import NIO
 import NIOHTTP1
 
-/// A HTTPResponseCompressor is a outbound channel handler that handles automatic streaming compression of
+/// NIOHTTPResponseCompressor is an outbound channel handler that handles automatic streaming compression of
 /// HTTP requests.
 ///
 /// This compressor supports gzip and deflate. It works best if many writes are made between flushes.
@@ -34,7 +34,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     enum State {
         /// handler hasn't started
         case idle
-        /// handler has recived a head
+        /// handler has received a head
         case head(HTTPRequestHead)
         /// handler has received a head and a body, but hasnt written anything yet
         case body(HTTPRequestHead, ByteBuffer)
