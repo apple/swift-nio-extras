@@ -35,6 +35,7 @@ extension HTTPRequestCompressorTest {
                 ("testFlushAfterHead", testFlushAfterHead),
                 ("testFlushBeforeEnd", testFlushBeforeEnd),
                 ("testDoubleFlush", testDoubleFlush),
+                ("testNoBody", testNoBody),
            ]
    }
 }
