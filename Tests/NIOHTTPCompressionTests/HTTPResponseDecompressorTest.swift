@@ -41,6 +41,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
+            XCTFail("writeInbound should fail")
         } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
@@ -56,7 +57,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSize() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(10))).wait()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(15))).wait()
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
         try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
@@ -65,6 +66,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         do {
             try channel.writeInbound(HTTPClientResponsePart.body(body))
+            XCTFail("writeInbound should fail")
         } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
@@ -99,20 +101,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
             headers.add(name: "Content-Length", value: "\(compressed.readableBytes)")
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
-
-            do {
-                try channel.writeInbound(HTTPClientResponsePart.body(compressed))
-            } catch let error as NIOHTTPDecompression.DecompressionError {
-                switch error {
-                case .limit:
-                    // ok
-                    break
-                default:
-                    XCTFail("Unexptected error: \(error)")
-                }
-            } catch {
-                XCTFail("Unexptected error: \(error)")
-            }
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
         }
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
