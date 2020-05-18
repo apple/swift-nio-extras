@@ -40,6 +40,7 @@ extension WritePCAPHandlerTest {
                 ("testUnflushedOutboundDataIsNotWritten", testUnflushedOutboundDataIsNotWritten),
                 ("testDataWrittenAfterCloseIsDiscarded", testDataWrittenAfterCloseIsDiscarded),
                 ("testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue", testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue),
+                ("testWeDoNotCrashIfMoreThan4GBOfDataGoThrough", testWeDoNotCrashIfMoreThan4GBOfDataGoThrough),
            ]
    }
 }

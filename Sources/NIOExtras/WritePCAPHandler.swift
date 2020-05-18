@@ -42,8 +42,8 @@ struct TCPHeader {
     }
 
     var flags: Flags
-    var ackNumber: Int?
-    var sequenceNumber: Int
+    var ackNumber: UInt32?
+    var sequenceNumber: UInt32
     var srcPort: UInt16
     var dstPort: UInt16
 }
@@ -174,8 +174,8 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     private let maxPayloadSize = Int(UInt16.max - 40 /* needs to fit into the IPv4 header which adds 40 */)
     private let settings: Settings
     private var buffer: ByteBuffer!
-    private var readInboundBytes = 0
-    private var writtenOutboundBytes = 0
+    private var readInboundBytes: UInt64 = 0
+    private var writtenOutboundBytes: UInt64 = 0
     private var closeState = CloseState.notClosing
 
     private static let fakeLocalAddress = try! SocketAddress(ipAddress: "111.111.111.111", port: 1111)
@@ -283,6 +283,10 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         
         return buffer.readSlice(length: min(buffer.readableBytes, self.maxPayloadSize))
     }
+
+    private func sequenceNumber(byteCount: UInt64) -> UInt32 {
+        return UInt32(byteCount % (UInt64(UInt32.max) + 1))
+    }
 }
 
 extension NIOWritePCAPHandler: ChannelDuplexHandler {
@@ -349,8 +353,10 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
         do {
             let closeInitiatorAddress = didLocalInitiateTheClose ? self.localAddress(context: context) : self.remoteAddress(context: context)
             let closeRecipientAddress = didLocalInitiateTheClose ? self.remoteAddress(context: context) : self.localAddress(context: context)
-            let initiatorSeq = didLocalInitiateTheClose ? self.writtenOutboundBytes : self.readInboundBytes
-            let recipientSeq = didLocalInitiateTheClose ? self.readInboundBytes : self.writtenOutboundBytes
+            let initiatorSeq = self.sequenceNumber(byteCount: didLocalInitiateTheClose ?
+                                                    self.writtenOutboundBytes : self.readInboundBytes)
+            let recipientSeq = self.sequenceNumber(byteCount: didLocalInitiateTheClose ?
+                                                    self.readInboundBytes : self.writtenOutboundBytes)
             
             // terminate the connection cleanly
             try self.buffer.writePCAPRecord(.init(payloadLength: 0,
@@ -406,10 +412,10 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
                                                       dst: self.localAddress(context: context),
                                                       tcp: TCPHeader(flags: [],
                                                                      ackNumber: nil,
-                                                                     sequenceNumber: self.readInboundBytes,
+                                                                     sequenceNumber: self.sequenceNumber(byteCount: self.readInboundBytes),
                                                                      srcPort: .init(self.remoteAddress(context: context).port!),
                                                                      dstPort: .init(self.localAddress(context: context).port!))))
-                self.readInboundBytes += payloadToSend.readableBytes
+                self.readInboundBytes += UInt64(payloadToSend.readableBytes)
                 self.buffer.writeBuffer(&payloadToSend)
             }
             assert(data.readableBytes == 0)
@@ -431,10 +437,10 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
                                                           dst: self.remoteAddress(context: context),
                                                           tcp: TCPHeader(flags: [],
                                                                          ackNumber: nil,
-                                                                         sequenceNumber: self.writtenOutboundBytes,
+                                                                         sequenceNumber: self.sequenceNumber(byteCount: self.writtenOutboundBytes),
                                                                          srcPort: .init(self.localAddress(context: context).port!),
                                                                          dstPort: .init(self.remoteAddress(context: context).port!))))
-                    self.writtenOutboundBytes += payloadToSend.readableBytes
+                    self.writtenOutboundBytes += UInt64(payloadToSend.readableBytes)
                     self.buffer.writeBuffer(&payloadToSend)
                 }
                 self.writeBuffer(self.buffer)
@@ -573,8 +579,8 @@ extension ByteBuffer {
         self.writeInteger(record.tcp.srcPort, as: UInt16.self)
         self.writeInteger(record.tcp.dstPort, as: UInt16.self)
 
-        self.writeInteger(.init(record.tcp.sequenceNumber), as: UInt32.self) // seq no
-        self.writeInteger(.init(record.tcp.ackNumber ?? 0), as: UInt32.self) // ack no
+        self.writeInteger(record.tcp.sequenceNumber, as: UInt32.self) // seq no
+        self.writeInteger(record.tcp.ackNumber ?? 0, as: UInt32.self) // ack no
 
         self.writeInteger(5 << 12 | UInt16(record.tcp.flags.rawValue), as: UInt16.self) // data offset + reserved bits + fancy stuff
         self.writeInteger(.max /* we don't do actual window sizes */, as: UInt16.self) // window size

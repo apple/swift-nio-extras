@@ -640,6 +640,54 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertNotNil(packet2Bytes?.readPCAPRecord())
     }
 
+    func testWeDoNotCrashIfMoreThan4GBOfDataGoThrough() {
+        let channel = EmbeddedChannel()
+        var numberOfBytesLogged: Int64 = 0
+
+        final class DropAllChannelReads: ChannelInboundHandler {
+            typealias InboundIn = ByteBuffer
+
+            func channelRead(context: ChannelHandlerContext, data: NIOAny) {}
+        }
+        final class DropAllWritesAndFlushes: ChannelOutboundHandler {
+            typealias OutboundIn = ByteBuffer
+
+            func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+                promise?.succeed(())
+            }
+
+            func flush(context: ChannelHandlerContext) {}
+        }
+
+        // Let's drop all writes/flushes so EmbeddedChannel won't accumulate them.
+        XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllWritesAndFlushes()).wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client,
+                                                                             fakeLocalAddress: .init(ipAddress: "::1", port: 1),
+                                                                             fakeRemoteAddress: .init(ipAddress: "::2", port: 2),
+                                                                             fileSink: {
+                                                                                numberOfBytesLogged += Int64($0.readableBytes)
+                                                                             })).wait())
+        // Let's also drop all channelReads to prevent accumulation of all the data.
+        XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllChannelReads()).wait())
+
+        let chunkSize = Int(UInt16.max - 40 /* needs to fit into the IPv4 header which adds 40 */)
+        self.scratchBuffer = channel.allocator.buffer(capacity: chunkSize)
+        self.scratchBuffer.writeString(String(repeating: "X", count: chunkSize))
+
+        let fourGB: Int64 = 4 * 1024 * 1024 * 1024
+
+        // Let's send 4 GiB inbound, ...
+        for _ in 0..<((fourGB / Int64(chunkSize)) + 2) {
+            XCTAssertNoThrow(try channel.writeInbound(self.scratchBuffer))
+        }
+        // ... and 4 GiB outbound.
+        for _ in 0..<((fourGB / Int64(chunkSize)) + 2) {
+            XCTAssertNoThrow(try channel.writeOutbound(self.scratchBuffer))
+        }
+        XCTAssertGreaterThan(numberOfBytesLogged, 2 * (fourGB + 1000))
+        XCTAssertNoThrow(XCTAssertTrue(try channel.finish().isClean))
+    }
+
 }
 
 struct PCAPRecord {
@@ -687,8 +735,8 @@ extension ByteBuffer {
         }
 
         return TCPHeader(flags: .init(rawValue: UInt8(flagsAndFriends & 0xfff)),
-                         ackNumber: ackNo == 0 ? nil : Int(ackNo),
-                         sequenceNumber: Int(seqNo),
+                         ackNumber: ackNo == 0 ? nil : ackNo,
+                         sequenceNumber: seqNo,
                          srcPort: srcPort,
                          dstPort: dstPort)
     }
@@ -785,7 +833,7 @@ extension ByteBuffer {
         assert(lenPacket == lenDisk, "\(lenPacket) != \(lenDisk)")
         
         let notImplementedAddress = try! SocketAddress(ipAddress: "9.9.9.9", port: 0xbad)
-        let tcp = TCPHeader(flags: [], ackNumber: nil, sequenceNumber: -1, srcPort: 0xbad, dstPort: 0xbad)
+        let tcp = TCPHeader(flags: [], ackNumber: nil, sequenceNumber: 0xbad, srcPort: 0xbad, dstPort: 0xbad)
         return .init(time: timeval(tv_sec: .init(timeSecs), tv_usec: .init(timeUSecs)),
                      header: try! PCAPRecordHeader(payloadLength: .init(lenPacket),
                                                    src: notImplementedAddress,
