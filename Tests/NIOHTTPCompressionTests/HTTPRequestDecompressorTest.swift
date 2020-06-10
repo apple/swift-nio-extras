@@ -56,15 +56,14 @@ class HTTPRequestDecompressorTest: XCTestCase {
     func testDecompressionLimitRatio() throws {
         let channel = EmbeddedChannel()
         try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .ratio(10))).wait()
-
-        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "13")])
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 500))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
-
-        let buffer = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        let compressed = compress(buffer, "gzip")
-
+        
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+            XCTFail("writeShouldFail")
         } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
@@ -78,16 +77,15 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSize() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .size(10))).wait()
-
-        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "13")])
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 200))
+        let compressed = compress(decompressed, "gzip")
+        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .size(decompressed.readableBytes-1))).wait()
+        let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
-
-        let buffer = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
-        let compressed = compress(buffer, "gzip")
-
+        
         do {
             try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+            XCTFail("writeInbound should fail")
         } catch let error as NIOHTTPDecompression.DecompressionError {
             switch error {
             case .limit:
@@ -120,17 +118,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
             )
 
-            do {
-                try channel.writeInbound(HTTPServerRequestPart.body(compressed))
-            } catch let error as NIOHTTPDecompression.DecompressionError {
-                switch error {
-                case .limit:
-                    // ok
-                    break
-                default:
-                    XCTFail("Unexptected error: \(error)")
-                }
-            }
+            XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
         }
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.end(nil)))

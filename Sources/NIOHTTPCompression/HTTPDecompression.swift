@@ -27,6 +27,7 @@ public enum NIOHTTPDecompression {
         private var limit: Limit
 
         /// No limit will be set.
+        /// - warning: Setting `limit` to `.none` leaves you vulnerable to denial of service attacks.
         public static let none = DecompressionLimit(limit: .none)
         /// Limit will be set on the request body size.
         public static func size(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .size(value)) }
@@ -38,7 +39,7 @@ public enum NIOHTTPDecompression {
             case .none:
                 return false
             case .size(let allowed):
-                return compressed > allowed
+                return decompressed > allowed
             case .ratio(let ratio):
                 return decompressed > compressed * ratio
             }
