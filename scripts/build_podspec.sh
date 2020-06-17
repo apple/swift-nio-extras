@@ -16,7 +16,7 @@
 set -eu
 
 function usage() {
-  echo "$0 [-u] version"
+  echo "$0 [-u] version nio_version"
   echo
   echo "OPTIONS:"
   echo "  -u: Additionally upload the podspec"
@@ -36,13 +36,25 @@ while getopts ":u" opt; do
 done
 shift "$((OPTIND-1))"
 
-if [[ $# -eq 0 ]]; then
-  echo "Must provide target version"
+if [[ $# -lt 2 ]]; then
+  usage
   exit 1
 fi
 
 version=$1
 name="SwiftNIOExtras"
+
+# Current SwiftNIO Version to add as dependency in the .podspec
+nio_version=$2
+if [[ $nio_version =~ ^([0-9]+)\. ]]; then
+  # Extract and incremenet the major version to use an upper bound on the
+  # version requirement (we can't use '~>' as it means 'up to the next
+  # major' if you specify x.y and 'up to the next minor' if you specify x.y.z).
+  next_major_version=$((${BASH_REMATCH[1]} + 1))
+else
+  echo "Invalid NIO version '$nio_version'"
+  exit 1
+fi
 
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 tmpdir=$(mktemp -d /tmp/.build_podspecsXXXXXX)
@@ -65,7 +77,8 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '10.0'
   s.osx.deployment_target = '10.12'
   s.tvos.deployment_target = '10.0'
-  s.dependency 'SwiftNIO', '~> 2.0.0'
+
+  s.dependency 'SwiftNIO', '>= $nio_version', '< $next_major_version'
 
   s.source_files = 'Sources/NIOExtras/**/*.swift'
 end
@@ -73,7 +86,7 @@ EOF
 
 if $upload; then
   echo "Uploading ${tmpdir}/${name}.podspec"
-  pod trunk push "${tmpdir}/${name}.podspec"
+  pod trunk push --synchronous "${tmpdir}/${name}.podspec"
 else
   echo "Generated podspec available at ${tmpdir}/${name}.podspec"
 fi
