@@ -86,11 +86,11 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
             context.fireChannelRead(data)
         case .body(var part):
-            self.compression?.compressedLength += part.readableBytes
             switch self.compression {
-            case .some(let compression):
+            case .some(var compression):
+                compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 {
-                    self.compression?.updateLength(with: part)
+                    compression.updateLength(with: part)
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
                     do {
                         try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
