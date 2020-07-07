@@ -86,13 +86,56 @@ class PCAPRingBufferTest: XCTestCase {
         XCTAssertEqual(emitted.readableBytes, 0)
     }
     
-    func testDoubleEmit() {
+    func testDoubleEmitZero() {
         var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
         let emitted2 = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
         XCTAssertEqual(emitted2.readableBytes, 0)
     }
+    
+    func testDoubleEmitSome() {
+        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        for fragment in testData() {
+            ringBuffer.addFragment(fragment)
+        }
+        _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        
+        ringBuffer.addFragment(ByteBuffer(repeating: 75, count: 75))
+        let emitted2 = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        XCTAssertEqual(emitted2.readableBytes, 75 + NIOWritePCAPHandler.pcapFileHeader.readableBytes)
+    }
+    
+    func testInHandler() {
+        let channel = EmbeddedChannel()
+        var ringBuffer = PCAPRingBuffer(maximumFragments: 5, maximumBytes: 1_000_000)
+        XCTAssertNoThrow(try channel.pipeline.addHandler(
+                            NIOWritePCAPHandler(mode: .client,
+                                                fakeLocalAddress: nil,
+                                                fakeRemoteAddress: nil,
+                                                fileSink: { ringBuffer.addFragment($0) })).wait())
+        channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
+        XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())
+        for data in testData() {
+            XCTAssertNoThrow(try channel.writeAndFlush(data).wait())
+        }
+        XCTAssertNoThrow(try channel.throwIfErrorCaught())
+        // See what we've got - hopefully 5 data packets.
+        var capturedData = ringBuffer.emitPCAP(allocator: channel.allocator)
+        let p1 = capturedData.readPCAPRecord()
+        print(p1)
+        
+        
+       /* XCTAssertNoThrow(try {
+            var capturedData = try channel.eventLoop.scheduleTask(in: .nanoseconds(0)) {
+                return ringBuffer.emitPCAP(allocator: channel.allocator)
+            }.futureResult.wait()
+            let p1 = capturedData.readPCAPRecord()
+            print(p1)
+        } ()) */
+        
+    }
+        
 }
