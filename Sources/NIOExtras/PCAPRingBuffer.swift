@@ -46,6 +46,7 @@ internal struct PCAPRingBuffer {
         self.pcapCurrentBytes += buffer.readableBytes
     }
 
+    /// Record a fragment into the buffer, making space if required.
     mutating func addFragment(_ buffer: ByteBuffer) {
         // Make sure we don't go over on the number of fragments.
         if self.pcapFragments.count >= self.maximumFragments {
@@ -64,22 +65,7 @@ internal struct PCAPRingBuffer {
 
     /// Emit the captured data to a byteBuffer - this drains the captured data.
     mutating func emitPCAP(allocator: ByteBufferAllocator) -> ByteBuffer {
-        guard let first = self.pcapFragments.first else {
-            return allocator.buffer(capacity: 0)
-        }
-        
-        var header = NIOWritePCAPHandler.pcapFileHeader
-        // Is the header in our current set or is it going to be extra?
-        let headerIncluded = first == header
-
-        let necessarySpace = (headerIncluded ? 0 : header.readableBytes) +
-                             self.pcapCurrentBytes
-        var buffer = allocator.buffer(capacity: necessarySpace)
-        
-        if !headerIncluded {
-            buffer.writeBuffer(&header)
-        }
-        
+        var buffer = allocator.buffer(capacity: self.pcapCurrentBytes)
         while var next = self.popFirst() {
             buffer.writeBuffer(&next)
         }

@@ -29,21 +29,9 @@ class PCAPRingBufferTest: XCTestCase {
         ]
     }
     
-    func testAddsHeader() {
+    func testNotLimited() {
         var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         var totalBytes = 0
-        for fragment in testData() {
-            ringBuffer.addFragment(fragment)
-            totalBytes += fragment.readableBytes
-        }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
-        XCTAssertEqual(emitted.readableBytes, totalBytes + NIOWritePCAPHandler.pcapFileHeader.readableBytes)
-    }
-    
-    func testNoHeaderDuplication() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
-        var totalBytes = NIOWritePCAPHandler.pcapFileHeader.readableBytes
-        ringBuffer.addFragment(NIOWritePCAPHandler.pcapFileHeader)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
             totalBytes += fragment.readableBytes
@@ -58,7 +46,7 @@ class PCAPRingBufferTest: XCTestCase {
             ringBuffer.addFragment(fragment)
         }
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
-        XCTAssertEqual(emitted.readableBytes, 25 + 75 + 120 + NIOWritePCAPHandler.pcapFileHeader.readableBytes)
+        XCTAssertEqual(emitted.readableBytes, 25 + 75 + 120)
     }
     
     func testByteLimit() {
@@ -68,7 +56,7 @@ class PCAPRingBufferTest: XCTestCase {
             ringBuffer.addFragment(fragment)
         }
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
-        XCTAssertEqual(emitted.readableBytes, expectedData + NIOWritePCAPHandler.pcapFileHeader.readableBytes)
+        XCTAssertEqual(emitted.readableBytes, expectedData)
     }
     
     func testExtremeByteLimit() {
@@ -105,12 +93,13 @@ class PCAPRingBufferTest: XCTestCase {
         
         ringBuffer.addFragment(ByteBuffer(repeating: 75, count: 75))
         let emitted2 = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
-        XCTAssertEqual(emitted2.readableBytes, 75 + NIOWritePCAPHandler.pcapFileHeader.readableBytes)
+        XCTAssertEqual(emitted2.readableBytes, 75)
     }
     
     func testInHandler() {
+        let fragmentsToRecord = 4
         let channel = EmbeddedChannel()
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 5, maximumBytes: 1_000_000)
+        var ringBuffer = PCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
         XCTAssertNoThrow(try channel.pipeline.addHandler(
                             NIOWritePCAPHandler(mode: .client,
                                                 fakeLocalAddress: nil,
@@ -122,20 +111,17 @@ class PCAPRingBufferTest: XCTestCase {
             XCTAssertNoThrow(try channel.writeAndFlush(data).wait())
         }
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
-        // See what we've got - hopefully 5 data packets.
-        var capturedData = ringBuffer.emitPCAP(allocator: channel.allocator)
-        let p1 = capturedData.readPCAPRecord()
-        print(p1)
         
-        
-       /* XCTAssertNoThrow(try {
-            var capturedData = try channel.eventLoop.scheduleTask(in: .nanoseconds(0)) {
-                return ringBuffer.emitPCAP(allocator: channel.allocator)
-            }.futureResult.wait()
-            let p1 = capturedData.readPCAPRecord()
-            print(p1)
-        } ()) */
-        
+        XCTAssertNoThrow(try {
+            // See what we've got - hopefully 5 data packets.
+            var capturedData = ringBuffer.emitPCAP(allocator: channel.allocator)
+            let data = testData()
+            for expectedData in data[(data.count - fragmentsToRecord)...] {
+                var packet = capturedData.readPCAPRecord()
+                let tcpPayloadBytes = try packet?.payload.readTCPIPv4()?.tcpPayload.readableBytes
+                XCTAssertEqual(tcpPayloadBytes, expectedData.readableBytes)
+            }
+        }())
     }
         
 }
