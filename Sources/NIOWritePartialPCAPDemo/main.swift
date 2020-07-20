@@ -18,6 +18,7 @@ import NIOHTTP1
 
 
 
+/// Trigger recording pcap data when a "precondition failed" is seen.
 class TriggerPCAPHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
     typealias OutboundOut = HTTPClientRequestPart
@@ -37,6 +38,7 @@ class TriggerPCAPHandler: ChannelInboundHandler {
     }
 }
 
+/// Makes a series of http requests which get known responses.
 class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
     typealias OutboundOut = HTTPClientRequestPart
