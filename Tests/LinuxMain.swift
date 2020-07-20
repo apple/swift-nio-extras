@@ -39,6 +39,7 @@ import XCTest
          testCase(LengthFieldBasedFrameDecoderTest.allTests),
          testCase(LengthFieldPrependerTest.allTests),
          testCase(LineBasedFrameDecoderTest.allTests),
+         testCase(PCAPRingBufferTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
          testCase(WritePCAPHandlerTest.allTests),
