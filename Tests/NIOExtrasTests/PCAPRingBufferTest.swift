@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2019 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2020 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -18,7 +18,7 @@ import NIO
 @testable import NIOExtras
 
 class PCAPRingBufferTest: XCTestCase {
-    private func testData() -> [ByteBuffer] {
+    private func dataForTests() -> [ByteBuffer] {
         return [
             ByteBuffer(repeating: 100, count: 100),
             ByteBuffer(repeating: 50, count: 50),
@@ -32,7 +32,7 @@ class PCAPRingBufferTest: XCTestCase {
     func testNotLimited() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         var totalBytes = 0
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
             totalBytes += fragment.readableBytes
         }
@@ -42,7 +42,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testFragmentLimit() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 3, maximumBytes: 1000000)
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
@@ -52,7 +52,7 @@ class PCAPRingBufferTest: XCTestCase {
     func testByteLimit() {
         let expectedData = 150 + 25 + 75 + 120
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
@@ -61,7 +61,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testExtremeByteLimit() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 10)
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
@@ -76,7 +76,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testDoubleEmitZero() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
         _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
@@ -86,7 +86,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testDoubleEmitSome() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
-        for fragment in testData() {
+        for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
         _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
@@ -107,7 +107,7 @@ class PCAPRingBufferTest: XCTestCase {
                                                 fileSink: { ringBuffer.addFragment($0) })).wait())
         channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())
-        for data in testData() {
+        for data in dataForTests() {
             XCTAssertNoThrow(try channel.writeAndFlush(data).wait())
         }
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
@@ -115,7 +115,7 @@ class PCAPRingBufferTest: XCTestCase {
         XCTAssertNoThrow(try {
             // See what we've got - hopefully 5 data packets.
             var capturedData = ringBuffer.emitPCAP(allocator: channel.allocator)
-            let data = testData()
+            let data = dataForTests()
             for expectedData in data[(data.count - fragmentsToRecord)...] {
                 var packet = capturedData.readPCAPRecord()
                 let tcpPayloadBytes = try packet?.payload.readTCPIPv4()?.tcpPayload.readableBytes
@@ -164,7 +164,7 @@ class PCAPRingBufferTest: XCTestCase {
             XCTAssertNoThrow(try {
                 testTriggered = true
                 // See what we've got.
-                let data = testData()
+                let data = dataForTests()
                 for expectedData in data[(triggerEndIndex - maximumFragments)..<triggerEndIndex] {
                     var packet = capturedData.readPCAPRecord()
                     let tcpPayloadBytes = try packet?.payload.readTCPIPv4()?.tcpPayload.readableBytes
@@ -175,7 +175,7 @@ class PCAPRingBufferTest: XCTestCase {
 
 
         let channel = EmbeddedChannel()
-        let trigger = self.testData()[0..<triggerEndIndex]
+        let trigger = self.dataForTests()[0..<triggerEndIndex]
             .compactMap { t in t.readableBytes }.reduce(0, +)
 
         let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: .init(maximumFragments),
@@ -193,7 +193,7 @@ class PCAPRingBufferTest: XCTestCase {
 
         channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())
-        for data in testData() {
+        for data in dataForTests() {
             XCTAssertNoThrow(try channel.writeAndFlush(data).wait())
         }
         XCTAssertNoThrow(try channel.throwIfErrorCaught())

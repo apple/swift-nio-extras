@@ -26,7 +26,6 @@ extension PCAPRingBufferTest {
 
    static var allTests : [(String, (PCAPRingBufferTest) -> () throws -> Void)] {
       return [
-                ("testData", testData),
                 ("testNotLimited", testNotLimited),
                 ("testFragmentLimit", testFragmentLimit),
                 ("testByteLimit", testByteLimit),
