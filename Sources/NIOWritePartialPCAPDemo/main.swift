@@ -23,6 +23,14 @@ class TriggerPCAPHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
     typealias OutboundOut = HTTPClientRequestPart
 
+    private let pcapRingBuffer: NIOPCAPRingBuffer
+    private let sink: (ByteBuffer) -> ()
+
+    init(pcapRingBuffer: NIOPCAPRingBuffer, sink: @escaping (ByteBuffer) -> ()) {
+        self.pcapRingBuffer = pcapRingBuffer
+        self.sink = sink
+    }
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if case .head(let header) = self.unwrapInboundIn(data) {
             if header.status == .preconditionFailed {
@@ -30,8 +38,7 @@ class TriggerPCAPHandler: ChannelInboundHandler {
                 // status is the sign that the issue you're looking to diagnose has happened.
                 // Obviously in real usage there will be a hypothesis you're trying to test
                 // which should give the trigger condition.
-                context.triggerUserOutboundEvent(NIOPCAPRingCaptureHandler.RecordPreviousPackets(),
-                                                 promise: nil)
+                self.sink(self.pcapRingBuffer.emitPCAP(allocator: context.channel.allocator))
             }
         }
         context.fireChannelRead(data)
@@ -104,12 +111,13 @@ let allDonePromise = group.next().makePromise(of: Void.self)
 let maximumFragments: UInt = 4
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
-        return channel.pipeline.addHandler(NIOPCAPRingCaptureHandler(maximumFragments: maximumFragments,
-                                                                     maximumBytes: 1_000_000,
-                                                                     sink: fileSink.write)).flatMap {
+        let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: maximumFragments,
+                                               maximumBytes: 1_000_000)
+        return channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client,
+                                                               fileSink: pcapRingBuffer.addFragment)).flatMap {
             channel.pipeline.addHTTPClientHandlers()
         }.flatMap {
-            channel.pipeline.addHandler(TriggerPCAPHandler())
+            channel.pipeline.addHandler(TriggerPCAPHandler(pcapRingBuffer: pcapRingBuffer, sink: fileSink.write))
         }.flatMap {
             channel.pipeline.addHandler(SendSimpleSequenceRequestHandler(allDonePromise: allDonePromise))
         }

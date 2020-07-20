@@ -30,7 +30,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testNotLimited() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         var totalBytes = 0
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
@@ -41,7 +41,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testFragmentLimit() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 3, maximumBytes: 1000000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 3, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -51,7 +51,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testByteLimit() {
         let expectedData = 150 + 25 + 75 + 120
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -60,7 +60,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testExtremeByteLimit() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 10)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 10)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -69,13 +69,13 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testUnusedBuffer() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000)
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
         XCTAssertEqual(emitted.readableBytes, 0)
     }
     
     func testDoubleEmitZero() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -85,7 +85,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testDoubleEmitSome() {
-        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -99,7 +99,7 @@ class PCAPRingBufferTest: XCTestCase {
     func testAsHandlerSink() {
         let fragmentsToRecord = 4
         let channel = EmbeddedChannel()
-        let ringBuffer = PCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
         XCTAssertNoThrow(try channel.pipeline.addHandler(
                             NIOWritePCAPHandler(mode: .client,
                                                 fakeLocalAddress: nil,
@@ -127,10 +127,14 @@ class PCAPRingBufferTest: XCTestCase {
     class TriggerOnCumulativeSizeHandler : ChannelOutboundHandler {
         typealias OutboundIn = ByteBuffer
 
-        var bytesUntilTrigger: Int
+        private var bytesUntilTrigger: Int
+        private var pcapRingBuffer: NIOPCAPRingBuffer
+        private var sink: (ByteBuffer) -> ()
 
-        init(triggerBytes: Int) {
+        init(triggerBytes: Int, pcapRingBuffer: NIOPCAPRingBuffer, sink: @escaping (ByteBuffer) -> ()) {
             self.bytesUntilTrigger = triggerBytes
+            self.pcapRingBuffer = pcapRingBuffer
+            self.sink = sink
         }
 
         func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -140,7 +144,8 @@ class PCAPRingBufferTest: XCTestCase {
                     let ourPromise = context.eventLoop.makePromise(of: Void.self)
                     context.write(data, promise: ourPromise)
                     ourPromise.futureResult.flatMap {
-                        return context.triggerUserOutboundEvent(NIOPCAPRingCaptureHandler.RecordPreviousPackets())
+                        self.sink(self.pcapRingBuffer.emitPCAP(allocator: context.channel.allocator))
+                        return ourPromise.futureResult
                     }.cascade(to: promise)
                     return
                 }
@@ -173,13 +178,17 @@ class PCAPRingBufferTest: XCTestCase {
         let trigger = self.testData()[0..<triggerEndIndex]
             .compactMap { t in t.readableBytes }.reduce(0, +)
 
+        let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: .init(maximumFragments),
+                                               maximumBytes: 1_000_000)
         XCTAssertNoThrow(try channel.pipeline.addHandler(
-                NIOPCAPRingCaptureHandler(maximumFragments: .init(maximumFragments),
-                                          maximumBytes: 1_000_000,
-                                          sink: testRecordedBytes),
+                            NIOWritePCAPHandler(mode: .client,
+                                                fileSink: pcapRingBuffer.addFragment),
                 name: "capture").flatMap {
                     return channel.pipeline.addHandler(
-                        TriggerOnCumulativeSizeHandler(triggerBytes: trigger), name: "trigger")
+                        TriggerOnCumulativeSizeHandler(triggerBytes: trigger,
+                                                       pcapRingBuffer: pcapRingBuffer,
+                                                       sink: testRecordedBytes),
+                        name: "trigger")
                 }.wait())
 
         channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
