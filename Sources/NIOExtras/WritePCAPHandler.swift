@@ -121,7 +121,7 @@ struct PCAPRecordHeader {
 ///
 /// `NIOWritePCAPHandler` will also work with Unix Domain Sockets in which case it will still synthesize a TCP packet
 /// capture with local address `111.111.111.111` (port `1111`) and remote address `222.222.222.222` (port `2222`).
-public class NIOWritePCAPHandler: RemovableChannelHandler {
+public class NIOWritePCAPHandler: RemovableChannelHandler, ChannelDuplexHandler {
     public enum Mode {
         case client
         case server
@@ -287,9 +287,8 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     private func sequenceNumber(byteCount: UInt64) -> UInt32 {
         return UInt32(byteCount % (UInt64(UInt32.max) + 1))
     }
-}
 
-extension NIOWritePCAPHandler: ChannelDuplexHandler {
+    // MARK: ChannelDuplexHandler
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
     public typealias OutboundIn = IOData
@@ -476,6 +475,11 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             }
         }
         context.fireUserInboundEventTriggered(event)
+    }
+
+    // Nop implementation purely to allow override.
+    public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
+        context.triggerUserOutboundEvent(event, promise: promise)
     }
     
     public func close(context: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {

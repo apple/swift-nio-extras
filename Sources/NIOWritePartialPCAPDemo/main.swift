@@ -27,7 +27,9 @@ class TriggerPCAPHandler: ChannelInboundHandler {
             if header.status == .preconditionFailed {
                 // For the sake of a repeatable demo, let's assume that seeing a preconditionFailed
                 // status is the sign that the issue you're looking to diagnose has happened.
-                context.triggerUserOutboundEvent(PCAPRingCaptureHandler.RecordPreviousPackets(),
+                // Obviously in real usage there will be a hypothesis you're trying to test
+                // which should give the trigger condition.
+                context.triggerUserOutboundEvent(NIOPCAPRingCaptureHandler.RecordPreviousPackets(),
                                                  promise: nil)
             }
         }
@@ -97,17 +99,13 @@ defer {
     try! group.syncShutdownGracefully()
 }
 let allDonePromise = group.next().makePromise(of: Void.self)
+let maximumFragments: UInt = 4
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
-        let ringCaptureHandler = PCAPRingCaptureHandler(maximumFragments: 4,
-                                                        maximumBytes: 1_000_000,
-                                                        sink: fileSink.write)
-        return channel.pipeline.addHandler(NIOWritePCAPHandler(
-                                            mode: .client,
-                                            fileSink: { ringCaptureHandler.addFragment($0) })).flatMap {
+        return channel.pipeline.addHandler(NIOPCAPRingCaptureHandler(maximumFragments: maximumFragments,
+                                                                     maximumBytes: 1_000_000,
+                                                                     sink: fileSink.write)).flatMap {
             channel.pipeline.addHTTPClientHandlers()
-        }.flatMap {
-            channel.pipeline.addHandler(ringCaptureHandler)
         }.flatMap {
             channel.pipeline.addHandler(TriggerPCAPHandler())
         }.flatMap {
@@ -121,6 +119,7 @@ print("# Success!")
 try connection.close().wait()
 try fileSink.syncClose()
 print("# Your pcap file should have been written to '\(outputFile)'")
+print(" This should contain the \(maximumFragments) fragments leading up to PRECONDITION FAILED status")
 print("#")
 print("# You can view \(outputFile) with")
 print("# - Wireshark")

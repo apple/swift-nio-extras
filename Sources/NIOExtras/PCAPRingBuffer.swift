@@ -15,7 +15,7 @@
 import NIO
 
 /// Storage for the most recent set of packets captured subject to constraints.
-public struct PCAPRingBuffer {
+class PCAPRingBuffer {
     private var pcapFragments: CircularBuffer<ByteBuffer>
     private var pcapCurrentBytes: size_t
     private let maximumFragments: UInt
@@ -33,7 +33,7 @@ public struct PCAPRingBuffer {
     }
     
     @discardableResult
-    private mutating func popFirst() -> ByteBuffer? {
+    private func popFirst() -> ByteBuffer? {
         let popped = self.pcapFragments.popFirst()
         if let popped = popped {
             self.pcapCurrentBytes -= popped.readableBytes
@@ -41,7 +41,7 @@ public struct PCAPRingBuffer {
         return popped
     }
     
-    private mutating func append(_ buffer: ByteBuffer) {
+    private func append(_ buffer: ByteBuffer) {
         self.pcapFragments.append(buffer)
         self.pcapCurrentBytes += buffer.readableBytes
     }
@@ -49,7 +49,7 @@ public struct PCAPRingBuffer {
     /// Record a fragment into the buffer, making space if required.
     /// Parameters:
     /// - buffer: ByteBuffer containing a pcap fragment to store.
-    public mutating func addFragment(_ buffer: ByteBuffer) {
+    func addFragment(_ buffer: ByteBuffer) {
         // Make sure we don't go over on the number of fragments.
         if self.pcapFragments.count >= self.maximumFragments {
             self.popFirst()
@@ -68,7 +68,7 @@ public struct PCAPRingBuffer {
     /// Emit the captured data to a byteBuffer - this drains the captured data.
     /// Parameters:
     /// - allocator: Allocator for creating byte buffers which are stored in the ring buffer.
-    public mutating func emitPCAP(allocator: ByteBufferAllocator) -> ByteBuffer {
+    func emitPCAP(allocator: ByteBufferAllocator) -> ByteBuffer {
         var buffer = allocator.buffer(capacity: self.pcapCurrentBytes)
         while var next = self.popFirst() {
             buffer.writeBuffer(&next)
@@ -77,10 +77,10 @@ public struct PCAPRingBuffer {
     }
 }
 
-/// Handler to pair with `NIOWritePCAPHandler` to  capture a set of packets prior to an user triggered event.
+/// Handler derived from `NIOWritePCAPHandler` to  capture a set of packets prior to an user triggered event.
 /// Send `PCAPRingCaptureHandler.RecordPreviousPackets` through as either an InboundEvent or OutboudEvent as
 /// appropriate to trigger recording through the `sink` initialisation parameter.
-public class PCAPRingCaptureHandler: ChannelDuplexHandler, RemovableChannelHandler {
+public class NIOPCAPRingCaptureHandler: NIOWritePCAPHandler {
     public typealias InboundIn = Any // Don't care, not looking
     public typealias OutboundIn = Any // Don't care, not looking
 
@@ -94,25 +94,29 @@ public class PCAPRingCaptureHandler: ChannelDuplexHandler, RemovableChannelHandl
     /// - sink: Where to send captured data to.
     public init(maximumFragments: UInt, maximumBytes: size_t, sink: @escaping (NIO.ByteBuffer) -> Void) {
         self.pcapBuffer = PCAPRingBuffer(maximumFragments: maximumFragments, maximumBytes: maximumBytes)
+        let ringBuffer = self.pcapBuffer
         self.sink = sink
+        super.init(mode: .server,
+                   settings: Settings(),
+                   fileSink: { bb in ringBuffer.addFragment(bb) })
     }
 
     /// Triggers writing captured data to the sink if `RecordPreviousPackets` is seen.
-    public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
-        if let request = event as? RecordPreviousPackets {
+    public override func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        if event as? RecordPreviousPackets != nil {
             recordPCAP(allocator: context.channel.allocator)
         } else {
-            context.fireUserInboundEventTriggered(event)
+            super.userInboundEventTriggered(context: context, event: event)
         }
     }
 
     /// Triggers writing captured data to the sink if `RecordPreviousPackets` is seen.
-    public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
-        if let request = event as? RecordPreviousPackets {
+    public override func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
+        if event as? RecordPreviousPackets != nil {
             recordPCAP(allocator: context.channel.allocator)
             promise?.succeed(())
         } else {
-            context.triggerUserOutboundEvent(event, promise: promise)
+            super.triggerUserOutboundEvent(context: context, event: event, promise: promise)
         }
     }
 
@@ -121,17 +125,9 @@ public class PCAPRingCaptureHandler: ChannelDuplexHandler, RemovableChannelHandl
         let capturedData = self.pcapBuffer.emitPCAP(allocator: allocator)
         sink(capturedData)
     }
-
-    /// Record a fragment into the buffer, making space if required.
-    /// This should almost certainly be connected as the sink for a `WritePCAPHandler`
-    /// Parameters:
-    /// - buffer: Captured fragment to record.
-    public func addFragment(_ buffer: NIO.ByteBuffer) {
-        self.pcapBuffer.addFragment(buffer)
-    }
 }
 
-extension PCAPRingCaptureHandler {
+extension NIOPCAPRingCaptureHandler {
     public struct RecordPreviousPackets {
         public init() { }
     }

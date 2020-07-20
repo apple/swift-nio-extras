@@ -30,7 +30,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testNotLimited() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         var totalBytes = 0
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
@@ -41,7 +41,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testFragmentLimit() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 3, maximumBytes: 1000000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 3, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -51,7 +51,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testByteLimit() {
         let expectedData = 150 + 25 + 75 + 120
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -60,7 +60,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testExtremeByteLimit() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 10)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 10)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -69,13 +69,13 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testUnusedBuffer() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000)
         let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
         XCTAssertEqual(emitted.readableBytes, 0)
     }
     
     func testDoubleEmitZero() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -85,7 +85,7 @@ class PCAPRingBufferTest: XCTestCase {
     }
     
     func testDoubleEmitSome() {
-        var ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         for fragment in testData() {
             ringBuffer.addFragment(fragment)
         }
@@ -99,7 +99,7 @@ class PCAPRingBufferTest: XCTestCase {
     func testInHandler() {
         let fragmentsToRecord = 4
         let channel = EmbeddedChannel()
-        var ringBuffer = PCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
+        let ringBuffer = PCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
         XCTAssertNoThrow(try channel.pipeline.addHandler(
                             NIOWritePCAPHandler(mode: .client,
                                                 fakeLocalAddress: nil,
