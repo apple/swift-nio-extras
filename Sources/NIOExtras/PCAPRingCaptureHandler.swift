@@ -15,7 +15,7 @@
 import NIO
 
 // MARK:  NIOPCAPRingCaptureHandler
-/// Handler derived from `NIOWritePCAPHandler` to  capture a set of packets prior to an user triggered event.
+/// Handler derived from `NIOWritePCAPHandler` to  capture a set of packets prior to a user triggered event.
 /// Send `PCAPRingCaptureHandler.RecordPreviousPackets` through as either an InboundEvent or OutboudEvent as
 /// appropriate to trigger recording through the `sink` initialisation parameter.
 public class NIOPCAPRingCaptureHandler: NIOWritePCAPHandler {
@@ -68,6 +68,8 @@ public class NIOPCAPRingCaptureHandler: NIOWritePCAPHandler {
 }
 
 extension NIOPCAPRingCaptureHandler {
+    /// Event to send as an InboundEvent or OutboudEvent to trigger `NIOPCAPRingCaptureHandler`
+    /// to output captured data to it's `sink`
     public struct RecordPreviousPackets {
         public init() { }
     }
