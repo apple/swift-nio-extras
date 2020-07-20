@@ -96,7 +96,7 @@ class PCAPRingBufferTest: XCTestCase {
         XCTAssertEqual(emitted2.readableBytes, 75)
     }
     
-    func testInHandler() {
+    func testAsHandlerSink() {
         let fragmentsToRecord = 4
         let channel = EmbeddedChannel()
         let ringBuffer = PCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
@@ -123,5 +123,71 @@ class PCAPRingBufferTest: XCTestCase {
             }
         }())
     }
-        
+
+    class TriggerOnCumulativeSizeHandler : ChannelOutboundHandler {
+        typealias OutboundIn = ByteBuffer
+
+        var bytesUntilTrigger: Int
+
+        init(triggerBytes: Int) {
+            self.bytesUntilTrigger = triggerBytes
+        }
+
+        func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+            if bytesUntilTrigger > 0 {
+                self.bytesUntilTrigger -= self.unwrapOutboundIn(data).readableBytes
+                if self.bytesUntilTrigger <= 0 {
+                    let ourPromise = context.eventLoop.makePromise(of: Void.self)
+                    context.write(data, promise: ourPromise)
+                    ourPromise.futureResult.flatMap {
+                        return context.triggerUserOutboundEvent(NIOPCAPRingCaptureHandler.RecordPreviousPackets())
+                    }.cascade(to: promise)
+                    return
+                }
+            }
+            context.write(data, promise: promise)
+        }
+    }
+
+    func testHandler() {
+        let maximumFragments = 3
+        let triggerEndIndex = 5
+        var testTriggered = false
+
+        func testRecordedBytes(buffer: ByteBuffer) {
+            var capturedData = buffer
+            XCTAssertNoThrow(try {
+                testTriggered = true
+                // See what we've got.
+                let data = testData()
+                for expectedData in data[(triggerEndIndex - maximumFragments)..<triggerEndIndex] {
+                    var packet = capturedData.readPCAPRecord()
+                    let tcpPayloadBytes = try packet?.payload.readTCPIPv4()?.tcpPayload.readableBytes
+                    XCTAssertEqual(tcpPayloadBytes, expectedData.readableBytes)
+                }
+            }())
+        }
+
+
+        let channel = EmbeddedChannel()
+        let trigger = self.testData()[0..<triggerEndIndex]
+            .compactMap { t in t.readableBytes }.reduce(0, +)
+
+        XCTAssertNoThrow(try channel.pipeline.addHandler(
+                NIOPCAPRingCaptureHandler(maximumFragments: .init(maximumFragments),
+                                          maximumBytes: 1_000_000,
+                                          sink: testRecordedBytes),
+                name: "capture").flatMap {
+                    return channel.pipeline.addHandler(
+                        TriggerOnCumulativeSizeHandler(triggerBytes: trigger), name: "trigger")
+                }.wait())
+
+        channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
+        XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())
+        for data in testData() {
+            XCTAssertNoThrow(try channel.writeAndFlush(data).wait())
+        }
+        XCTAssertNoThrow(try channel.throwIfErrorCaught())
+        XCTAssert(testTriggered)    // Just to make sure something actually happened.
+    }
 }
