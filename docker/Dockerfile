@@ -19,10 +19,8 @@ RUN apt-get update && apt-get install -y zlib1g-dev
 
 # ruby and jazzy for docs generation
 RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev
-# jazzy needs cocoapods-downloader.  Sadly ubuntu 16 version of ruby is too old for the latest version currently
-# try installing the latest - if it fails put the old one on.
-RUN gem install cocoapods-downloader --no-ri --no-rdoc || gem install cocoapods-downloader --no-ri --no-rdoc -v 1.3.0
-RUN gem install jazzy --no-ri --no-rdoc
+# jazzy no longer works on xenial as ruby is too old.
+RUN if [ "${ubuntu_version}" != "xenial" ] ; then  gem install jazzy --no-ri --no-rdoc ; fi
 
 # tools
 RUN mkdir -p $HOME/.tools
