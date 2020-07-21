@@ -18,17 +18,20 @@ import NIO
 /// Storage for the most recent set of packets captured subject to constraints.
 /// Use `addFragment` as the sink to a `NIOWritePCAPHandler` and call `emitPCAP`
 /// when you wish to get the recorded data.
+/// - Warning:  This class is not thread safe so should only be called from one thread.
 public class NIOPCAPRingBuffer {
     private var pcapFragments: CircularBuffer<ByteBuffer>
     private var pcapCurrentBytes: size_t
-    private let maximumFragments: UInt
+    private let maximumFragments: Int
     private let maximumBytes: size_t
 
     /// Initialise the buffer, setting constraints.
-    /// Parameters:
+    /// - Parameters:
     ///    - maximumFragments: The maximum number of pcap fragments to store.
     ///    - maximumBytes:  The maximum number of bytes to store - note, data written may exceed this by the header size.
-    public init(maximumFragments: UInt, maximumBytes: size_t) {
+    public init(maximumFragments: Int, maximumBytes: Int) {
+        precondition(maximumFragments > 0)
+        precondition(maximumBytes > 0)
         self.maximumFragments = maximumFragments
         self.maximumBytes = maximumBytes
         self.pcapCurrentBytes = 0
@@ -47,17 +50,18 @@ public class NIOPCAPRingBuffer {
     private func append(_ buffer: ByteBuffer) {
         self.pcapFragments.append(buffer)
         self.pcapCurrentBytes += buffer.readableBytes
+        assert(self.pcapFragments.count <= self.maximumFragments)
     }
 
     /// Record a fragment into the buffer, making space if required.
-    /// Parameters:
+    /// - Parameters:
     /// - buffer: ByteBuffer containing a pcap fragment to store.
     public func addFragment(_ buffer: ByteBuffer) {
         // Make sure we don't go over on the number of fragments.
         if self.pcapFragments.count >= self.maximumFragments {
             self.popFirst()
         }
-        assert(self.pcapFragments.count < self.maximumFragments)
+        precondition(self.pcapFragments.count < self.maximumFragments)
         
         // Add the new fragment
         self.append(buffer)
@@ -66,16 +70,21 @@ public class NIOPCAPRingBuffer {
         while self.pcapCurrentBytes > self.maximumBytes {
             self.popFirst()
         }
+        precondition(self.pcapCurrentBytes <= self.maximumBytes)
     }
 
-    /// Emit the captured data to a byteBuffer - this drains the captured data.
-    /// Parameters:
-    /// - allocator: Allocator for creating byte buffers which are stored in the ring buffer.
-    public func emitPCAP(allocator: ByteBufferAllocator) -> ByteBuffer {
-        var buffer = allocator.buffer(capacity: self.pcapCurrentBytes)
+    /// Emit the captured data to a consuming function; then clear the captured data.
+    /// - Parameters:
+    /// - consumer: Function which will take the stored fragments and output.
+    public func emitPCAP(_ consumer: (CircularBuffer<ByteBuffer>) -> Void) {
+        consumer(self.pcapFragments)
+        self.pcapFragments.removeAll(keepingCapacity: true)
+        self.pcapCurrentBytes = 0
+
+     /*   var buffer = allocator.buffer(capacity: self.pcapCurrentBytes)
         while var next = self.popFirst() {
             buffer.writeBuffer(&next)
         }
-        return buffer
+        return buffer*/
     }
 }

@@ -31,6 +31,12 @@ class TriggerPCAPHandler: ChannelInboundHandler {
         self.sink = sink
     }
 
+    private func capturedFragmentSink(captured: CircularBuffer<ByteBuffer>) {
+        for buffer in captured {
+            self.sink(buffer)
+        }
+    }
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if case .head(let header) = self.unwrapInboundIn(data) {
             if header.status == .preconditionFailed {
@@ -38,7 +44,7 @@ class TriggerPCAPHandler: ChannelInboundHandler {
                 // status is the sign that the issue you're looking to diagnose has happened.
                 // Obviously in real usage there will be a hypothesis you're trying to test
                 // which should give the trigger condition.
-                self.sink(self.pcapRingBuffer.emitPCAP(allocator: context.channel.allocator))
+                self.pcapRingBuffer.emitPCAP(self.capturedFragmentSink)
             }
         }
         context.fireChannelRead(data)
@@ -108,7 +114,7 @@ defer {
     try! group.syncShutdownGracefully()
 }
 let allDonePromise = group.next().makePromise(of: Void.self)
-let maximumFragments: UInt = 4
+let maximumFragments = 4
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
         let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: maximumFragments,

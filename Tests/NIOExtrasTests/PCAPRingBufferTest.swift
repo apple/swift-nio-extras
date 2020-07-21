@@ -28,7 +28,22 @@ class PCAPRingBufferTest: XCTestCase {
             ByteBuffer(repeating: 120, count: 120),
         ]
     }
-    
+
+    private static func captureBytes(ringBuffer: NIOPCAPRingBuffer) -> ByteBuffer {
+        func flattenBuffers(capturedPackets: CircularBuffer<ByteBuffer>) -> ByteBuffer {
+            var resultBuffer = ByteBuffer()
+            for buffer in capturedPackets {
+                var buffer = buffer
+                resultBuffer.writeBuffer(&buffer)
+            }
+            return resultBuffer
+        }
+
+        var result: ByteBuffer? = nil
+        ringBuffer.emitPCAP({ capturedPackets in result = flattenBuffers(capturedPackets: capturedPackets)})
+        return result!
+    }
+
     func testNotLimited() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000000)
         var totalBytes = 0
@@ -36,7 +51,7 @@ class PCAPRingBufferTest: XCTestCase {
             ringBuffer.addFragment(fragment)
             totalBytes += fragment.readableBytes
         }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted.readableBytes, totalBytes)
     }
     
@@ -45,7 +60,7 @@ class PCAPRingBufferTest: XCTestCase {
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted.readableBytes, 25 + 75 + 120)
     }
     
@@ -55,7 +70,17 @@ class PCAPRingBufferTest: XCTestCase {
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
+        XCTAssertEqual(emitted.readableBytes, expectedData)
+    }
+
+    func testByteOnLimit() {
+        let expectedData = 120
+        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData)
+        for fragment in dataForTests() {
+            ringBuffer.addFragment(fragment)
+        }
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted.readableBytes, expectedData)
     }
     
@@ -64,13 +89,13 @@ class PCAPRingBufferTest: XCTestCase {
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted.readableBytes, 0)
     }
     
     func testUnusedBuffer() {
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: 1000)
-        let emitted = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted.readableBytes, 0)
     }
     
@@ -79,8 +104,8 @@ class PCAPRingBufferTest: XCTestCase {
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
-        _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
-        let emitted2 = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        _ = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
+        let emitted2 = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted2.readableBytes, 0)
     }
     
@@ -89,10 +114,10 @@ class PCAPRingBufferTest: XCTestCase {
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }
-        _ = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        _ = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         
         ringBuffer.addFragment(ByteBuffer(repeating: 75, count: 75))
-        let emitted2 = ringBuffer.emitPCAP(allocator: ByteBufferAllocator())
+        let emitted2 = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
         XCTAssertEqual(emitted2.readableBytes, 75)
     }
     
@@ -114,7 +139,7 @@ class PCAPRingBufferTest: XCTestCase {
         
         XCTAssertNoThrow(try {
             // See what we've got - hopefully 5 data packets.
-            var capturedData = ringBuffer.emitPCAP(allocator: channel.allocator)
+            var capturedData = PCAPRingBufferTest.captureBytes(ringBuffer: ringBuffer)
             let data = dataForTests()
             for expectedData in data[(data.count - fragmentsToRecord)...] {
                 var packet = capturedData.readPCAPRecord()
@@ -141,11 +166,8 @@ class PCAPRingBufferTest: XCTestCase {
             if bytesUntilTrigger > 0 {
                 self.bytesUntilTrigger -= self.unwrapOutboundIn(data).readableBytes
                 if self.bytesUntilTrigger <= 0 {
-                    let ourPromise = context.eventLoop.makePromise(of: Void.self)
-                    context.write(data, promise: ourPromise)
-                    ourPromise.futureResult.flatMap {
-                        self.sink(self.pcapRingBuffer.emitPCAP(allocator: context.channel.allocator))
-                        return ourPromise.futureResult
+                    context.write(data).map {
+                        self.sink(captureBytes(ringBuffer: self.pcapRingBuffer))
                     }.cascade(to: promise)
                     return
                 }
