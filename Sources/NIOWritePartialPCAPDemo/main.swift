@@ -52,7 +52,7 @@ class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     
     private let allDonePromise: EventLoopPromise<Void>
 
-    private var nextReqeustNumber = 0
+    private var nextRequestNumber = 0
     private var requestsToMake: [HTTPResponseStatus] = [ .ok, .created, .accepted, .nonAuthoritativeInformation,
                                                          .noContent, .resetContent, .preconditionFailed,
                                                          .partialContent, .multiStatus, .alreadyReported ]
@@ -63,7 +63,7 @@ class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if case .end = self.unwrapInboundIn(data) {
-            makeNextReqeustOrComplete(context: context)
+            self.makeNextRequestOrComplete(context: context)
         }
     }
     
@@ -76,12 +76,12 @@ class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
         makeNextReqeustOrComplete(context: context)
     }
 
-    private func makeNextReqeustOrComplete(context: ChannelHandlerContext) {
-        if self.nextReqeustNumber < self.requestsToMake.count {
+    private func makeNextRequestOrComplete(context: ChannelHandlerContext) {
+        if self.nextRequestNumber < self.requestsToMake.count {
             let headers = HTTPHeaders([("host", "httpbin.org"),
                                        ("accept", "application/json")])
-            let currentStatus = self.requestsToMake[self.nextReqeustNumber].code
-            self.nextReqeustNumber += 1
+            let currentStatus = self.requestsToMake[self.nextRequestNumber].code
+            self.nextRequestNumber += 1
             context.write(self.wrapOutboundOut(.head(.init(version: .init(major: 1, minor: 1),
                                                            method: .GET,
                                                            uri: "/status/\(currentStatus)",
