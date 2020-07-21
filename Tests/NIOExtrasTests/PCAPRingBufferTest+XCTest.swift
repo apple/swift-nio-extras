@@ -29,6 +29,7 @@ extension PCAPRingBufferTest {
                 ("testNotLimited", testNotLimited),
                 ("testFragmentLimit", testFragmentLimit),
                 ("testByteLimit", testByteLimit),
+                ("testByteOnLimit", testByteOnLimit),
                 ("testExtremeByteLimit", testExtremeByteLimit),
                 ("testUnusedBuffer", testUnusedBuffer),
                 ("testDoubleEmitZero", testDoubleEmitZero),
