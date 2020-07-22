@@ -21,23 +21,21 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     public typealias OutboundIn = HTTPClientRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
+    /// this struct encapsulates the state of a single http response decompression
     private struct Compression {
+        
+        /// the used algorithm
         var algorithm: NIOHTTPDecompression.CompressionAlgorithm
+        
         enum LengthSpecification {
-            case contentLength
+            case contentLength(Int)
             case implicit
         }
+        /// specifies how much data to expect
         var lengthSpecification: LengthSpecification
-        var compressedLength: Int
         
-        mutating func updateLength(with buffer: ByteBuffer) {
-            switch self.lengthSpecification {
-            case .contentLength:
-                break
-            case .implicit:
-                self.compressedLength += buffer.readableBytes
-            }
-        }
+        /// the number of already consumed compressed bytes
+        var compressedLength: Int = 0
     }
 
     private var compression: Compression? = nil
@@ -73,9 +71,9 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             do {
                 if let algorithm = algorithm {
                     if let length = length {
-                        self.compression = .init(algorithm: algorithm, lengthSpecification: .contentLength, compressedLength: length)
+                        self.compression = .init(algorithm: algorithm, lengthSpecification: .contentLength(length))
                     } else {
-                        self.compression = .init(algorithm: algorithm, lengthSpecification: .implicit, compressedLength: 0)
+                        self.compression = .init(algorithm: algorithm, lengthSpecification: .implicit)
                     }
                     try self.decompressor.initializeDecoder(encoding: algorithm)
                 }
@@ -93,8 +91,6 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             do {
                 compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 {
-                    compression.updateLength(with: part)
-                    
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
                     try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))

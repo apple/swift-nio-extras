@@ -237,7 +237,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
-    
+
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
         var stream = z_stream()
 
