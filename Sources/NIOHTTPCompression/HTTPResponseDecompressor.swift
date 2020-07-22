@@ -85,26 +85,26 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                 context.fireErrorCaught(error)
             }
         case .body(var part):
-            if var compression = self.compression {
+            guard var compression = self.compression else {
+                context.fireChannelRead(data)
+                return
+            }
+            
+            do {
                 compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 {
                     compression.updateLength(with: part)
+                    
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    do {
-                        try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
-                    } catch {
-                        context.fireErrorCaught(error)
-                        return
-                    }
-
+                    try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 }
                 
                 // assign the changed local property back to the class state
                 self.compression = compression
             }
-            else {
-                context.fireChannelRead(data)
+            catch {
+                context.fireErrorCaught(error)
             }
         case .end:
             if self.compression != nil {
