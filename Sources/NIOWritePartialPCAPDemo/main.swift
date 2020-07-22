@@ -79,7 +79,7 @@ class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     }
     
     func channelActive(context: ChannelHandlerContext) {
-        makeNextRequestOrComplete(context: context)
+        self.makeNextRequestOrComplete(context: context)
     }
 
     private func makeNextRequestOrComplete(context: ChannelHandlerContext) {
