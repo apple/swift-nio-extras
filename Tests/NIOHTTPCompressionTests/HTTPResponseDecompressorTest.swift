@@ -68,9 +68,9 @@ class HTTPResponseDecompressorTest: XCTestCase {
         }
     }
 
-    func testDecompression() throws {
+    func testDecompression() {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait())
 
         var body = ""
         for _ in 1...1000 {
@@ -90,45 +90,75 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
+            
+            var head: HTTPClientResponsePart?
+            XCTAssertNoThrow(head = try channel.readInbound(as: HTTPClientResponsePart.self))
+            XCTAssertEqual(head, HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
+            
+            // the response is chunked
+            var next: HTTPClientResponsePart?
+            XCTAssertNoThrow(next = try channel.readInbound(as: HTTPClientResponsePart.self))
+            var buffer = ByteBuffer.of(bytes: [])
+            while let part = next {
+                switch part {
+                case .head:
+                    XCTFail("Unexpected head http part")
+                case .body(var input):
+                    buffer.writeBuffer(&input)
+                case .end:
+                    break
+                }
+                XCTAssertNoThrow(next = try channel.readInbound(as: HTTPClientResponsePart.self))
+            }
+            XCTAssertEqual(buffer, ByteBuffer.of(string: body))
         }
-
-        XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
-    
-    func testDecompressionWithoutContentLength() throws {
+        
+    func testDecompressionWithoutContentLength() {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait())
 
-        let expectedBody = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+        var body = ""
+        for _ in 1...1000 {
+            body += "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+        }
 
         for algorithm in [nil, "gzip", "deflate"] {
             let compressed: ByteBuffer
             var headers = HTTPHeaders()
             if let algorithm = algorithm {
                 headers.add(name: "Content-Encoding", value: algorithm)
-                compressed = compress(ByteBuffer.of(string: expectedBody), algorithm)
+                compressed = compress(ByteBuffer.of(string: body), algorithm)
             } else {
-                compressed = ByteBuffer.of(string: expectedBody)
+                compressed = ByteBuffer.of(string: body)
             }
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))))
             XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
             
-            XCTAssertNoThrow(try channel.readInbound(as: Any.self))
+            var head: HTTPClientResponsePart?
+            XCTAssertNoThrow(head = try channel.readInbound(as: HTTPClientResponsePart.self))
+            XCTAssertEqual(head, HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
             
-            
-            if case .body(let buffer) = try channel.readInbound(as: HTTPClientResponsePart.self) {
-                let bodyData = Data(buffer.readableBytesView)
-                guard let bodyString = String(data: bodyData, encoding: .utf8) else {
-                    XCTFail("Impossible to decode string decompressed from algorithm: \(algorithm ?? "non-compressed")")
-                    return
+            // the response is chunked
+            var next: HTTPClientResponsePart?
+            XCTAssertNoThrow(next = try channel.readInbound(as: HTTPClientResponsePart.self))
+            var buffer = ByteBuffer.of(bytes: [])
+            while let part = next {
+                switch part {
+                case .head:
+                    XCTFail("Unexpected head http part")
+                case .body(var input):
+                    buffer.writeBuffer(&input)
+                case .end:
+                    break
                 }
-                
-                XCTAssertEqual(bodyString, expectedBody, "Decompressed string not equal to expected result from algorithm \(algorithm ?? "non-compressed")")
-                
-            } else {
-                XCTFail("Unexpected response part")
+                XCTAssertNoThrow(next = try channel.readInbound(as: HTTPClientResponsePart.self))
             }
+
+            XCTAssertEqual(buffer, ByteBuffer.of(string: body))
         }
 
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
