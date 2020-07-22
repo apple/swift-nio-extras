@@ -27,13 +27,6 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
         /// the used algorithm
         var algorithm: NIOHTTPDecompression.CompressionAlgorithm
         
-        enum LengthSpecification {
-            case contentLength(Int)
-            case implicit
-        }
-        /// specifies how much data to expect
-        var lengthSpecification: LengthSpecification
-        
         /// the number of already consumed compressed bytes
         var compressedLength: Int = 0
     }
@@ -66,15 +59,9 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             let contentType = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased()
             let algorithm = NIOHTTPDecompression.CompressionAlgorithm(header: contentType)
 
-            let length = head.headers[canonicalForm: "Content-Length"].first.flatMap { Int($0) }
-
             do {
                 if let algorithm = algorithm {
-                    if let length = length {
-                        self.compression = .init(algorithm: algorithm, lengthSpecification: .contentLength(length))
-                    } else {
-                        self.compression = .init(algorithm: algorithm, lengthSpecification: .implicit)
-                    }
+                    self.compression = .init(algorithm: algorithm)
                     try self.decompressor.initializeDecoder(encoding: algorithm)
                 }
                 
@@ -105,6 +92,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
         case .end:
             if self.compression != nil {
                 self.decompressor.deinitializeDecoder()
+                self.compression = nil
             }
             context.fireChannelRead(data)
         }
