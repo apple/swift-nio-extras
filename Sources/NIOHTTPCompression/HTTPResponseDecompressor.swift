@@ -70,24 +70,22 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
             let length = head.headers[canonicalForm: "Content-Length"].first.flatMap { Int($0) }
 
-            if let algorithm = algorithm {
-                do {
+            do {
+                if let algorithm = algorithm {
                     if let length = length {
                         self.compression = .init(algorithm: algorithm, lengthSpecification: .contentLength, compressedLength: length)
                     } else {
                         self.compression = .init(algorithm: algorithm, lengthSpecification: .implicit, compressedLength: 0)
-                    }                    
+                    }
                     try self.decompressor.initializeDecoder(encoding: algorithm)
-                } catch {
-                    context.fireErrorCaught(error)
-                    return
                 }
+                
+                context.fireChannelRead(data)
+            } catch {
+                context.fireErrorCaught(error)
             }
-
-            context.fireChannelRead(data)
         case .body(var part):
-            switch self.compression {
-            case .some(var compression):
+            if var compression = self.compression {
                 compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 {
                     compression.updateLength(with: part)
@@ -101,15 +99,16 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 }
-            case .none:
+                
+                // assign the changed local property back to the class state
+                self.compression = compression
+            }
+            else {
                 context.fireChannelRead(data)
             }
         case .end:
-            switch self.compression {
-            case .some(_):
+            if self.compression != nil {
                 self.decompressor.deinitializeDecoder()
-            default:
-                break
             }
             context.fireChannelRead(data)
         }
