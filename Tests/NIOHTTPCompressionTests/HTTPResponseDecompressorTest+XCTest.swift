@@ -27,8 +27,14 @@ extension HTTPResponseDecompressorTest {
    static var allTests : [(String, (HTTPResponseDecompressorTest) -> () throws -> Void)] {
       return [
                 ("testDecompressionNoLimit", testDecompressionNoLimit),
-                ("testDecompressionLimitRatio", testDecompressionLimitRatio),
-                ("testDecompressionLimitSize", testDecompressionLimitSize),
+                ("testDecompressionLimitSizeWithContentLenghtHeaderSucceeds", testDecompressionLimitSizeWithContentLenghtHeaderSucceeds),
+                ("testDecompressionLimitSizeWithContentLenghtHeaderFails", testDecompressionLimitSizeWithContentLenghtHeaderFails),
+                ("testDecompressionLimitSizeWithoutContentLenghtHeaderSucceeds", testDecompressionLimitSizeWithoutContentLenghtHeaderSucceeds),
+                ("testDecompressionLimitSizeWithoutContentLenghtHeaderFails", testDecompressionLimitSizeWithoutContentLenghtHeaderFails),
+                ("testDecompressionLimitRatioWithContentLenghtHeaderSucceeds", testDecompressionLimitRatioWithContentLenghtHeaderSucceeds),
+                ("testDecompressionLimitRatioWithContentLenghtHeaderFails", testDecompressionLimitRatioWithContentLenghtHeaderFails),
+                ("testDecompressionLimitRatioWithoutContentLenghtHeaderSucceeds", testDecompressionLimitRatioWithoutContentLenghtHeaderSucceeds),
+                ("testDecompressionLimitRatioWithoutContentLenghtHeaderFails", testDecompressionLimitRatioWithoutContentLenghtHeaderFails),
                 ("testDecompression", testDecompression),
                 ("testDecompressionWithoutContentLength", testDecompressionWithoutContentLength),
            ]
