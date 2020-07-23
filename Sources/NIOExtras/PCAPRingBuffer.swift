@@ -21,9 +21,9 @@ import NIO
 /// - Warning:  This class is not thread safe so should only be called from one thread.
 public class NIOPCAPRingBuffer {
     private var pcapFragments: CircularBuffer<ByteBuffer>
-    private var pcapCurrentBytes: size_t
+    private var pcapCurrentBytes: Int
     private let maximumFragments: Int
-    private let maximumBytes: size_t
+    private let maximumBytes: Int
 
     /// Initialise the buffer, setting constraints.
     /// - Parameters:
@@ -88,7 +88,7 @@ public class NIOPCAPRingBuffer {
     }
 
     /// Emit the captured data to a consuming function; then clear the captured data.
-    /// - Parameter consumer: Function which will take the stored fragments and output.
+    /// - Returns: A ciruclar buffer of captured fragments.
     public func emitPCAP() -> CircularBuffer<ByteBuffer> {
         let toReturn = self.pcapFragments // Copy before clearing.
         self.pcapFragments.removeAll(keepingCapacity: true)
