@@ -39,9 +39,8 @@ class PCAPRingBufferTest: XCTestCase {
             return resultBuffer
         }
 
-        var result: ByteBuffer? = nil
-        ringBuffer.emitPCAP({ capturedPackets in result = flattenBuffers(capturedPackets: capturedPackets)})
-        return result!
+        let capturedPackets = ringBuffer.emitPCAP()
+        return flattenBuffers(capturedPackets: capturedPackets)
     }
 
     func testNotLimited() {

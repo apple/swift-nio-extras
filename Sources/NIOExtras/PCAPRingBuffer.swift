@@ -89,9 +89,10 @@ public class NIOPCAPRingBuffer {
 
     /// Emit the captured data to a consuming function; then clear the captured data.
     /// - Parameter consumer: Function which will take the stored fragments and output.
-    public func emitPCAP(_ consumer: (CircularBuffer<ByteBuffer>) -> Void) {
-        consumer(self.pcapFragments)
+    public func emitPCAP() -> CircularBuffer<ByteBuffer> {
+        let toReturn = self.pcapFragments // Copy before clearing.
         self.pcapFragments.removeAll(keepingCapacity: true)
         self.pcapCurrentBytes = 0
+        return toReturn
     }
 }

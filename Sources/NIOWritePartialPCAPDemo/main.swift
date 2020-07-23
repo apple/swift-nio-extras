@@ -16,8 +16,6 @@ import NIO
 import NIOExtras
 import NIOHTTP1
 
-
-
 /// Trigger recording pcap data when a "precondition failed" is seen.
 class TriggerPCAPHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
@@ -44,7 +42,8 @@ class TriggerPCAPHandler: ChannelInboundHandler {
                 // status is the sign that the issue you're looking to diagnose has happened.
                 // Obviously in real usage there will be a hypothesis you're trying to test
                 // which should give the trigger condition.
-                self.pcapRingBuffer.emitPCAP(self.capturedFragmentSink)
+                let capturedFragments = self.pcapRingBuffer.emitPCAP()
+                self.capturedFragmentSink(captured: capturedFragments)
             }
         }
         context.fireChannelRead(data)
