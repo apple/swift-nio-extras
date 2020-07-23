@@ -37,6 +37,18 @@ public class NIOPCAPRingBuffer {
         self.pcapCurrentBytes = 0
         self.pcapFragments = CircularBuffer(initialCapacity: .init(maximumFragments))
     }
+
+    /// Initialise the buffer, setting constraints
+    /// - Parameter maximumBytes: The maximum number of bytes to store - note, data written may exceed this by the header size.
+    public convenience init(maximumBytes: Int) {
+        self.init(maximumFragments: .max, maximumBytes: maximumBytes)
+    }
+
+    /// Initialise the buffer, setting constraints
+    /// - Parameter maximumFragments: The maximum number of pcap fragments to store.
+    public convenience init(maximumFragments: Int) {
+        self.init(maximumFragments: maximumFragments, maximumBytes: .max)
+    }
     
     @discardableResult
     private func popFirst() -> ByteBuffer? {
@@ -51,11 +63,13 @@ public class NIOPCAPRingBuffer {
         self.pcapFragments.append(buffer)
         self.pcapCurrentBytes += buffer.readableBytes
         assert(self.pcapFragments.count <= self.maximumFragments)
+        // It's expected that the caller will have made room if required
+        // for the fragment but we may well go over on bytes - they're
+        // expected to fix that afterwards.
     }
 
     /// Record a fragment into the buffer, making space if required.
-    /// - Parameters:
-    /// - buffer: ByteBuffer containing a pcap fragment to store.
+    /// - Parameter buffer: ByteBuffer containing a pcap fragment to store
     public func addFragment(_ buffer: ByteBuffer) {
         // Make sure we don't go over on the number of fragments.
         if self.pcapFragments.count >= self.maximumFragments {
@@ -74,17 +88,10 @@ public class NIOPCAPRingBuffer {
     }
 
     /// Emit the captured data to a consuming function; then clear the captured data.
-    /// - Parameters:
-    /// - consumer: Function which will take the stored fragments and output.
+    /// - Parameter consumer: Function which will take the stored fragments and output.
     public func emitPCAP(_ consumer: (CircularBuffer<ByteBuffer>) -> Void) {
         consumer(self.pcapFragments)
         self.pcapFragments.removeAll(keepingCapacity: true)
         self.pcapCurrentBytes = 0
-
-     /*   var buffer = allocator.buffer(capacity: self.pcapCurrentBytes)
-        while var next = self.popFirst() {
-            buffer.writeBuffer(&next)
-        }
-        return buffer*/
     }
 }
