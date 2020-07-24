@@ -28,8 +28,8 @@ private class PromiseOrderer {
         self.eventLoop = eventLoop
     }
 
-    func makePromise(file: StaticString = (#file), line: UInt = #line) -> EventLoopPromise<Void> {
-        let promise = eventLoop.makePromise(of: Void.self, file: file, line: line)
+    func makePromise(file: StaticString = #file, line: UInt = #line) -> EventLoopPromise<Void> {
+        let promise = eventLoop.makePromise(of: Void.self, file: (file), line: line)
         appendPromise(promise)
         return promise
     }
