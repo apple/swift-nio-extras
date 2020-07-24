@@ -35,7 +35,7 @@ public class NIOPCAPRingBuffer {
         self.maximumFragments = maximumFragments
         self.maximumBytes = maximumBytes
         self.pcapCurrentBytes = 0
-        self.pcapFragments = CircularBuffer(initialCapacity: .init(maximumFragments))
+        self.pcapFragments = CircularBuffer(initialCapacity: maximumFragments)
     }
 
     /// Initialise the buffer, setting constraints
