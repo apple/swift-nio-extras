@@ -28,7 +28,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
         var algorithm: NIOHTTPDecompression.CompressionAlgorithm
         
         /// the number of already consumed compressed bytes
-        var compressedLength: Int = 0
+        var compressedLength: Int
     }
 
     private var compression: Compression? = nil
@@ -61,7 +61,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
             do {
                 if let algorithm = algorithm {
-                    self.compression = .init(algorithm: algorithm)
+                    self.compression = Compression(algorithm: algorithm, compressedLength: 0)
                     try self.decompressor.initializeDecoder(encoding: algorithm)
                 }
                 
