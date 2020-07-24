@@ -61,8 +61,7 @@ class WritePCAPHandlerTest: XCTestCase {
     func assertEqual(expectedAddress: SocketAddress?,
                      actualIPv4Address: in_addr,
                      actualPort: UInt16,
-                     file: StaticString = (#file)
-                     ,
+                     file: StaticString = (#file),
                      line: UInt = #line) {
         guard let port = expectedAddress?.port else {
             XCTFail("expected address nil or has no port", file: file, line: line)
