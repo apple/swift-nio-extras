@@ -64,7 +64,7 @@ class WritePCAPHandlerTest: XCTestCase {
                      file: StaticString = (#file),
                      line: UInt = #line) {
         guard let port = expectedAddress?.port else {
-            XCTFail("expected address nil or has no port", file: file, line: line)
+            XCTFail("expected address nil or has no port", file: (file), line: line)
             return
         }
         switch expectedAddress {
@@ -72,10 +72,10 @@ class WritePCAPHandlerTest: XCTestCase {
             XCTAssertEqual(expectedAddress.address.sin_addr.s_addr,
                            actualIPv4Address.s_addr,
                            "IP addresses don't match",
-                           file: file, line: line)
-            XCTAssertEqual(port, Int(actualPort), "ports don't match", file: file, line: line)
+                           file: (file), line: line)
+            XCTAssertEqual(port, Int(actualPort), "ports don't match", file: (file), line: line)
         default:
-            XCTFail("expected address not an IPv4 address", file: file, line: line)
+            XCTFail("expected address not an IPv4 address", file: (file), line: line)
         }
     }
 
@@ -85,7 +85,7 @@ class WritePCAPHandlerTest: XCTestCase {
                      file: StaticString = (#file),
                      line: UInt = #line) {
         guard let port = expectedAddress?.port else {
-            XCTFail("expected address nil or has no port", file: file, line: line)
+            XCTFail("expected address nil or has no port", file: (file), line: line)
             return
         }
         switch expectedAddress {
@@ -97,9 +97,9 @@ class WritePCAPHandlerTest: XCTestCase {
                     XCTAssertEqual(actualAddressBytes.count, expectedAddressBytes.count)
                 }
             }
-            XCTAssertEqual(port, Int(actualPort), "ports don't match", file: file, line: line)
+            XCTAssertEqual(port, Int(actualPort), "ports don't match", file: (file), line: line)
         default:
-            XCTFail("expected address not an IPv4 address", file: file, line: line)
+            XCTFail("expected address not an IPv4 address", file: (file), line: line)
         }
     }
 
