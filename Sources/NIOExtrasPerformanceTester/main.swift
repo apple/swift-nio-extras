@@ -20,9 +20,9 @@ import Foundation
 // MARK:  Setup
 var warning: String = ""
 assert({
-    print("======================================================")
-    print("= YOU ARE RUNNING NIOPerformanceTester IN DEBUG MODE =")
-    print("======================================================")
+    print("============================================================")
+    print("= YOU ARE RUNNING NIOExtrasPerformanceTester IN DEBUG MODE =")
+    print("============================================================")
     warning = " <<< DEBUG MODE >>>"
     return true
     }())
