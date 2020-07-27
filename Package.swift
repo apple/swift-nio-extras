@@ -21,6 +21,7 @@ var targets: [PackageDescription.Target] = [
     .target(name: "HTTPServerWithQuiescingDemo", dependencies: ["NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOWritePCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOWritePartialPCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
+    .target(name: "NIOExtrasPerformanceTester", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "CNIOExtrasZlib",
             dependencies: [],
             linkerSettings: [
@@ -36,6 +37,7 @@ let package = Package(
         .executable(name: "HTTPServerWithQuiescingDemo", targets: ["HTTPServerWithQuiescingDemo"]),
         .executable(name: "NIOWritePCAPDemo", targets: ["NIOWritePCAPDemo"]),
         .executable(name: "NIOWritePartialPCAPDemo", targets: ["NIOWritePartialPCAPDemo"]),
+        .executable(name: "NIOExtrasPerformanceTester", targets: ["NIOExtrasPerformanceTester"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
