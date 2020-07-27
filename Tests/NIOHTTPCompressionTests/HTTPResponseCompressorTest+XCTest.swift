@@ -44,6 +44,7 @@ extension HTTPResponseCompressorTest {
                 ("testOverridesContentEncodingHeader", testOverridesContentEncodingHeader),
                 ("testRemovingHandlerFailsPendingWrites", testRemovingHandlerFailsPendingWrites),
                 ("testDoesNotBufferWritesNoAlgorithm", testDoesNotBufferWritesNoAlgorithm),
+                ("testChunkedGzipResponseProducesCorrectNumberOfWrites", testChunkedGzipResponseProducesCorrectNumberOfWrites),
                 ("testStartsWithSameUnicodeScalarsWorksOnEmptyStrings", testStartsWithSameUnicodeScalarsWorksOnEmptyStrings),
                 ("testStartsWithSameUnicodeScalarsWorksOnLongerNeedleFalse", testStartsWithSameUnicodeScalarsWorksOnLongerNeedleFalse),
                 ("testStartsWithSameUnicodeScalarsWorksOnSameStrings", testStartsWithSameUnicodeScalarsWorksOnSameStrings),

@@ -545,6 +545,28 @@ class HTTPResponseCompressorTest: XCTestCase {
         XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
         XCTAssertNoThrow(try writePromise.futureResult.wait())
     }
+    
+    func testChunkedGzipResponseProducesCorrectNumberOfWrites() throws {
+        let channel = try compressionChannel()
+        try sendRequest(acceptEncoding: "gzip", channel: channel)
+        let finalPromise = channel.eventLoop.makePromise(of: Void.self)
+        let head = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1), status: .ok)
+        var bodyBuffer = channel.allocator.buffer(capacity: 20)
+        bodyBuffer.writeBytes([UInt8](repeating: 60, count: 20))
+
+        _ = channel.write(NIOAny(HTTPServerResponsePart.head(head)))
+        _ = channel.writeAndFlush(NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyBuffer))))
+        channel.writeAndFlush(NIOAny(HTTPServerResponsePart.end(nil)), promise: finalPromise)
+        
+        try finalPromise.futureResult.wait()
+        
+        var writeCount = 0
+        while try channel.readOutbound(as: ByteBuffer.self) != nil {
+            writeCount += 1
+        }
+        
+        XCTAssertEqual(writeCount, 8)
+    }
 
     func testStartsWithSameUnicodeScalarsWorksOnEmptyStrings() throws {
         XCTAssertTrue("".startsWithSameUnicodeScalars(string: ""))

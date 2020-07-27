@@ -280,7 +280,7 @@ private struct PartialHTTPResponse {
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
     mutating func flush(compressor: inout NIOCompression.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
         var outputBody: ByteBuffer? = nil
-        if self.body.readableBytes > 0 {
+        if self.body.readableBytes > 0 || mustFlush {
             let compressedBody = compressor.compress(inputBuffer: &self.body, allocator: allocator, finalise: mustFlush)
             if isCompleteResponse {
                 head!.headers.remove(name: "transfer-encoding")
