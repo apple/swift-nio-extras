@@ -554,8 +554,8 @@ class HTTPResponseCompressorTest: XCTestCase {
         var bodyBuffer = channel.allocator.buffer(capacity: 20)
         bodyBuffer.writeBytes([UInt8](repeating: 60, count: 20))
 
-        _ = channel.write(NIOAny(HTTPServerResponsePart.head(head)))
-        _ = channel.writeAndFlush(NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyBuffer))))
+        channel.write(NIOAny(HTTPServerResponsePart.head(head)), promise: nil)
+        channel.writeAndFlush(NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyBuffer))), promise: nil)
         channel.writeAndFlush(NIOAny(HTTPServerResponsePart.end(nil)), promise: finalPromise)
         
         try finalPromise.futureResult.wait()
@@ -565,6 +565,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             writeCount += 1
         }
         
+        // Expected number of emitted writes in the chunked response is 8:
+        //   1. HTTP response header
+        //   2. First chunk length
+        //   3. First chunk body
+        //   4. CRLF
+        //   5. Second chunk length
+        //   6. Second chunk body
+        //   7. CRLF
+        //   8. End of message chunk
         XCTAssertEqual(writeCount, 8)
     }
 
