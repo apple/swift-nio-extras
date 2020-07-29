@@ -21,10 +21,10 @@ final class SimpleHTTPServer: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
 
-    private var files: [String] = Array()
-    private var seenEnd: Bool = false
-    private var sentEnd: Bool = false
-    private var isOpen: Bool = true
+    private var files: [String] = []
+    private var seenEnd = false
+    private var sentEnd = false
+    private var isOpen = true
 
     private let cachedHead: HTTPResponseHead
     private let cachedBody: [UInt8]
