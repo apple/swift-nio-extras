@@ -96,7 +96,7 @@ final class RepeatedRequests: ChannelInboundHandler {
         return reqs
     }
 
-    var completedFuture: EventLoopFuture<Int> { self.isDonePromise.futureResult }
+    var completedFuture: EventLoopFuture<Int> { return self.isDonePromise.futureResult }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         context.channel.close(promise: nil)

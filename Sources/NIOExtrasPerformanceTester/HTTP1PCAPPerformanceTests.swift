@@ -23,7 +23,7 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
         var fileSink: NIOWritePCAPHandler.SynchronizedFileSink!
 
         func setUp() throws {
-            let outputFile = NSTemporaryDirectory() + "/" + ProcessInfo().globallyUniqueString
+            let outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
             self.fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: outputFile) { error in
                 print("ERROR: \(error)")
                 exit(1)
