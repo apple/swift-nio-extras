@@ -14,7 +14,6 @@
 
 import Dispatch
 import NIO
-import NIOHTTP1
 
 public func measure(_ fn: () throws -> Int) rethrows -> [Double] {
     func measureOne(_ fn: () throws -> Int) rethrows -> Double {
@@ -37,13 +36,4 @@ public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void
     print("measuring\(warning): \(desc): ", terminator: "")
     let measurements = try measure(fn)
     print(measurements.reduce(into: "") { $0.append("\($1), ") })
-}
-
-
-private func someString(size: Int) -> String {
-    var s = "A"
-    for f in 1..<size {
-        s += String("\(f)".first!)
-    }
-    return s
 }
