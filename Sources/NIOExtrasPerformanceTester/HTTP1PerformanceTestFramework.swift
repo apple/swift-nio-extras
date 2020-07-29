@@ -12,34 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
 import NIO
 import NIOHTTP1
 
-public func measure(_ fn: () throws -> Int) rethrows -> [Double] {
-    func measureOne(_ fn: () throws -> Int) rethrows -> Double {
-        let start = DispatchTime.now().uptimeNanoseconds
-        _ = try fn()
-        let end = DispatchTime.now().uptimeNanoseconds
-        return Double(end - start) / Double(TimeAmount.seconds(1).nanoseconds)
-    }
-
-    _ = try measureOne(fn) /* pre-heat and throw away */
-    var measurements = Array(repeating: 0.0, count: 10)
-    for i in 0..<10 {
-        measurements[i] = try measureOne(fn)
-    }
-
-    return measurements
-}
-
-public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void {
-    print("measuring\(warning): \(desc): ", terminator: "")
-    let measurements = try measure(fn)
-    print(measurements.reduce(into: "") { $0.append("\($1), ") })
-}
-
-// MARK: Utilities
+// MARK: Handlers
 
 final class SimpleHTTPServer: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
@@ -105,11 +81,13 @@ final class RepeatedRequests: ChannelInboundHandler {
     private var remainingNumberOfRequests: Int
     private var doneRequests = 0
     private let isDonePromise: EventLoopPromise<Int>
+    private let head: HTTPRequestHead
 
-    init(numberOfRequests: Int, eventLoop: EventLoop) {
+    init(numberOfRequests: Int, eventLoop: EventLoop, head: HTTPRequestHead) {
         self.remainingNumberOfRequests = numberOfRequests
         self.numberOfRequests = numberOfRequests
         self.isDonePromise = eventLoop.makePromise()
+        self.head = head
     }
 
     func wait() throws -> Int {
@@ -134,17 +112,93 @@ final class RepeatedRequests: ChannelInboundHandler {
                 self.doneRequests += 1
                 self.remainingNumberOfRequests -= 1
 
-                context.write(self.wrapOutboundOut(.head(head)), promise: nil)
+                context.write(self.wrapOutboundOut(.head(self.head)), promise: nil)
                 context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             }
         }
     }
 }
 
-private func someString(size: Int) -> String {
-    var s = "A"
-    for f in 1..<size {
-        s += String("\(f)".first!)
+// MARK: ThreadedPerfTest
+class HTTP1ThreadedPerformanceTest: Benchmark {
+    let numberOfRepeats: Int
+    let numberOfClients: Int
+    let requestsPerClient: Int
+    let extraInitialiser: (Channel) -> EventLoopFuture<Void>
+
+    let head: HTTPRequestHead
+
+    init(numberOfRepeats: Int,
+         numberOfClients: Int,
+         requestsPerClient: Int,
+         extraInitialiser: @escaping (Channel) -> EventLoopFuture<Void>) {
+        self.numberOfRepeats = numberOfRepeats
+        self.numberOfClients = numberOfClients
+        self.requestsPerClient = requestsPerClient
+        self.extraInitialiser = extraInitialiser
+
+        var head = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/perf-test-1")
+        head.headers.add(name: "Host", value: "localhost")
+        self.head = head
     }
-    return s
+
+    var group: MultiThreadedEventLoopGroup!
+    var serverChannel: Channel!
+
+    func setUp() throws {
+        self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        self.serverChannel = try ServerBootstrap(group: self.group)
+            .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+            .childChannelInitializer { channel in
+                channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true).flatMap {
+                    channel.pipeline.addHandler(SimpleHTTPServer())
+                }
+            }.bind(host: "127.0.0.1", port: 0).wait()
+    }
+
+    func tearDown() {
+        try! self.serverChannel.close().wait()
+        try! self.group.syncShutdownGracefully()
+    }
+
+    func run() throws -> Int {
+        var reqs: [Int] = []
+        reqs.reserveCapacity(self.numberOfRepeats)
+        for _ in 0..<self.numberOfRepeats {
+            var requestHandlers: [RepeatedRequests] = []
+            requestHandlers.reserveCapacity(self.numberOfClients)
+            var clientChannels: [Channel] = []
+            clientChannels.reserveCapacity(self.numberOfClients)
+            for _ in 0 ..< self.numberOfClients {
+                let clientChannel = try! ClientBootstrap(group: self.group)
+                    .channelInitializer { channel in
+                        channel.pipeline.addHTTPClientHandlers().flatMap {
+                            let repeatedRequestsHandler = RepeatedRequests(numberOfRequests: self.requestsPerClient,
+                                                                           eventLoop: channel.eventLoop,
+                                                                           head: self.head)
+                            requestHandlers.append(repeatedRequestsHandler)
+                            return channel.pipeline.addHandler(repeatedRequestsHandler)
+                        }.flatMap {
+                            self.extraInitialiser(channel)
+                        }
+                    }
+                    .connect(to: self.serverChannel.localAddress!)
+                    .wait()
+                clientChannels.append(clientChannel)
+            }
+
+            var writeFutures: [EventLoopFuture<Void>] = []
+            for clientChannel in clientChannels {
+                clientChannel.write(NIOAny(HTTPClientRequestPart.head(self.head)), promise: nil)
+                writeFutures.append(clientChannel.writeAndFlush(NIOAny(HTTPClientRequestPart.end(nil))))
+            }
+            let allWrites = EventLoopFuture<Void>.andAllComplete(writeFutures, on: writeFutures.first!.eventLoop)
+            try! allWrites.wait()
+
+            let streamCompletedFutures = requestHandlers.map { rh in rh.completedFuture }
+            let requestsServed = EventLoopFuture<Int>.reduce(0, streamCompletedFutures, on: streamCompletedFutures.first!.eventLoop, +)
+            reqs.append(try! requestsServed.wait())
+        }
+        return reqs.reduce(0, +) / self.numberOfRepeats
+    }
 }
