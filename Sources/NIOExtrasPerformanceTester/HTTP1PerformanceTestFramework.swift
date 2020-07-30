@@ -16,7 +16,6 @@ import NIO
 import NIOHTTP1
 
 // MARK: Handlers
-
 final class SimpleHTTPServer: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart

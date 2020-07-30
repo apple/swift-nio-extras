@@ -48,7 +48,7 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
                    extraInitialiser: { channel in return addPCap(channel: channel) })
     }
 
-    private var sinkHolder: SinkHolder
+    private let sinkHolder: SinkHolder
 
     override func run() throws -> Int {
         // Opening and closing the file included here as flushing data to disk is not known to complete until closed.
