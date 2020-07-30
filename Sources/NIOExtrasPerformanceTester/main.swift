@@ -28,11 +28,20 @@ assert({
     }())
 
 // MARK:  Tests
+// Test PCAP to file.
+try! measureAndPrint(desc: "pcap_100k_reqs", benchmark: PCapPerformanceTest(numberOfRepeats: 100_000))
+
+// Test Rolling PCAP never writing to file.
+try! measureAndPrint(desc: "rolling_pcap_100k_reqs", benchmark: RollingPCapPerformanceTest(numberOfRepeats: 100_000))
+
+// Relatively real world test - http1 with many threads.
 try! measureAndPrint(desc: "http1_threaded_50reqs_500conns",
                      benchmark: HTTP1ThreadedRawPerformanceTest())
 
+// Relatively real world test - http1 with many threads and rolling pcap.
 try! measureAndPrint(desc: "http1_threaded_50reqs_500conns_rolling_pcap",
                      benchmark: HTTP1ThreadedRollingPCapPerformanceTest())
 
+// Relatively real world test - http1 with many threads and pcap to file.
 try! measureAndPrint(desc: "http1_threaded_50reqs_500conns_pcap",
                      benchmark: HTTP1ThreadedPCapPerformanceTest())

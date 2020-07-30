@@ -16,8 +16,6 @@ import NIO
 import NIOExtras
 import Foundation
 
-
-
 class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     private class SinkHolder {
         var fileSink: NIOWritePCAPHandler.SynchronizedFileSink!
