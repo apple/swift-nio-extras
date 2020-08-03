@@ -21,12 +21,17 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     public typealias OutboundIn = HTTPClientRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
-    private enum State {
-        case empty
-        case compressed(NIOHTTPDecompression.CompressionAlgorithm, Int)
+    /// this struct encapsulates the state of a single http response decompression
+    private struct Compression {
+        
+        /// the used algorithm
+        var algorithm: NIOHTTPDecompression.CompressionAlgorithm
+        
+        /// the number of already consumed compressed bytes
+        var compressedLength: Int
     }
 
-    private var state = State.empty
+    private var compression: Compression? = nil
     private var decompressor: NIOHTTPDecompression.Decompressor
 
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
@@ -54,42 +59,40 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             let contentType = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased()
             let algorithm = NIOHTTPDecompression.CompressionAlgorithm(header: contentType)
 
-            let length = head.headers[canonicalForm: "Content-Length"].first.flatMap { Int($0) }
-
-            if let algorithm = algorithm, let length = length {
-                do {
-                    self.state = .compressed(algorithm, length)
-                    try self.decompressor.initializeDecoder(encoding: algorithm, length: length)
-                } catch {
-                    context.fireErrorCaught(error)
-                    return
+            do {
+                if let algorithm = algorithm {
+                    self.compression = Compression(algorithm: algorithm, compressedLength: 0)
+                    try self.decompressor.initializeDecoder(encoding: algorithm)
                 }
+                
+                context.fireChannelRead(data)
+            } catch {
+                context.fireErrorCaught(error)
             }
-
-            context.fireChannelRead(data)
         case .body(var part):
-            switch self.state {
-            case .compressed(_, let originalLength):
+            guard var compression = self.compression else {
+                context.fireChannelRead(data)
+                return
+            }
+            
+            do {
+                compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    do {
-                        try self.decompressor.decompress(part: &part, buffer: &buffer, originalLength: originalLength)
-                    } catch {
-                        context.fireErrorCaught(error)
-                        return
-                    }
-
+                    try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 }
-            default:
-                context.fireChannelRead(data)
+                
+                // assign the changed local property back to the class state
+                self.compression = compression
+            }
+            catch {
+                context.fireErrorCaught(error)
             }
         case .end:
-            switch self.state {
-            case .compressed:
+            if self.compression != nil {
                 self.decompressor.deinitializeDecoder()
-            default:
-                break
+                self.compression = nil
             }
             context.fireChannelRead(data)
         }

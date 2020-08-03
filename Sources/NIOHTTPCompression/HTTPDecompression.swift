@@ -27,6 +27,7 @@ public enum NIOHTTPDecompression {
         private var limit: Limit
 
         /// No limit will be set.
+        /// - warning: Setting `limit` to `.none` leaves you vulnerable to denial of service attacks.
         public static let none = DecompressionLimit(limit: .none)
         /// Limit will be set on the request body size.
         public static func size(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .size(value)) }
@@ -38,14 +39,14 @@ public enum NIOHTTPDecompression {
             case .none:
                 return false
             case .size(let allowed):
-                return compressed > allowed
+                return decompressed > allowed
             case .ratio(let ratio):
                 return decompressed > compressed * ratio
             }
         }
     }
 
-    public enum DecompressionError: Error {
+    public enum DecompressionError: Error, Equatable {
         case limit
         case inflationError(Int)
         case initializationError(Int)
@@ -85,15 +86,15 @@ public enum NIOHTTPDecompression {
             self.limit = limit
         }
 
-        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, originalLength: Int) throws {
+        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, compressedLength: Int) throws {
             self.inflated += try self.stream.inflatePart(input: &part, output: &buffer)
 
-            if self.limit.exceeded(compressed: originalLength, decompressed: self.inflated) {
+            if self.limit.exceeded(compressed: compressedLength, decompressed: self.inflated) {
                 throw NIOHTTPDecompression.DecompressionError.limit
             }
         }
 
-        mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm, length: Int) throws {
+        mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm) throws {
             self.stream.zalloc = nil
             self.stream.zfree = nil
             self.stream.opaque = nil
