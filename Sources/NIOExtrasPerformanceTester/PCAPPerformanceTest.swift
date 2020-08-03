@@ -16,7 +16,7 @@ import NIO
 import NIOExtras
 import Foundation
 
-class PCapPerformanceTest: Benchmark {
+class PCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
 
     let byteBuffer = ByteBuffer(repeating: 0x65, count: 1000)
