@@ -578,19 +578,19 @@ class HTTPResponseCompressorTest: XCTestCase {
     }
 
     func testStartsWithSameUnicodeScalarsWorksOnEmptyStrings() throws {
-        XCTAssertTrue("".startsWithSameUnicodeScalars(string: ""))
+        XCTAssertTrue("".startsWithExactly(""))
     }
 
     func testStartsWithSameUnicodeScalarsWorksOnLongerNeedleFalse() throws {
-        XCTAssertFalse("_".startsWithSameUnicodeScalars(string: "__"))
+        XCTAssertFalse("_".startsWithExactly("__"))
     }
 
     func testStartsWithSameUnicodeScalarsWorksOnSameStrings() throws {
-        XCTAssertTrue("beer".startsWithSameUnicodeScalars(string: "beer"))
+        XCTAssertTrue("beer".startsWithExactly("beer"))
     }
 
     func testStartsWithSameUnicodeScalarsWorksOnPrefix() throws {
-        XCTAssertTrue("beer is good".startsWithSameUnicodeScalars(string: "beer"))
+        XCTAssertTrue("beer is good".startsWithExactly("beer"))
     }
 
     func testStartsWithSameUnicodeScalarsSaysNoForTheSameStringInDifferentNormalisations() throws {
@@ -598,11 +598,11 @@ class HTTPResponseCompressorTest: XCTestCase {
         let nfdEncodedEAigu = "\u{65}\u{301}"
 
         XCTAssertEqual(nfcEncodedEAigu, nfdEncodedEAigu)
-        XCTAssertTrue(nfcEncodedEAigu.startsWithSameUnicodeScalars(string: nfcEncodedEAigu))
-        XCTAssertTrue(nfdEncodedEAigu.startsWithSameUnicodeScalars(string: nfdEncodedEAigu))
+        XCTAssertTrue(nfcEncodedEAigu.startsWithExactly(nfcEncodedEAigu))
+        XCTAssertTrue(nfdEncodedEAigu.startsWithExactly(nfdEncodedEAigu))
         // the both do _not_ start like the other
-        XCTAssertFalse(nfcEncodedEAigu.startsWithSameUnicodeScalars(string: nfdEncodedEAigu))
-        XCTAssertFalse(nfdEncodedEAigu.startsWithSameUnicodeScalars(string: nfcEncodedEAigu))
+        XCTAssertFalse(nfcEncodedEAigu.startsWithExactly(nfdEncodedEAigu))
+        XCTAssertFalse(nfdEncodedEAigu.startsWithExactly(nfcEncodedEAigu))
     }
 
     func testStartsWithSaysYesForTheSameStringInDifferentNormalisations() throws {
