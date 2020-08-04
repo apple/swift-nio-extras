@@ -97,9 +97,17 @@ for old_tag in "$@"; do
         fi
 
         echo -n "Checking $f... "
-        swift api-digester -sdk "$sdk" -diagnose-sdk \
-            --input-paths "$tmpdir/api-old/$f" -input-paths "$tmpdir/api-new/$f" 2>&1 \
-            > "$report" 2>&1
+
+        # Since 5.2 on Linux setting sdk to / has started reporting errors - see SR-11143
+        if [[ "$(uname -s)" == "Darwin" || "$(swift --version | grep -c 'swift-5.1')" != 0 ]]; then
+            swift api-digester -sdk "$sdk" -diagnose-sdk \
+                --input-paths "$tmpdir/api-old/$f" -input-paths "$tmpdir/api-new/$f" 2>&1 \
+                > "$report" 2>&1
+        else
+            swift api-digester -diagnose-sdk \
+                --input-paths "$tmpdir/api-old/$f" -input-paths "$tmpdir/api-new/$f" 2>&1 \
+                > "$report" 2>&1
+        fi
 
         if ! shasum "$report" | grep -q cefc4ee5bb7bcdb7cb5a7747efa178dab3c794d5; then
             echo ERROR
