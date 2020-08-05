@@ -17,15 +17,15 @@ import NIO
 import NIOHTTP1
 
 extension StringProtocol {
-    /// Test if this `Collection` starts with the unicode scalars of `needle`.
+    /// Test if this string starts with the same unicode scalars as the given string, `prefix`.
     ///
     /// - note: This will be faster than `String.startsWith` as no unicode normalisations are performed.
     ///
     /// - parameters:
-    ///    - needle: The `Collection` of `Unicode.Scalar`s to match at the beginning of `self`
-    /// - returns: If `self` started with the elements contained in `needle`.
-    func startsWithSameUnicodeScalars<S: StringProtocol>(string needle: S) -> Bool {
-        return self.unicodeScalars.starts(with: needle.unicodeScalars)
+    ///    - prefix: The string to match at the beginning of `self`
+    /// - returns: Whether or not `self` starts with the same unicode scalars as `prefix`.
+    func startsWithExactly<S: StringProtocol>(_ prefix: S) -> Bool {
+        return self.utf8.starts(with: prefix.utf8)
     }
 }
 
@@ -155,11 +155,11 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         var anyQValue: Float = -1
 
         for acceptHeader in acceptHeaders {
-            if acceptHeader.startsWithSameUnicodeScalars(string: "gzip") || acceptHeader.startsWithSameUnicodeScalars(string: "x-gzip") {
+            if acceptHeader.startsWithExactly("gzip") || acceptHeader.startsWithExactly("x-gzip") {
                 gzipQValue = qValueFromHeader(acceptHeader)
-            } else if acceptHeader.startsWithSameUnicodeScalars(string: "deflate") {
+            } else if acceptHeader.startsWithExactly("deflate") {
                 deflateQValue = qValueFromHeader(acceptHeader)
-            } else if acceptHeader.startsWithSameUnicodeScalars(string: "*") {
+            } else if acceptHeader.startsWithExactly("*") {
                 anyQValue = qValueFromHeader(acceptHeader)
             }
         }
