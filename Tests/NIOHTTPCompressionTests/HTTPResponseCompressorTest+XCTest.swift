@@ -52,6 +52,7 @@ extension HTTPResponseCompressorTest {
                 ("testStartsWithSameUnicodeScalarsSaysNoForTheSameStringInDifferentNormalisations", testStartsWithSameUnicodeScalarsSaysNoForTheSameStringInDifferentNormalisations),
                 ("testStartsWithSaysYesForTheSameStringInDifferentNormalisations", testStartsWithSaysYesForTheSameStringInDifferentNormalisations),
                 ("testCanBeRemoved", testCanBeRemoved),
+                ("testBypassCompressionWhenNoContent", testBypassCompressionWhenNoContent),
            ]
    }
 }
