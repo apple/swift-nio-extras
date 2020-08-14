@@ -106,7 +106,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         let httpData = unwrapOutboundIn(data)
         switch httpData {
         case .head(var responseHead):
-            guard let algorithm = compressionAlgorithm() else {
+            guard let algorithm = compressionAlgorithm(), responseHead.status.mayHaveResponseBody else {
                 context.write(wrapOutboundOut(.head(responseHead)), promise: promise)
                 return
             }

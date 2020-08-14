@@ -633,6 +633,32 @@ class HTTPResponseCompressorTest: XCTestCase {
         try sendRequest(acceptEncoding: "deflate", channel: channel)
         try assertUncompressedResponse(channel: channel)
     }
+
+    func testBypassCompressionWhenNoContent() throws {
+        let channel = EmbeddedChannel()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor()).wait())
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "deflate;q=2.2, gzip;q=0.3", channel: channel)
+
+        let head = HTTPResponseHead(version: .init(major: 1, minor: 1),
+                                    status: .noContent,
+                                    headers: .init())
+        try channel.writeOutbound(HTTPServerResponsePart.head(head))
+        try channel.writeOutbound(HTTPServerResponsePart.end(nil))
+
+        while let part = try channel.readOutbound(as: HTTPServerResponsePart.self) {
+            switch part {
+            case .head(let head):
+                XCTAssertEqual(head.headers[canonicalForm: "content-encoding"], [])
+            case .body:
+                XCTFail("Unexpected body")
+            case .end: break
+            }
+        }
+    }
 }
 
 extension EventLoopFuture {
