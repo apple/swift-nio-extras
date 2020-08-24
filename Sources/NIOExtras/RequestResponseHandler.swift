@@ -72,6 +72,7 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
                 promise.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
             }
         }
+        context.fireChannelInactive()
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
