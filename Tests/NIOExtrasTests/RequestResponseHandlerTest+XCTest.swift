@@ -30,6 +30,7 @@ extension RequestResponseHandlerTest {
                 ("testEnqueingMultipleRequestsWorks", testEnqueingMultipleRequestsWorks),
                 ("testRequestsEnqueuedAfterErrorAreFailed", testRequestsEnqueuedAfterErrorAreFailed),
                 ("testRequestsEnqueuedJustBeforeErrorAreFailed", testRequestsEnqueuedJustBeforeErrorAreFailed),
+                ("testClosedConnectionFailsOutstandingPromises", testClosedConnectionFailsOutstandingPromises),
            ]
    }
 }

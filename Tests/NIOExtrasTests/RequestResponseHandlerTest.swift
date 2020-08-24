@@ -150,4 +150,16 @@ class RequestResponseHandlerTest: XCTestCase {
             XCTAssertNotNil(error as? DummyError1)
         }
     }
+
+    func testClosedConnectionFailsOutstandingPromises() {
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(RequestResponseHandler<String, Void>()).wait())
+
+        let promise = self.eventLoop.makePromise(of: Void.self)
+        XCTAssertNoThrow(try self.channel.writeOutbound(("Hello!", promise)))
+
+        XCTAssertNoThrow(try self.channel.close().wait())
+        XCTAssertThrowsError(try promise.futureResult.wait()) { error in
+            XCTAssertTrue(error is NIOExtrasErrors.ClosedBeforeReceivingResponse)
+        }
+    }
 }

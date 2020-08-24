@@ -59,6 +59,21 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
         self.promiseBuffer = CircularBuffer(initialCapacity: initialBufferCapacity)
     }
 
+    public func channelInactive(context: ChannelHandlerContext) {
+        switch self.state {
+        case .error:
+            // We failed any outstanding promises when we entered the error state and will fail any
+            // new promises in write.
+            assert(self.promiseBuffer.count == 0)
+        case .operational:
+            let promiseBuffer = self.promiseBuffer
+            self.promiseBuffer.removeAll()
+            promiseBuffer.forEach { promise in
+                promise.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
+            }
+        }
+    }
+
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         guard self.state.isOperational else {
             // we're in an error state, ignore further responses

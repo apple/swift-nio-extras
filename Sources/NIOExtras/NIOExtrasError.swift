@@ -22,4 +22,7 @@ public enum NIOExtrasErrors {
     public struct LeftOverBytesError: NIOExtrasError {
         public let leftOverBytes: ByteBuffer
     }
+
+    /// The channel was closed before receiving a response to a request.
+    public struct ClosedBeforeReceivingResponse: NIOExtrasError {}
 }
