@@ -48,7 +48,7 @@ private final class ChannelCollector {
     /// - parameters:
     ///   - channel: The `Channel` to add to the `ChannelCollector`.
     func channelAdded(_ channel: Channel) throws {
-        assert(self.eventLoop.inEventLoop)
+        self.eventLoop.assertInEventLoop()
 
         guard self.lifecycleState != .shutdownCompleted else {
             channel.close(promise: nil)
@@ -59,7 +59,7 @@ private final class ChannelCollector {
     }
 
     private func shutdownCompleted() {
-        assert(self.eventLoop.inEventLoop)
+        self.eventLoop.assertInEventLoop()
         assert(self.lifecycleState == .shuttingDown)
 
         self.lifecycleState = .shutdownCompleted
@@ -67,7 +67,7 @@ private final class ChannelCollector {
     }
 
     private func channelRemoved0(_ channel: Channel) {
-        assert(self.eventLoop.inEventLoop)
+        self.eventLoop.assertInEventLoop()
         precondition(self.openChannels.keys.contains(ObjectIdentifier(channel)),
                      "channel \(channel) not in ChannelCollector \(self.openChannels)")
 
@@ -94,7 +94,7 @@ private final class ChannelCollector {
     }
 
     private func initiateShutdown0(promise: EventLoopPromise<Void>?) {
-        assert(self.eventLoop.inEventLoop)
+        self.eventLoop.assertInEventLoop()
         precondition(self.lifecycleState == .upAndRunning)
 
         self.lifecycleState = .shuttingDown
