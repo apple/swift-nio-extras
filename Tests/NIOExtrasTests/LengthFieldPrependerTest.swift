@@ -114,6 +114,48 @@ class LengthFieldPrependerTest: XCTestCase {
         XCTAssertTrue(try self.channel.finish().isClean)
     }
     
+    func testEncodeWithUInt24HeaderWithString() throws {
+        
+        let endianness: Endianness = .little
+        
+        self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .three,
+                                                     lengthFieldEndianness: endianness)
+        
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertNoThrow(try  self.channel.writeAndFlush(buffer).wait())
+        
+        if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
+            
+            let sizeInHeader = outputBuffer.readInteger(size: 3, endianness: endianness, type: UInt32.self).map({ Int($0) })
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
+            
+            let additionalData = outputBuffer.readBytes(length: 1)
+            XCTAssertNil(additionalData)
+            
+        } else {
+            XCTFail("couldn't read ByteBuffer from channel")
+        }
+        
+        if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
+            
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
+            XCTAssertEqual(standardDataString, bodyString)
+            
+            let additionalData = outputBuffer.readBytes(length: 1)
+            XCTAssertNil(additionalData)
+            
+        } else {
+            XCTFail("couldn't read ByteBuffer from channel")
+        }
+        
+        XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+    
     func testEncodeWithUInt32HeaderWithString() throws {
         
         let endianness: Endianness = .little
