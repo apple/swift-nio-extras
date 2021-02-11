@@ -455,4 +455,36 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             })
         }
     }
+    
+    func testMaliciousLengthOn32BitPlatform() throws {
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .four,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength: UInt32 = UInt32(Int32.max) + 1
+        
+        var buffer = self.channel.allocator.buffer(capacity: 4) // 4 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt32.self)
+        buffer.writeString(standardDataString)
+        if UInt32.bitWidth == UInt.bitWidth {
+            // LengthFieldBasedFrameDecoder.ByteLength.four should only throw if we are on a 32 bit platform
+            XCTAssertThrowsError(try self.channel.writeInbound(buffer))
+        } else {
+            XCTAssertFalse(try self.channel.writeInbound(buffer).isFull)
+        }
+    }
+    
+    func testMaliciousLengthOn64BitPlatform() throws {
+        try XCTSkipIf(UInt64.bitWidth != UInt.bitWidth) // LengthFieldBasedFrameDecoder.ByteLength.eight is only supported on 64 bit systems
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength: UInt64 = UInt64(Int64.max) + 1
+        
+        var buffer = self.channel.allocator.buffer(capacity: 8) // 8 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt64.self)
+        
+        XCTAssertThrowsError(try self.channel.writeInbound(buffer))
+    }
 }
