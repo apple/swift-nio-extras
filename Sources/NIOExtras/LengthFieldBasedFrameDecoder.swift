@@ -37,7 +37,19 @@ extension FixedWidthInteger {
 
 
 extension ByteBuffer {
-    mutating func readInteger<Integer>(byteCount: Int, endianness: Endianness, type: Integer.Type = Integer.self) -> Integer? where Integer: FixedWidthInteger {
+    /// Read `byteCount` bytes off this `ByteBuffer`, move the reader index forward by `byteCount` bytes and converts it into an `Integer`.
+    /// - Parameters:
+    ///   - byteCount: The number of bytes to be read from this `ByteBuffer`.
+    ///   - endianness: The endianness of the integer in this `ByteBuffer` (defaults to big endian).
+    ///   - as: the desired `FixedWidthInteger` type (optional parameter)
+    /// - returns: An integer value deserialised from this `ByteBuffer` or `nil` if there aren't enough bytes readable.
+    /// - precondition: `byteCount` must be less or equal to the size of `Integer`
+    @inlinable
+    mutating func readInteger<Integer>(
+        byteCount: Int,
+        endianness: Endianness = .big,
+        type: Integer.Type = Integer.self
+    ) -> Integer? where Integer: FixedWidthInteger {
         precondition(byteCount <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
         return readBytes(length: byteCount).map { bytes -> Integer in
             let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)

@@ -25,13 +25,22 @@ extension FixedWidthInteger {
 }
 
 extension ByteBuffer {
+    
+    /// Write `byteCount` bytes from `integer` into this `ByteBuffer` and moving the writer index `byteCount` bytes forward.
+    /// - Parameters:
+    ///   - integer: The integer to serialize.
+    ///   - byteCount: The number of bytes from `Integer` which should be written
+    ///   - endianness: The endianness to use, defaults to big endian.
+    /// - Returns: The number of bytes written
+    /// - precondition: `byteCount` must be less or equal to the size of `Integer`
     @discardableResult
     @inlinable
     mutating func writeInteger<Integer>(
         _ integer: Integer,
         byteCount: Int,
-        endianness: Endianness
+        endianness: Endianness = .big
     ) -> Int where Integer: FixedWidthInteger {
+        writeInteger(integer, endianness: endianness)
         precondition(byteCount <= MemoryLayout<Integer>.size, "integer type does not have enought bytes")
         let integer = integer.toEndianness(endianness: endianness)
         switch endianness {
