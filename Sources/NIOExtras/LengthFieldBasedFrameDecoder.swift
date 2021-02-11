@@ -42,7 +42,12 @@ extension ByteBuffer {
         return readBytes(length: byteCount).map { bytes -> Integer in
             let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
             let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
-            return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
+            switch endianness {
+            case .little:
+                return integer
+            case .big:
+                return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
+            }
         }
     }
 }

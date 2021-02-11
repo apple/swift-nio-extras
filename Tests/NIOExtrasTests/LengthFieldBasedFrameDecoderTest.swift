@@ -28,8 +28,12 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         self.channel = EmbeddedChannel()
     }
     func testReadUInt32From3Bytes() {
-        var buffer = ByteBuffer(bytes: [0, 0, 5])
-        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianess: .big, type: UInt32.self), 5)
+        var buffer = ByteBuffer(bytes: [
+            0, 0, 5,
+            5, 0, 0,
+        ])
+        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .big, type: UInt32.self), 5)
+        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little, type: UInt32.self), 5)
     }
     func testDecodeWithUInt8HeaderWithData() throws {
         

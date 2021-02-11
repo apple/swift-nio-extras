@@ -14,7 +14,7 @@
 
 import XCTest
 import NIO
-import NIOExtras
+@testable import NIOExtras
 
 private let standardDataString = "abcde"
 private let standardDataStringCount = standardDataString.utf8.count
@@ -26,7 +26,36 @@ class LengthFieldPrependerTest: XCTestCase {
     override func setUp() {
         self.channel = EmbeddedChannel()
     }
-
+    func testIntegerWrite() {
+        var buffer = ByteBuffer()
+        buffer.writeInteger(UInt32(5), byteCount: 3, endianness: .little)
+        XCTAssertEqual(Array(buffer.readableBytesView), [5, 0, 0])
+        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little), 5)
+    }
+    func testReadIntegerByteCountBasicVerification() {
+        let inputs: [UInt32] = [
+            0,
+            1,
+            5,
+            UInt32(UInt8.max),
+            UInt32(UInt16.max),
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max),
+            UInt32(UInt8.max) - 1,
+            UInt32(UInt16.max) - 1,
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max) - 1,
+            UInt32(UInt8.max) + 1,
+            UInt32(UInt16.max) + 1,
+        ]
+        
+        for input in inputs {
+            var buffer = ByteBuffer()
+            buffer.writeInteger(input, byteCount: 3, endianness: .big)
+            XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .big, type: UInt32.self), input)
+            
+            buffer.writeInteger(input, byteCount: 3, endianness: .little)
+            XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little, type: UInt32.self), input)
+        }
+    }
     func testEncodeWithUInt8HeaderWithData() throws {
         
         self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .one,
