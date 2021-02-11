@@ -13,6 +13,39 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import Foundation
+
+extension FixedWidthInteger {
+    @inlinable
+    init<D>(bytes: D) where D: DataProtocol {
+        var integer = Self()
+        withUnsafeMutableBytes(of: &integer) { (pointer) in
+            _ = bytes.copyBytes(to: pointer, count: Swift.min(bytes.count, MemoryLayout<Self>.size))
+        }
+        self = integer
+    }
+    @inlinable
+    func toEndianness(endianness: Endianness) -> Self {
+        switch endianness {
+        case .little:
+            return self.littleEndian
+        case .big:
+            return self.bigEndian
+        }
+    }
+}
+
+
+extension ByteBuffer {
+    mutating func readInteger<Integer>(byteCount: Int, endianess: Endianness, type: Integer.Type = Integer.self) -> Integer? where Integer: FixedWidthInteger {
+        precondition(byteCount <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
+        return readBytes(length: byteCount).map { bytes -> Integer in
+            let integer = Integer(bytes: bytes).toEndianness(endianness: endianess)
+            let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
+            return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
+        }
+    }
+}
 
 ///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
@@ -35,11 +68,11 @@ import NIO
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
-    /// It is contained to lengths that can be converted to integer types.
     ///
     public enum ByteLength {
         case one
         case two
+        case three
         case four
         case eight
         
@@ -49,6 +82,8 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
                 return 1
             case .two:
                 return 2
+            case .three:
+                return 3
             case .four:
                 return 4
             case .eight:
@@ -172,6 +207,8 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
+        case .three:
+            return buffer.readInteger(byteCount: 3, endianess: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
         }
     }
 }
