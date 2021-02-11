@@ -37,10 +37,10 @@ extension FixedWidthInteger {
 
 
 extension ByteBuffer {
-    mutating func readInteger<Integer>(byteCount: Int, endianess: Endianness, type: Integer.Type = Integer.self) -> Integer? where Integer: FixedWidthInteger {
+    mutating func readInteger<Integer>(byteCount: Int, endianness: Endianness, type: Integer.Type = Integer.self) -> Integer? where Integer: FixedWidthInteger {
         precondition(byteCount <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
         return readBytes(length: byteCount).map { bytes -> Integer in
-            let integer = Integer(bytes: bytes).toEndianness(endianness: endianess)
+            let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
             let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
             return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
         }
@@ -208,7 +208,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
         case .three:
-            return buffer.readInteger(byteCount: 3, endianess: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
+            return buffer.readInteger(byteCount: 3, endianness: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
         }
     }
 }
