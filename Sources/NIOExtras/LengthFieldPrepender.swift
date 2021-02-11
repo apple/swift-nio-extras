@@ -13,6 +13,44 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import Foundation
+
+extension FixedWidthInteger {
+    /// A collection containing the words of this value’s binary representation
+    @inlinable
+    var data: Data {
+        var integer = self
+        return Data(bytes: &integer, count: MemoryLayout<Self>.size)
+    }
+}
+
+extension ByteBuffer {
+    
+    /// Write `size` bytes from `integer` into this `ByteBuffer` and moving the writer index `size` bytes forward.
+    /// - Parameters:
+    ///   - integer: The integer to serialize.
+    ///   - size: The number of bytes from `Integer` which should be written.
+    ///   - endianness: The endianness to use, defaults to big endian.
+    /// - Returns: The number of bytes written
+    /// - precondition: `size` must be less or equal to the size of `Integer`
+    @discardableResult
+    @inlinable
+    mutating func writeInteger<Integer>(
+        _ integer: Integer,
+        size: Int,
+        endianness: Endianness = .big
+    ) -> Int where Integer: FixedWidthInteger {
+        precondition(size <= MemoryLayout<Integer>.size, "integer type does not have enought bytes")
+        let integer = integer.toEndianness(endianness: endianness)
+        switch endianness {
+        case .little:
+            return writeBytes(integer.data.prefix(size))
+        case .big:
+            return writeBytes(integer.data.suffix(size))
+        }
+    }
+}
+
 
 public enum LengthFieldPrependerError: Error {
     case messageDataTooLongForLengthField
@@ -34,11 +72,11 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
-    /// It is constrained to lengths that can be converted to integer types.
     ///
     public enum ByteLength {
         case one
         case two
+        case three
         case four
         case eight
        
@@ -49,6 +87,8 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
                 return 1
             case .two:
                 return 2
+            case .three:
+                return 3
             case .four:
                 return 4
             case .eight:
@@ -63,6 +103,8 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
                 return UInt(UInt8.max)
             case .two:
                 return UInt(UInt16.max)
+            case .three:
+                return (UInt(UInt16.max) << 8) &+ UInt(UInt8.max)
             case .four:
                 return UInt(UInt32.max)
             case .eight:
@@ -120,6 +162,8 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
             dataLengthBuffer.writeInteger(UInt8(dataLength), endianness: self.lengthFieldEndianness)
         case .two:
             dataLengthBuffer.writeInteger(UInt16(dataLength), endianness: self.lengthFieldEndianness)
+        case .three:
+            dataLengthBuffer.writeInteger(UInt32(dataLength), size: 3, endianness: self.lengthFieldEndianness)
         case .four:
             dataLengthBuffer.writeInteger(UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .eight:

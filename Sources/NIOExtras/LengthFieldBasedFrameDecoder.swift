@@ -13,6 +13,56 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import Foundation
+
+extension FixedWidthInteger {
+    @inlinable
+    init<D>(bytes: D) where D: DataProtocol {
+        var integer = Self()
+        withUnsafeMutableBytes(of: &integer) { (pointer) in
+            _ = bytes.copyBytes(to: pointer, count: Swift.min(bytes.count, MemoryLayout<Self>.size))
+        }
+        self = integer
+    }
+    @inlinable
+    func toEndianness(endianness: Endianness) -> Self {
+        switch endianness {
+        case .little:
+            return self.littleEndian
+        case .big:
+            return self.bigEndian
+        }
+    }
+}
+
+
+extension ByteBuffer {
+    /// Read `size` bytes off this `ByteBuffer`, move the reader index forward by `size` bytes and converts it into an `Integer`.
+    /// - Parameters:
+    ///   - size: The number of bytes to be read from this `ByteBuffer`.
+    ///   - endianness: The endianness of the integer in this `ByteBuffer` (defaults to big endian).
+    ///   - as: the desired `FixedWidthInteger` type (optional parameter)
+    /// - returns: An integer value deserialised from this `ByteBuffer` or `nil` if there aren't enough bytes readable.
+    /// - precondition: `size` must be less or equal to the size of `Integer`
+    @inlinable
+    mutating func readInteger<Integer>(
+        size: Int,
+        endianness: Endianness = .big,
+        type: Integer.Type = Integer.self
+    ) -> Integer? where Integer: FixedWidthInteger {
+        precondition(size <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
+        return readBytes(length: size).map { bytes -> Integer in
+            let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
+            switch endianness {
+            case .little:
+                return integer
+            case .big:
+                let missingLeadingZerosBytes = MemoryLayout<Integer>.size - size
+                return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
+            }
+        }
+    }
+}
 
 ///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
@@ -35,11 +85,11 @@ import NIO
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
-    /// It is contained to lengths that can be converted to integer types.
     ///
     public enum ByteLength {
         case one
         case two
+        case three
         case four
         case eight
         
@@ -49,6 +99,8 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
                 return 1
             case .two:
                 return 2
+            case .three:
+                return 3
             case .four:
                 return 4
             case .eight:
@@ -172,6 +224,8 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
+        case .three:
+            return buffer.readInteger(size: 3, endianness: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
         }
     }
 }

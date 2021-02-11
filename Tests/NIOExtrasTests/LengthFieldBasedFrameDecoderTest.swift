@@ -27,7 +27,38 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     override func setUp() {
         self.channel = EmbeddedChannel()
     }
-
+    func testReadUInt32From3Bytes() {
+        var buffer = ByteBuffer(bytes: [
+            0, 0, 5,
+            5, 0, 0,
+        ])
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), 5)
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), 5)
+    }
+    func testReadAndWriteUInt32From3BytesBasicVerification() {
+        let inputs: [UInt32] = [
+            0,
+            1,
+            5,
+            UInt32(UInt8.max),
+            UInt32(UInt16.max),
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max),
+            UInt32(UInt8.max) - 1,
+            UInt32(UInt16.max) - 1,
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max) - 1,
+            UInt32(UInt8.max) + 1,
+            UInt32(UInt16.max) + 1,
+        ]
+        
+        for input in inputs {
+            var buffer = ByteBuffer()
+            buffer.writeInteger(input, size: 3, endianness: .big)
+            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), input)
+            
+            buffer.writeInteger(input, size: 3, endianness: .little)
+            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), input)
+        }
+    }
     func testDecodeWithUInt8HeaderWithData() throws {
         
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .one,
@@ -60,6 +91,25 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         var buffer = self.channel.allocator.buffer(capacity: 7) // 2 byte header + 5 character string
         buffer.writeInteger(dataLength, endianness: .little, as: UInt16.self)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
+        
+        XCTAssertNoThrow(XCTAssertEqual(standardDataString,
+                                        try (self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                                            String(decoding: $0, as: Unicode.UTF8.self)
+                                        }))
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+    
+    func testDecodeWithUInt24HeaderWithString() throws {
+        
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .three,
+                                                                   lengthFieldEndianness: .big))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        var buffer = self.channel.allocator.buffer(capacity: 8) // 3 byte header + 5 character string
+        buffer.writeBytes([0, 0, 5])
         buffer.writeString(standardDataString)
         
         XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
@@ -413,6 +463,13 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                  String(decoding: Array(repeating: UInt8(ascii: "X"), count: Int(UInt8.max)), as: Unicode.UTF8.self)),
                 ]),
             (.two, [
+                (1, "a"),
+                (0, ""),
+                (9, "123456789"),
+                (307,
+                 String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
+                ]),
+            (.three, [
                 (1, "a"),
                 (0, ""),
                 (9, "123456789"),
