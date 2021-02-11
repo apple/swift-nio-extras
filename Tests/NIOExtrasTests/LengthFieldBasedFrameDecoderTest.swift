@@ -32,8 +32,32 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             0, 0, 5,
             5, 0, 0,
         ])
-        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .big, type: UInt32.self), 5)
-        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little, type: UInt32.self), 5)
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), 5)
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), 5)
+    }
+    func testReadAndWriteUInt32From3BytesBasicVerification() {
+        let inputs: [UInt32] = [
+            0,
+            1,
+            5,
+            UInt32(UInt8.max),
+            UInt32(UInt16.max),
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max),
+            UInt32(UInt8.max) - 1,
+            UInt32(UInt16.max) - 1,
+            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max) - 1,
+            UInt32(UInt8.max) + 1,
+            UInt32(UInt16.max) + 1,
+        ]
+        
+        for input in inputs {
+            var buffer = ByteBuffer()
+            buffer.writeInteger(input, size: 3, endianness: .big)
+            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), input)
+            
+            buffer.writeInteger(input, size: 3, endianness: .little)
+            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), input)
+        }
     }
     func testDecodeWithUInt8HeaderWithData() throws {
         

@@ -37,27 +37,27 @@ extension FixedWidthInteger {
 
 
 extension ByteBuffer {
-    /// Read `byteCount` bytes off this `ByteBuffer`, move the reader index forward by `byteCount` bytes and converts it into an `Integer`.
+    /// Read `size` bytes off this `ByteBuffer`, move the reader index forward by `size` bytes and converts it into an `Integer`.
     /// - Parameters:
-    ///   - byteCount: The number of bytes to be read from this `ByteBuffer`.
+    ///   - size: The number of bytes to be read from this `ByteBuffer`.
     ///   - endianness: The endianness of the integer in this `ByteBuffer` (defaults to big endian).
     ///   - as: the desired `FixedWidthInteger` type (optional parameter)
     /// - returns: An integer value deserialised from this `ByteBuffer` or `nil` if there aren't enough bytes readable.
-    /// - precondition: `byteCount` must be less or equal to the size of `Integer`
+    /// - precondition: `size` must be less or equal to the size of `Integer`
     @inlinable
     mutating func readInteger<Integer>(
-        byteCount: Int,
+        size: Int,
         endianness: Endianness = .big,
         type: Integer.Type = Integer.self
     ) -> Integer? where Integer: FixedWidthInteger {
-        precondition(byteCount <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
-        return readBytes(length: byteCount).map { bytes -> Integer in
+        precondition(size <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
+        return readBytes(length: size).map { bytes -> Integer in
             let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
             switch endianness {
             case .little:
                 return integer
             case .big:
-                let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
+                let missingLeadingZerosBytes = MemoryLayout<Integer>.size - size
                 return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
             }
         }
@@ -225,7 +225,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
         case .three:
-            return buffer.readInteger(byteCount: 3, endianness: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
+            return buffer.readInteger(size: 3, endianness: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
         }
     }
 }

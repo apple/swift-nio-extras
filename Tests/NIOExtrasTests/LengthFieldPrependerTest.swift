@@ -26,35 +26,15 @@ class LengthFieldPrependerTest: XCTestCase {
     override func setUp() {
         self.channel = EmbeddedChannel()
     }
-    func testIntegerWrite() {
+    func testWrite3BytesOfUInt32Write() {
         var buffer = ByteBuffer()
-        buffer.writeInteger(UInt32(5), byteCount: 3, endianness: .little)
+        buffer.writeInteger(UInt32(5), size: 3, endianness: .little)
         XCTAssertEqual(Array(buffer.readableBytesView), [5, 0, 0])
-        XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little), 5)
-    }
-    func testReadIntegerByteCountBasicVerification() {
-        let inputs: [UInt32] = [
-            0,
-            1,
-            5,
-            UInt32(UInt8.max),
-            UInt32(UInt16.max),
-            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max),
-            UInt32(UInt8.max) - 1,
-            UInt32(UInt16.max) - 1,
-            UInt32(UInt16.max) << 8 &+ UInt32(UInt8.max) - 1,
-            UInt32(UInt8.max) + 1,
-            UInt32(UInt16.max) + 1,
-        ]
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little), 5)
         
-        for input in inputs {
-            var buffer = ByteBuffer()
-            buffer.writeInteger(input, byteCount: 3, endianness: .big)
-            XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .big, type: UInt32.self), input)
-            
-            buffer.writeInteger(input, byteCount: 3, endianness: .little)
-            XCTAssertEqual(buffer.readInteger(byteCount: 3, endianness: .little, type: UInt32.self), input)
-        }
+        buffer.writeInteger(UInt32(5), size: 3, endianness: .big)
+        XCTAssertEqual(Array(buffer.readableBytesView), [0, 0, 5])
+        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big), 5)
     }
     func testEncodeWithUInt8HeaderWithData() throws {
         
