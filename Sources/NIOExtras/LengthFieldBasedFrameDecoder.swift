@@ -41,11 +41,11 @@ extension ByteBuffer {
         precondition(byteCount <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
         return readBytes(length: byteCount).map { bytes -> Integer in
             let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
-            let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
             switch endianness {
             case .little:
                 return integer
             case .big:
+                let missingLeadingZerosBytes = MemoryLayout<Integer>.size - byteCount
                 return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
             }
         }
