@@ -88,11 +88,6 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
     public init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
-
-        // The value contained in the length field must be able to be represented by an integer type on the platform.
-        // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
-        precondition(lengthFieldLength.length <= Int.bitWidth/8)
-            
         self.lengthFieldLength = lengthFieldLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }

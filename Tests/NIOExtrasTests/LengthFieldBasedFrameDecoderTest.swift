@@ -461,7 +461,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                                                                    lengthFieldEndianness: .little))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
 
-        let dataLength: UInt32 = UInt32(Int32.max) + 1
+        let dataLength = UInt32(Int32.max) + 1
         
         var buffer = self.channel.allocator.buffer(capacity: 4) // 4 byte header
         buffer.writeInteger(dataLength, endianness: .little, as: UInt32.self)
@@ -475,13 +475,11 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     }
     
     func testMaliciousLengthOn64BitPlatform() {
-        // LengthFieldBasedFrameDecoder.ByteLength.eight is only supported on 64 bit systems
-        guard UInt64.bitWidth == UInt.bitWidth else { return }
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
                                                                    lengthFieldEndianness: .little))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
 
-        let dataLength: UInt64 = UInt64(Int64.max) + 1
+        let dataLength = UInt64(Int64.max) + 1
         
         var buffer = self.channel.allocator.buffer(capacity: 8) // 8 byte header
         buffer.writeInteger(dataLength, endianness: .little, as: UInt64.self)
