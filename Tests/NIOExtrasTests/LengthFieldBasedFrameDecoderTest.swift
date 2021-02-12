@@ -466,12 +466,8 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         var buffer = self.channel.allocator.buffer(capacity: 4) // 4 byte header
         buffer.writeInteger(dataLength, endianness: .little, as: UInt32.self)
         buffer.writeString(standardDataString)
-        if UInt32.bitWidth == UInt.bitWidth {
-            // LengthFieldBasedFrameDecoder.ByteLength.four should only throw if we are on a 32 bit platform
-            XCTAssertThrowsError(try self.channel.writeInbound(buffer))
-        } else {
-            XCTAssertFalse(try self.channel.writeInbound(buffer).isFull)
-        }
+        
+        XCTAssertThrowsError(try self.channel.writeInbound(buffer))
     }
     
     func testMaliciousLengthOn64BitPlatform() {

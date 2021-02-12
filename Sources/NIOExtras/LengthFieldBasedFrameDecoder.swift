@@ -17,6 +17,8 @@ import NIO
 public enum LengthFieldBasedFrameDecoderError: Error {
     /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `Int.max`
     case lengthFieldValueTooLarge
+    /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize`
+    case lengthFieldValueLargerThanMaxSupportedSize
 }
 
 ///
@@ -38,6 +40,8 @@ public enum LengthFieldBasedFrameDecoderError: Error {
 /// 'A' and 'E' will be the headers and will not be passed forward.
 ///
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
+    /// Maximum supported length field size in bytes of `LengthFieldBasedFrameDecoder` and is currently `Int32.max`
+    static let maxSupportedLengthFieldSize: Int = Int(Int32.max)
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
     /// It is contained to lengths that can be converted to integer types.
@@ -162,26 +166,32 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - buffer: The buffer containing the integer frame length.
     ///
     private func readFrameLength(for buffer: inout ByteBuffer) throws -> Int? {
-
+        let frameLength: Int?
         switch self.lengthFieldLength {
         case .one:
-            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
+            frameLength = buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
         case .two:
-            return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
+            frameLength = buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
         case .four:
-            return try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map {
+            frameLength = try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map {
                 guard let size = Int(exactly: $0) else {
                     throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
                 }
                 return size
             }
         case .eight:
-            return try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map {
+            frameLength = try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map {
                 guard let size = Int(exactly: $0) else {
                     throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
                 }
                 return size
             }
         }
+        
+        if let frameLength = frameLength,
+           frameLength > Self.maxSupportedLengthFieldSize {
+            throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
+        }
+        return frameLength
     }
 }
