@@ -474,8 +474,9 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         }
     }
     
-    func testMaliciousLengthOn64BitPlatform() throws {
-        try XCTSkipIf(UInt64.bitWidth != UInt.bitWidth) // LengthFieldBasedFrameDecoder.ByteLength.eight is only supported on 64 bit systems
+    func testMaliciousLengthOn64BitPlatform() {
+        // LengthFieldBasedFrameDecoder.ByteLength.eight is only supported on 64 bit systems
+        guard UInt64.bitWidth == UInt.bitWidth else { return }
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
                                                                    lengthFieldEndianness: .little))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
