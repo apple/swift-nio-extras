@@ -14,7 +14,7 @@
 
 import NIO
 
-public enum LengthFieldBasedFrameDecoderError: Error {
+public enum NIOLengthFieldBasedFrameDecoderError: Error {
     /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `Int.max`
     case lengthFieldValueTooLarge
     /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize`
@@ -41,7 +41,7 @@ public enum LengthFieldBasedFrameDecoderError: Error {
 ///
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     /// Maximum supported length field size in bytes of `LengthFieldBasedFrameDecoder` and is currently `Int32.max`
-    static let maxSupportedLengthFieldSize: Int = Int(Int32.max)
+    public static let maxSupportedLengthFieldSize: Int = Int(Int32.max)
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
     /// It is contained to lengths that can be converted to integer types.
@@ -175,22 +175,22 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case .four:
             frameLength = try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map {
                 guard let size = Int(exactly: $0) else {
-                    throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
+                    throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
                 }
                 return size
             }
         case .eight:
             frameLength = try buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map {
                 guard let size = Int(exactly: $0) else {
-                    throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
+                    throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
                 }
                 return size
             }
         }
         
         if let frameLength = frameLength,
-           frameLength > Self.maxSupportedLengthFieldSize {
-            throw LengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
+           frameLength > LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize {
+            throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
         }
         return frameLength
     }
