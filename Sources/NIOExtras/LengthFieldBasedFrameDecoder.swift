@@ -15,52 +15,34 @@
 import NIO
 import Foundation
 
-extension FixedWidthInteger {
-    @inlinable
-    init<D>(bytes: D) where D: DataProtocol {
-        var integer = Self()
-        withUnsafeMutableBytes(of: &integer) { (pointer) in
-            _ = bytes.copyBytes(to: pointer, count: Swift.min(bytes.count, MemoryLayout<Self>.size))
-        }
-        self = integer
-    }
-    @inlinable
-    func toEndianness(endianness: Endianness) -> Self {
-        switch endianness {
-        case .little:
-            return self.littleEndian
-        case .big:
-            return self.bigEndian
-        }
-    }
-}
-
-
 extension ByteBuffer {
-    /// Read `size` bytes off this `ByteBuffer`, move the reader index forward by `size` bytes and converts it into an `Integer`.
-    /// - Parameters:
-    ///   - size: The number of bytes to be read from this `ByteBuffer`.
-    ///   - endianness: The endianness of the integer in this `ByteBuffer` (defaults to big endian).
-    ///   - as: the desired `FixedWidthInteger` type (optional parameter)
-    /// - returns: An integer value deserialised from this `ByteBuffer` or `nil` if there aren't enough bytes readable.
-    /// - precondition: `size` must be less or equal to the size of `Integer`
     @inlinable
-    mutating func readInteger<Integer>(
-        size: Int,
-        endianness: Endianness = .big,
-        type: Integer.Type = Integer.self
-    ) -> Integer? where Integer: FixedWidthInteger {
-        precondition(size <= MemoryLayout<Integer>.size, "requested byte count does not fit into requested integer type")
-        return readBytes(length: size).map { bytes -> Integer in
-            let integer = Integer(bytes: bytes).toEndianness(endianness: endianness)
-            switch endianness {
-            case .little:
-                return integer
-            case .big:
-                let missingLeadingZerosBytes = MemoryLayout<Integer>.size - size
-                return integer >> (missingLeadingZerosBytes * UInt8.bitWidth)
-            }
+    mutating func get24UInt(
+        endianness: Endianness = .big
+    ) -> UInt32? {
+        let mostSignificant: UInt16
+        let leastSignificant: UInt8
+        switch endianness {
+        case .big:
+            guard let uint16 = self.getInteger(at: readerIndex, endianness: .big, as: UInt16.self),
+                  let uint8 = self.getInteger(at: readerIndex + 2, endianness: .big, as: UInt8.self) else { return nil }
+            mostSignificant = uint16
+            leastSignificant = uint8
+        case .little:
+            guard let uint8 = self.getInteger(at: readerIndex, endianness: .little, as: UInt8.self),
+                  let uint16 = self.getInteger(at: readerIndex + 1, endianness: .little, as: UInt16.self) else { return nil }
+            mostSignificant = uint16
+            leastSignificant = uint8
         }
+        return (UInt32(mostSignificant) << 8) &+ UInt32(leastSignificant)
+    }
+    @inlinable
+    mutating func read24UInt(
+        endianness: Endianness = .big
+    ) -> UInt32? {
+        guard let integer = get24UInt(endianness: endianness) else { return nil }
+        self.moveReaderIndex(forwardBy: 3)
+        return integer
     }
 }
 
@@ -208,7 +190,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
 
     ///
     /// Decodes the specified region of the buffer into an unadjusted frame length. The default implementation is
-    /// capable of decoding the specified region into an unsigned 8/16/32/64 bit integer.
+    /// capable of decoding the specified region into an unsigned 8/16/24/32/64 bit integer.
     ///
     /// - parameters:
     ///    - buffer: The buffer containing the integer frame length.
@@ -220,12 +202,12 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
         case .two:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
+        case .three:
+            return buffer.read24UInt(endianness: self.lengthFieldEndianness).map { Int($0) }
         case .four:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
         case .eight:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
-        case .three:
-            return buffer.readInteger(size: 3, endianness: self.lengthFieldEndianness, type: UInt32.self).map { Int($0) }
         }
     }
 }

@@ -28,13 +28,13 @@ class LengthFieldPrependerTest: XCTestCase {
     }
     func testWrite3BytesOfUInt32Write() {
         var buffer = ByteBuffer()
-        buffer.writeInteger(UInt32(5), size: 3, endianness: .little)
+        buffer.write24UInt(5, endianness: .little)
         XCTAssertEqual(Array(buffer.readableBytesView), [5, 0, 0])
-        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little), 5)
+        XCTAssertEqual(buffer.read24UInt(endianness: .little), 5)
         
-        buffer.writeInteger(UInt32(5), size: 3, endianness: .big)
+        buffer.write24UInt(5, endianness: .big)
         XCTAssertEqual(Array(buffer.readableBytesView), [0, 0, 5])
-        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big), 5)
+        XCTAssertEqual(buffer.read24UInt(endianness: .big), 5)
     }
     func testEncodeWithUInt8HeaderWithData() throws {
         
@@ -130,7 +130,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
             
-            let sizeInHeader = outputBuffer.readInteger(size: 3, endianness: endianness, type: UInt32.self).map({ Int($0) })
+            let sizeInHeader = outputBuffer.read24UInt(endianness: endianness).map({ Int($0) })
             XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)

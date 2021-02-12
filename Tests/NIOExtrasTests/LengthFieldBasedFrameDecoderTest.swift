@@ -32,8 +32,9 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             0, 0, 5,
             5, 0, 0,
         ])
-        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), 5)
-        XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), 5)
+        XCTAssertEqual(buffer.read24UInt(endianness: .big), 5)
+        print(buffer.readableBytesView)
+        XCTAssertEqual(buffer.read24UInt(endianness: .little), 5)
     }
     func testReadAndWriteUInt32From3BytesBasicVerification() {
         let inputs: [UInt32] = [
@@ -52,11 +53,11 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         
         for input in inputs {
             var buffer = ByteBuffer()
-            buffer.writeInteger(input, size: 3, endianness: .big)
-            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .big, type: UInt32.self), input)
+            buffer.write24UInt(input, endianness: .big)
+            XCTAssertEqual(buffer.read24UInt(endianness: .big), input)
             
-            buffer.writeInteger(input, size: 3, endianness: .little)
-            XCTAssertEqual(buffer.readInteger(size: 3, endianness: .little, type: UInt32.self), input)
+            buffer.write24UInt(input, endianness: .little)
+            XCTAssertEqual(buffer.read24UInt(endianness: .little), input)
         }
     }
     func testDecodeWithUInt8HeaderWithData() throws {

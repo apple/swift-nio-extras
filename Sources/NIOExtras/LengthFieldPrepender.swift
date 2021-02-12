@@ -15,38 +15,21 @@
 import NIO
 import Foundation
 
-extension FixedWidthInteger {
-    /// A collection containing the words of this value’s binary representation
-    @inlinable
-    var data: Data {
-        var integer = self
-        return Data(bytes: &integer, count: MemoryLayout<Self>.size)
-    }
-}
-
 extension ByteBuffer {
-    
-    /// Write `size` bytes from `integer` into this `ByteBuffer` and moving the writer index `size` bytes forward.
-    /// - Parameters:
-    ///   - integer: The integer to serialize.
-    ///   - size: The number of bytes from `Integer` which should be written.
-    ///   - endianness: The endianness to use, defaults to big endian.
-    /// - Returns: The number of bytes written
-    /// - precondition: `size` must be less or equal to the size of `Integer`
     @discardableResult
     @inlinable
-    mutating func writeInteger<Integer>(
-        _ integer: Integer,
-        size: Int,
+    mutating func write24UInt(
+        _ integer: UInt32,
         endianness: Endianness = .big
-    ) -> Int where Integer: FixedWidthInteger {
-        precondition(size <= MemoryLayout<Integer>.size, "integer type does not have enought bytes")
-        let integer = integer.toEndianness(endianness: endianness)
+    ) -> Int {
+        assert(integer & 0xFF_FF_FF == integer, "integer value does not fit into 24 bit integer")
         switch endianness {
         case .little:
-            return writeBytes(integer.data.prefix(size))
+            return writeInteger(UInt8(integer & 0xFF), endianness: .little) +
+                writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .little)
         case .big:
-            return writeBytes(integer.data.suffix(size))
+            return writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .big) +
+                writeInteger(UInt8(integer & 0xFF), endianness: .big)
         }
     }
 }
@@ -163,7 +146,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         case .two:
             dataLengthBuffer.writeInteger(UInt16(dataLength), endianness: self.lengthFieldEndianness)
         case .three:
-            dataLengthBuffer.writeInteger(UInt32(dataLength), size: 3, endianness: self.lengthFieldEndianness)
+            dataLengthBuffer.write24UInt(UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .four:
             dataLengthBuffer.writeInteger(UInt32(dataLength), endianness: self.lengthFieldEndianness)
         case .eight:
