@@ -190,7 +190,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         
         if let frameLength = frameLength,
            frameLength > Self.maxSupportedLengthFieldSize {
-            throw LengthFieldBasedFrameDecoderError.lengthFieldValueTooLarge
+            throw LengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
         }
         return frameLength
     }
