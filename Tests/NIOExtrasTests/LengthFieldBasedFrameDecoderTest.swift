@@ -456,7 +456,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         }
     }
     
-    func testMaliciousLengthOn32BitPlatform() throws {
+    func testMaliciousLengthWith32BitFieldLength() throws {
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .four,
                                                                    lengthFieldEndianness: .little))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
@@ -470,7 +470,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
         XCTAssertThrowsError(try self.channel.writeInbound(buffer))
     }
     
-    func testMaliciousLengthOn64BitPlatform() {
+    func testMaliciousLengthWith64BitFieldLength() {
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
                                                                    lengthFieldEndianness: .little))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
