@@ -118,7 +118,7 @@ class LengthFieldPrependerTest: XCTestCase {
         
         let endianness: Endianness = .little
         
-        self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .three,
+        self.encoderUnderTest = LengthFieldPrepender(lengthFieldBitLength: .threeBytes,
                                                      lengthFieldEndianness: endianness)
         
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())

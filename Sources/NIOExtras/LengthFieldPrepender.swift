@@ -52,46 +52,75 @@ public enum LengthFieldPrependerError: Error {
 /// This initial prepended byte is called the 'length field'.
 ///
 public final class LengthFieldPrepender: ChannelOutboundHandler {
-    
+    ///
+    /// An struct to describe the length of a piece of data in bits
+    public struct BitLength {
+        fileprivate enum Backing {
+            case bits8
+            case bits16
+            case bits24
+            case bits32
+            case bits64
+        }
+        fileprivate let bitLength: Backing
+
+        public static let oneByte: BitLength = BitLength(bitLength: .bits8)
+        public static let twoBytes: BitLength = BitLength(bitLength: .bits16)
+        public static let threeBytes: BitLength = BitLength(bitLength: .bits24)
+        public static let fourBytes: BitLength = BitLength(bitLength: .bits32)
+        public static let eightBytes: BitLength = BitLength(bitLength: .bits64)
+        
+        public static let eightBits: BitLength = BitLength(bitLength: .bits8)
+        public static let sixteenBits: BitLength = BitLength(bitLength: .bits16)
+        public static let twentyFourBits: BitLength = BitLength(bitLength: .bits24)
+        public static let thirtyTwoBits: BitLength = BitLength(bitLength: .bits32)
+        public static let sixtyFourBits: BitLength = BitLength(bitLength: .bits64)
+        
+        fileprivate var length: Int {
+            switch bitLength {
+            case .bits8:
+                return 1
+            case .bits16:
+                return 2
+            case .bits24:
+                return 3
+            case .bits32:
+                return 4
+            case .bits64:
+                return 8
+            }
+        }
+        
+        fileprivate var max: UInt {
+            switch bitLength {
+            case .bits8:
+                return UInt(UInt8.max)
+            case .bits16:
+                return UInt(UInt16.max)
+            case .bits24:
+                return (UInt(UInt16.max) << 8) &+ UInt(UInt8.max)
+            case .bits32:
+                return UInt(UInt32.max)
+            case .bits64:
+                return UInt(UInt64.max)
+            }
+        }
+    }
     ///
     /// An enumeration to describe the length of a piece of data in bytes.
     ///
     public enum ByteLength {
         case one
         case two
-        case three
         case four
         case eight
-       
-        fileprivate var length: Int {
-
-            switch self {
-            case .one:
-                return 1
-            case .two:
-                return 2
-            case .three:
-                return 3
-            case .four:
-                return 4
-            case .eight:
-                return 8
-            }
-        }
         
-        fileprivate var max: UInt {
-            
+        fileprivate var bitLength: BitLength {
             switch self {
-            case .one:
-                return UInt(UInt8.max)
-            case .two:
-                return UInt(UInt16.max)
-            case .three:
-                return (UInt(UInt16.max) << 8) &+ UInt(UInt8.max)
-            case .four:
-                return UInt(UInt32.max)
-            case .eight:
-                return UInt(UInt64.max)
+            case .one: return .oneByte
+            case .two: return .twoBytes
+            case .four: return .fourBytes
+            case .eight: return .eightBytes
             }
         }
     }
@@ -99,7 +128,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
 
-    private let lengthFieldLength: LengthFieldPrepender.ByteLength
+    private let lengthFieldLength: LengthFieldPrepender.BitLength
     private let lengthFieldEndianness: Endianness
     
     private var lengthBuffer: ByteBuffer?
@@ -110,13 +139,15 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     ///    - lengthFieldLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
-    public init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
-        
+    public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
+        self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
+    }
+    public init(lengthFieldBitLength: BitLength, lengthFieldEndianness: Endianness = .big) {
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
-        precondition(lengthFieldLength.length <= Int.bitWidth/8)
+        precondition(lengthFieldBitLength.length <= Int.bitWidth/8)
         
-        self.lengthFieldLength = lengthFieldLength
+        self.lengthFieldLength = lengthFieldBitLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
 
@@ -140,16 +171,16 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
             self.lengthBuffer = dataLengthBuffer
         }
 
-        switch self.lengthFieldLength {
-        case .one:
+        switch self.lengthFieldLength.bitLength {
+        case .bits8:
             dataLengthBuffer.writeInteger(UInt8(dataLength), endianness: self.lengthFieldEndianness)
-        case .two:
+        case .bits16:
             dataLengthBuffer.writeInteger(UInt16(dataLength), endianness: self.lengthFieldEndianness)
-        case .three:
+        case .bits24:
             dataLengthBuffer.write24UInt(UInt32(dataLength), endianness: self.lengthFieldEndianness)
-        case .four:
+        case .bits32:
             dataLengthBuffer.writeInteger(UInt32(dataLength), endianness: self.lengthFieldEndianness)
-        case .eight:
+        case .bits64:
             dataLengthBuffer.writeInteger(UInt64(dataLength), endianness: self.lengthFieldEndianness)
         }
 
