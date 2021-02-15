@@ -71,22 +71,15 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public enum ByteLength {
         case one
         case two
-        case three
         case four
         case eight
         
-        var length: Int {
+        fileprivate var bitLength: LengthFieldBitLength {
             switch self {
-            case .one:
-                return 1
-            case .two:
-                return 2
-            case .three:
-                return 3
-            case .four:
-                return 4
-            case .eight:
-                return 8
+            case .one: return .oneByte
+            case .two: return .twoBytes
+            case .four: return .fourBytes
+            case .eight: return .eightBytes
             }
         }
     }
@@ -107,7 +100,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public var cumulationBuffer: ByteBuffer?
     private var readState: DecoderReadState = .waitingForHeader
     
-    private let lengthFieldLength: ByteLength
+    private let lengthFieldLength: LengthFieldBitLength
     private let lengthFieldEndianness: Endianness
     
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
@@ -116,13 +109,23 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - lengthFieldLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
-    public init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
+    public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
+        self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
+    }
+    
+    /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
+    ///
+    /// - parameters:
+    ///    - lengthFieldBitLength: The length of the field specifying the remaining length of the frame.
+    ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
+    ///
+    public init(lengthFieldBitLength: LengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
 
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
-        precondition(lengthFieldLength.length <= Int.bitWidth/8)
+        precondition(lengthFieldBitLength.length <= Int.bitWidth/8)
             
-        self.lengthFieldLength = lengthFieldLength
+        self.lengthFieldLength = lengthFieldBitLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
     
@@ -197,16 +200,16 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///
     private func readFrameLength(for buffer: inout ByteBuffer) -> Int? {
 
-        switch self.lengthFieldLength {
-        case .one:
+        switch self.lengthFieldLength.bitLength {
+        case .bits8:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt8.self).map { Int($0) }
-        case .two:
+        case .bits16:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt16.self).map { Int($0) }
-        case .three:
+        case .bits24:
             return buffer.read24UInt(endianness: self.lengthFieldEndianness).map { Int($0) }
-        case .four:
+        case .bits32:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt32.self).map { Int($0) }
-        case .eight:
+        case .bits64:
             return buffer.readInteger(endianness: self.lengthFieldEndianness, as: UInt64.self).map { Int($0) }
         }
     }

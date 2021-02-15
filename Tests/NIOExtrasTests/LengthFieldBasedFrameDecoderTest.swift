@@ -105,7 +105,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     
     func testDecodeWithUInt24HeaderWithString() throws {
         
-        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .three,
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldBitLength: .threeBytes,
                                                                    lengthFieldEndianness: .big))
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
 
@@ -455,36 +455,36 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     }
 
     func testBasicVerification() {
-        let inputs: [(LengthFieldBasedFrameDecoder.ByteLength, [(Int, String)])] = [
-            (.one, [
+        let inputs: [(LengthFieldBitLength, [(Int, String)])] = [
+            (.oneByte, [
                 (6, "abcdef"),
                 (0, ""),
                 (9, "123456789"),
                 (Int(UInt8.max),
                  String(decoding: Array(repeating: UInt8(ascii: "X"), count: Int(UInt8.max)), as: Unicode.UTF8.self)),
                 ]),
-            (.two, [
+            (.twoBytes, [
                 (1, "a"),
                 (0, ""),
                 (9, "123456789"),
                 (307,
                  String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
                 ]),
-            (.three, [
+            (.threeBytes, [
                 (1, "a"),
                 (0, ""),
                 (9, "123456789"),
                 (307,
                  String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
                 ]),
-            (.four, [
+            (.fourBytes, [
                 (1, "a"),
                 (0, ""),
                 (3, "333"),
                 (307,
                  String(decoding: Array(repeating: UInt8(ascii: "X"), count: 307), as: Unicode.UTF8.self)),
                 ]),
-            (.eight, [
+            (.eightBytes, [
                 (1, "a"),
                 (0, ""),
                 (4, "aaaa"),
@@ -509,7 +509,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 return (bytes, [bytes.getSlice(at: bytes.readerIndex + lenBytes.length, length: input.0)!])
             }
             XCTAssertNoThrow(try ByteToMessageDecoderVerifier.verifyDecoder(inputOutputPairs: inputOutputPairs) {
-                LengthFieldBasedFrameDecoder(lengthFieldLength: lenBytes)
+                LengthFieldBasedFrameDecoder(lengthFieldBitLength: lenBytes)
             })
         }
     }
