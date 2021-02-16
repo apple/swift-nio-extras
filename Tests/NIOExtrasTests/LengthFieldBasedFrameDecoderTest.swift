@@ -455,7 +455,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     }
 
     func testBasicVerification() {
-        let inputs: [(LengthFieldBitLength, [(Int, String)])] = [
+        let inputs: [(NIOLengthFieldBitLength, [(Int, String)])] = [
             (.oneByte, [
                 (6, "abcdef"),
                 (0, ""),

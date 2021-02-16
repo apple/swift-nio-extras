@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import Foundation
 
 extension ByteBuffer {
     @discardableResult
@@ -22,7 +21,7 @@ extension ByteBuffer {
         _ integer: UInt32,
         endianness: Endianness = .big
     ) -> Int {
-        assert(integer & 0xFF_FF_FF == integer, "integer value does not fit into 24 bit integer")
+        precondition(integer & 0xFF_FF_FF == integer, "integer value does not fit into 24 bit integer")
         switch endianness {
         case .little:
             return writeInteger(UInt8(integer & 0xFF), endianness: .little) +
@@ -61,7 +60,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         case four
         case eight
         
-        fileprivate var bitLength: LengthFieldBitLength {
+        fileprivate var bitLength: NIOLengthFieldBitLength {
             switch self {
             case .one: return .oneByte
             case .two: return .twoBytes
@@ -74,7 +73,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
 
-    private let lengthFieldLength: LengthFieldBitLength
+    private let lengthFieldLength: NIOLengthFieldBitLength
     private let lengthFieldEndianness: Endianness
     
     private var lengthBuffer: ByteBuffer?
@@ -88,7 +87,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
         self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
     }
-    public init(lengthFieldBitLength: LengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
+    public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
         precondition(lengthFieldBitLength.length <= Int.bitWidth/8)

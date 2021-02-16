@@ -13,24 +13,24 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import Foundation
 
 extension ByteBuffer {
     @inlinable
     mutating func get24UInt(
+        at index: Int,
         endianness: Endianness = .big
     ) -> UInt32? {
         let mostSignificant: UInt16
         let leastSignificant: UInt8
         switch endianness {
         case .big:
-            guard let uint16 = self.getInteger(at: readerIndex, endianness: .big, as: UInt16.self),
-                  let uint8 = self.getInteger(at: readerIndex + 2, endianness: .big, as: UInt8.self) else { return nil }
+            guard let uint16 = self.getInteger(at: index, endianness: .big, as: UInt16.self),
+                  let uint8 = self.getInteger(at: index + 2, endianness: .big, as: UInt8.self) else { return nil }
             mostSignificant = uint16
             leastSignificant = uint8
         case .little:
-            guard let uint8 = self.getInteger(at: readerIndex, endianness: .little, as: UInt8.self),
-                  let uint16 = self.getInteger(at: readerIndex + 1, endianness: .little, as: UInt16.self) else { return nil }
+            guard let uint8 = self.getInteger(at: index, endianness: .little, as: UInt8.self),
+                  let uint16 = self.getInteger(at: index + 1, endianness: .little, as: UInt16.self) else { return nil }
             mostSignificant = uint16
             leastSignificant = uint8
         }
@@ -40,7 +40,7 @@ extension ByteBuffer {
     mutating func read24UInt(
         endianness: Endianness = .big
     ) -> UInt32? {
-        guard let integer = get24UInt(endianness: endianness) else { return nil }
+        guard let integer = get24UInt(at: readerIndex, endianness: endianness) else { return nil }
         self.moveReaderIndex(forwardBy: 3)
         return integer
     }
@@ -74,7 +74,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case four
         case eight
         
-        fileprivate var bitLength: LengthFieldBitLength {
+        fileprivate var bitLength: NIOLengthFieldBitLength {
             switch self {
             case .one: return .oneByte
             case .two: return .twoBytes
@@ -100,7 +100,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public var cumulationBuffer: ByteBuffer?
     private var readState: DecoderReadState = .waitingForHeader
     
-    private let lengthFieldLength: LengthFieldBitLength
+    private let lengthFieldLength: NIOLengthFieldBitLength
     private let lengthFieldEndianness: Endianness
     
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
@@ -119,7 +119,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - lengthFieldBitLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     ///
-    public init(lengthFieldBitLength: LengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
+    public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
 
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.

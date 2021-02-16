@@ -12,10 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-
 /// An struct to describe the length of a piece of data in bits
-public struct LengthFieldBitLength {
+public struct NIOLengthFieldBitLength {
     internal enum Backing {
         case bits8
         case bits16
@@ -25,17 +23,17 @@ public struct LengthFieldBitLength {
     }
     internal let bitLength: Backing
 
-    public static let oneByte = LengthFieldBitLength(bitLength: .bits8)
-    public static let twoBytes = LengthFieldBitLength(bitLength: .bits16)
-    public static let threeBytes = LengthFieldBitLength(bitLength: .bits24)
-    public static let fourBytes = LengthFieldBitLength(bitLength: .bits32)
-    public static let eightBytes = LengthFieldBitLength(bitLength: .bits64)
+    public static let oneByte = NIOLengthFieldBitLength(bitLength: .bits8)
+    public static let twoBytes = NIOLengthFieldBitLength(bitLength: .bits16)
+    public static let threeBytes = NIOLengthFieldBitLength(bitLength: .bits24)
+    public static let fourBytes = NIOLengthFieldBitLength(bitLength: .bits32)
+    public static let eightBytes = NIOLengthFieldBitLength(bitLength: .bits64)
     
-    public static let eightBits = LengthFieldBitLength(bitLength: .bits8)
-    public static let sixteenBits = LengthFieldBitLength(bitLength: .bits16)
-    public static let twentyFourBits = LengthFieldBitLength(bitLength: .bits24)
-    public static let thirtyTwoBits = LengthFieldBitLength(bitLength: .bits32)
-    public static let sixtyFourBits = LengthFieldBitLength(bitLength: .bits64)
+    public static let eightBits = NIOLengthFieldBitLength(bitLength: .bits8)
+    public static let sixteenBits = NIOLengthFieldBitLength(bitLength: .bits16)
+    public static let twentyFourBits = NIOLengthFieldBitLength(bitLength: .bits24)
+    public static let thirtyTwoBits = NIOLengthFieldBitLength(bitLength: .bits32)
+    public static let sixtyFourBits = NIOLengthFieldBitLength(bitLength: .bits64)
     
     internal var length: Int {
         switch bitLength {
