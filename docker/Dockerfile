@@ -22,15 +22,11 @@ RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev build-esse
 # switch off gem docs building
 RUN echo "gem: --no-document" > ~/.gemrc
 # jazzy no longer works on xenial as ruby is too old.
-RUN if [ "${ubuntu_version}" != "xenial" ] ; then  gem install jazzy --no-ri --no-rdoc ; fi
+RUN if [ "${ubuntu_version}" != "xenial" ] ; then  gem install jazzy; fi
 
 # tools
 RUN mkdir -p $HOME/.tools
 RUN echo 'export PATH="$HOME/.tools:$PATH"' >> $HOME/.profile
-
-# script to allow mapping framepointers on linux (until part of the toolchain)
-RUN wget -q https://raw.githubusercontent.com/apple/swift/main/utils/symbolicate-linux-fatal -O $HOME/.tools/symbolicate-linux-fatal
-RUN chmod 755 $HOME/.tools/symbolicate-linux-fatal
 
 # swiftformat (until part of the toolchain)
 
