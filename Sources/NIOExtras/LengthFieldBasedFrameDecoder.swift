@@ -40,7 +40,7 @@ extension ByteBuffer {
     mutating func read24UInt(
         endianness: Endianness = .big
     ) -> UInt32? {
-        guard let integer = get24UInt(at: readerIndex, endianness: endianness) else { return nil }
+        guard let integer = get24UInt(at: self.readerIndex, endianness: endianness) else { return nil }
         self.moveReaderIndex(forwardBy: 3)
         return integer
     }
