@@ -26,8 +26,10 @@ extension LengthFieldPrependerTest {
 
    static var allTests : [(String, (LengthFieldPrependerTest) -> () throws -> Void)] {
       return [
+                ("testWrite3BytesOfUInt32Write", testWrite3BytesOfUInt32Write),
                 ("testEncodeWithUInt8HeaderWithData", testEncodeWithUInt8HeaderWithData),
                 ("testEncodeWithUInt16HeaderWithString", testEncodeWithUInt16HeaderWithString),
+                ("testEncodeWithUInt24HeaderWithString", testEncodeWithUInt24HeaderWithString),
                 ("testEncodeWithUInt32HeaderWithString", testEncodeWithUInt32HeaderWithString),
                 ("testEncodeWithUInt64HeaderWithString", testEncodeWithUInt64HeaderWithString),
                 ("testEncodeWithInt64HeaderWithString", testEncodeWithInt64HeaderWithString),
