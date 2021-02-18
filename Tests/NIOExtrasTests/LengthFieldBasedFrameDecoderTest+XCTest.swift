@@ -45,6 +45,10 @@ extension LengthFieldBasedFrameDecoderTest {
                 ("testRemoveHandlerWhenBufferIsNotEmpty", testRemoveHandlerWhenBufferIsNotEmpty),
                 ("testCloseInChannelRead", testCloseInChannelRead),
                 ("testBasicVerification", testBasicVerification),
+                ("testMaximumAllowedLengthWith32BitFieldLength", testMaximumAllowedLengthWith32BitFieldLength),
+                ("testMaliciousLengthWith32BitFieldLength", testMaliciousLengthWith32BitFieldLength),
+                ("testMaximumAllowedLengthWith64BitFieldLength", testMaximumAllowedLengthWith64BitFieldLength),
+                ("testMaliciousLengthWith64BitFieldLength", testMaliciousLengthWith64BitFieldLength),
            ]
    }
 }

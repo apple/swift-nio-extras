@@ -513,4 +513,58 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             })
         }
     }
+    func testMaximumAllowedLengthWith32BitFieldLength() throws {
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .four,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength = UInt32(Int32.max)
+        
+        var buffer = self.channel.allocator.buffer(capacity: 4) // 4 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt32.self)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertNoThrow(try self.channel.writeInbound(buffer))
+    }
+    
+    func testMaliciousLengthWith32BitFieldLength() throws {
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .four,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength = UInt32(Int32.max) + 1
+        
+        var buffer = self.channel.allocator.buffer(capacity: 4) // 4 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt32.self)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertThrowsError(try self.channel.writeInbound(buffer))
+    }
+    
+    func testMaximumAllowedLengthWith64BitFieldLength() throws {
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength = UInt64(Int32.max)
+        
+        var buffer = self.channel.allocator.buffer(capacity: 8) // 8 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt64.self)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertNoThrow(try self.channel.writeInbound(buffer))
+    }
+    
+    func testMaliciousLengthWith64BitFieldLength() {
+        self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight,
+                                                                   lengthFieldEndianness: .little))
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+
+        let dataLength = UInt64(Int32.max) + 1
+        
+        var buffer = self.channel.allocator.buffer(capacity: 8) // 8 byte header
+        buffer.writeInteger(dataLength, endianness: .little, as: UInt64.self)
+        
+        XCTAssertThrowsError(try self.channel.writeInbound(buffer))
+    }
 }
