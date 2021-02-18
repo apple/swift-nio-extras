@@ -18,7 +18,7 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function replace_acceptable_years() {
     # this needs to replace all acceptable forms with 'YEARS'
-    sed -e 's/2017-201[89]/YEARS/' -e 's/2019/YEARS/' -e 's/2020/YEARS/g'
+    sed -e 's/2017-201[89]/YEARS/' -e 's/2019/YEARS/' -e 's/2020/YEARS/g' -e 's/2021/YEARS/g'
 }
 
 printf "=> Checking linux tests... "
@@ -42,9 +42,12 @@ unacceptable_terms=(
     -e slav[e]
     -e sanit[y]
 )
-if git grep --color=never -i "${unacceptable_terms[@]}" > /dev/null; then
+
+# We have to exclude the code of conduct as it gives examples of unacceptable
+# language.
+if git grep --color=never -i "${unacceptable_terms[@]}" -- . ":(exclude)CODE_OF_CONDUCT.md" > /dev/null; then
     printf "\033[0;31mUnacceptable language found.\033[0m\n"
-    git grep -i "${unacceptable_terms[@]}"
+    git grep -i "${unacceptable_terms[@]}" -- . ":(exclude)CODE_OF_CONDUCT.md"
     exit 1
 fi
 printf "\033[0;32mokay.\033[0m\n"

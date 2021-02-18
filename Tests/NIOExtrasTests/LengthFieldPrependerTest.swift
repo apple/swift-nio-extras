@@ -14,7 +14,7 @@
 
 import XCTest
 import NIO
-import NIOExtras
+@testable import NIOExtras
 
 private let standardDataString = "abcde"
 private let standardDataStringCount = standardDataString.utf8.count
@@ -26,7 +26,16 @@ class LengthFieldPrependerTest: XCTestCase {
     override func setUp() {
         self.channel = EmbeddedChannel()
     }
-
+    func testWrite3BytesOfUInt32Write() {
+        var buffer = ByteBuffer()
+        buffer.write24UInt(5, endianness: .little)
+        XCTAssertEqual(Array(buffer.readableBytesView), [5, 0, 0])
+        XCTAssertEqual(buffer.read24UInt(endianness: .little), 5)
+        
+        buffer.write24UInt(5, endianness: .big)
+        XCTAssertEqual(Array(buffer.readableBytesView), [0, 0, 5])
+        XCTAssertEqual(buffer.read24UInt(endianness: .big), 5)
+    }
     func testEncodeWithUInt8HeaderWithData() throws {
         
         self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .one,
@@ -80,6 +89,48 @@ class LengthFieldPrependerTest: XCTestCase {
         if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
             
             let sizeInHeader = outputBuffer.readInteger(endianness: endianness, as: UInt16.self).map({ Int($0) })
+            XCTAssertEqual(standardDataStringCount, sizeInHeader)
+            
+            let additionalData = outputBuffer.readBytes(length: 1)
+            XCTAssertNil(additionalData)
+            
+        } else {
+            XCTFail("couldn't read ByteBuffer from channel")
+        }
+        
+        if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
+            
+            let bodyString = outputBuffer.readString(length: standardDataStringCount)
+            XCTAssertEqual(standardDataString, bodyString)
+            
+            let additionalData = outputBuffer.readBytes(length: 1)
+            XCTAssertNil(additionalData)
+            
+        } else {
+            XCTFail("couldn't read ByteBuffer from channel")
+        }
+        
+        XCTAssertNoThrow(XCTAssertNil(try self.channel.readOutbound()))
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+    
+    func testEncodeWithUInt24HeaderWithString() throws {
+        
+        let endianness: Endianness = .little
+        
+        self.encoderUnderTest = LengthFieldPrepender(lengthFieldBitLength: .threeBytes,
+                                                     lengthFieldEndianness: endianness)
+        
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        
+        var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
+        buffer.writeString(standardDataString)
+        
+        XCTAssertNoThrow(try  self.channel.writeAndFlush(buffer).wait())
+        
+        if case .some(.byteBuffer(var outputBuffer)) = try self.channel.readOutbound(as: IOData.self) {
+            
+            let sizeInHeader = outputBuffer.read24UInt(endianness: endianness).map({ Int($0) })
             XCTAssertEqual(standardDataStringCount, sizeInHeader)
             
             let additionalData = outputBuffer.readBytes(length: 1)
