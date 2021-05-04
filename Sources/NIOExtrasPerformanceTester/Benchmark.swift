@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-protocol Benchmark: class {
+protocol Benchmark: AnyObject {
     func setUp() throws
     func tearDown()
     func run() throws -> Int
