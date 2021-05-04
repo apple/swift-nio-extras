@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-nio-extras:20.04-5.4
+    build:
+      args:
+        base_image: "swift:5.4-focal"
+        ubuntu_version: "focal"
+        swift_version: "5.4"
+
+  test:
+    image: swift-nio-extras:20.04-5.4
+
+  shell:
+    image: swift-nio-extras:20.04-5.4
