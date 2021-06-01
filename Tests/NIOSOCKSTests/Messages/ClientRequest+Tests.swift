@@ -28,7 +28,7 @@ extension ClientRequest_Tests {
         XCTAssertTrue(buffer.readableBytes == 0)
         
         let req = ClientRequest(command: .connect, addressType: .ipv4([192, 168, 1, 1]), desiredPort: 80)
-        XCTAssertEqual(buffer.writeClientRequest(req), 10)
+        XCTAssertEqual(buffer.writeClientRequest(req), 11)
         XCTAssertEqual(buffer.readableBytes, 10)
         XCTAssertEqual(buffer.readBytes(length: 10)!,
                        [0x05, 0x01, 0x00, 0x01, 0xC0, 0xA8, 0x01, 0x01, 0x00, 0x50])

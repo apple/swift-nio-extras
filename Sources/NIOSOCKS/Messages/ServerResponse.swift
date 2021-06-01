@@ -17,10 +17,18 @@ import NIO
 // MARK: - ServerResponse
 
 public struct ServerResponse: Hashable {
+    
     public var version: UInt8
     public var reply: Reply
     public var boundAddress: AddressType
     public var boundPort: UInt16
+    
+    public init(reply: Reply, boundAddress: AddressType, boundPort: UInt16) {
+        self.version = 5
+        self.reply = reply
+        self.boundAddress = boundAddress
+        self.boundPort = boundPort
+    }
     
     public init?(buffer: inout ByteBuffer) {
         guard
