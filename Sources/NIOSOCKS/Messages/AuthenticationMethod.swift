@@ -32,20 +32,3 @@ public struct AuthenticationMethod: Hashable {
     public var value: UInt8
     
 }
-
-extension ByteBuffer {
-    
-    @discardableResult mutating func writeClientGreeting(_ greeting: ClientGreeting) -> Int {
-        self.writeInteger(greeting.version)
-        
-        assert(greeting.methods.count <= 255)
-        self.writeInteger(UInt8(greeting.methods.count))
-        
-        for method in greeting.methods {
-            self.writeInteger(method.value)
-        }
-        
-        return 2 + greeting.methods.count
-    }
-    
-}

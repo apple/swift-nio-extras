@@ -71,7 +71,7 @@ public class SocksClientHandler: ChannelDuplexHandler, RemovableChannelHandler {
         
         switch action {
         case .sendRequest:
-            let request = ClientRequest(version: 5, command: .connect, addressType: .ipv4([192, 168, 1, 2]), desiredPort: 8581)
+            let request = ClientRequest(command: .connect, addressType: .ipv4([192, 168, 1, 2]), desiredPort: 8581)
             self.state.sendClientRequest(request)
             var buffer = ByteBuffer()
             buffer.writeClientRequest(request)

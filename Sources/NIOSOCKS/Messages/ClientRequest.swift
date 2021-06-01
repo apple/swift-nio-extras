@@ -23,6 +23,13 @@ public struct ClientRequest: Hashable {
     public var addressType: AddressType
     public var desiredPort: UInt16
     
+    public init(command: Command, addressType: AddressType, desiredPort: UInt16) {
+        self.version = 5
+        self.command = command
+        self.addressType = addressType
+        self.desiredPort = desiredPort
+    }
+    
 }
 
 extension ByteBuffer {
@@ -71,7 +78,7 @@ public enum AddressType: Hashable {
             else {
                 return nil
             }
-            self = .ipv4(bytes)
+            self = .domain(bytes)
         case 0x04:
             guard let bytes = buffer.readBytes(length: 16) else {
                 return nil

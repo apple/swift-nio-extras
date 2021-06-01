@@ -31,6 +31,7 @@ var targets: [PackageDescription.Target] = [
             ]),
     .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "NIO", "NIOTestUtils", "NIOConcurrencyHelpers"]),
     .testTarget(name: "NIOHTTPCompressionTests", dependencies: ["NIOHTTPCompression"]),
+    .testTarget(name: "NIOSOCKSTests", dependencies: ["NIO", "NIOSOCKS"])
 ]
 
 let package = Package(
