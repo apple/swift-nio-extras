@@ -22,6 +22,8 @@ var targets: [PackageDescription.Target] = [
     .target(name: "NIOWritePCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOWritePartialPCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOExtrasPerformanceTester", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
+    .target(name: "NIOSOCKS", dependencies: ["NIO"]),
+    .target(name: "NIOSOCKSClient", dependencies: ["NIO", "NIOSOCKS"]),
     .target(name: "CNIOExtrasZlib",
             dependencies: [],
             linkerSettings: [
@@ -38,11 +40,13 @@ let package = Package(
         .executable(name: "NIOWritePCAPDemo", targets: ["NIOWritePCAPDemo"]),
         .executable(name: "NIOWritePartialPCAPDemo", targets: ["NIOWritePartialPCAPDemo"]),
         .executable(name: "NIOExtrasPerformanceTester", targets: ["NIOExtrasPerformanceTester"]),
+        .executable(name: "NIOSOCKSClient", targets: ["NIOSOCKSClient"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
+        .library(name: "NIOSOCKS", targets: ["NIOSOCKS"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.9.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.29.0"),
     ],
     targets: targets
 )
