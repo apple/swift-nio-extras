@@ -14,14 +14,32 @@
 
 import NIO
 
-fileprivate enum ClientState {
+fileprivate enum ClientState: Hashable {
     case ready
     case waitingForAuthenticationMethod(ClientGreeting)
+    case waitingForClientRequest
+    case waitingForServerResponse(ClientRequest)
+    case active
+}
+
+enum ClientAction: Hashable {
+    case none
+    case sendRequest
+    case proxyEstablished
 }
 
 struct ClientStateMachine {
 
     private var state: ClientState
+    
+    var proxyEstablished: Bool {
+        switch self.state {
+        case .active:
+            return true
+        case .ready, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse:
+            return false
+        }
+    }
     
     init() {
         self.state = .ready
@@ -32,22 +50,42 @@ struct ClientStateMachine {
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
-    mutating func recieveMethodSelection(_ message: MethodSelection) {
+    mutating func sendClientRequest(_ request: ClientRequest) {
+        assert(self.state == .waitingForClientRequest)
+        self.state = .waitingForServerResponse(request)
+    }
+    
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) -> ClientAction? {
         switch self.state {
         case .waitingForAuthenticationMethod(let greeting):
-            
+            return self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
+        case .waitingForServerResponse(let request):
+            return self.handleServerResponse(&buffer, request: request)
         default:
             preconditionFailure("Invalid state")
         }
     }
     
-    mutating func recieveMethodSelection(_ message: MethodSelection) {
-        switch self.state {
-        case .waitingForAuthenticationMethod(let greeting):
-            
-        default:
-            preconditionFailure("Invalid state")
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) -> ClientAction? {
+        guard let selected = MethodSelection(buffer: &buffer) else {
+            return nil
         }
+        guard greeting.methods.contains(selected.method) else {
+            fatalError("Implement this")
+        }
+        self.state = .waitingForClientRequest
+        return .sendRequest
+    }
+    
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) -> ClientAction? {
+        guard let response = ServerResponse(buffer: &buffer) else {
+            return nil
+        }
+        guard response.reply == .succeeded else {
+            fatalError("oh no")
+        }
+        self.state = .active
+        return .proxyEstablished
     }
     
 }

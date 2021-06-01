@@ -14,6 +14,23 @@
 
 import NIO
 
-struct MethodSelection: Hashable {
-    var method: AuthenticationMethod
+public struct MethodSelection: Hashable {
+    public var version: UInt8
+    public var method: AuthenticationMethod
+    
+    public init(method: AuthenticationMethod) {
+        self.version = 5
+        self.method = method
+    }
+    
+    init?(buffer: inout ByteBuffer) {
+        guard
+            let version = buffer.readInteger(as: UInt8.self),
+            let method = buffer.readInteger(as: UInt8.self)
+        else {
+            return nil
+        }
+        self.version = version
+        self.method = .init(value: method)
+    }
 }

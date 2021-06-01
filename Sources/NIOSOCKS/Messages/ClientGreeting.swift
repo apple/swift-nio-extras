@@ -14,7 +14,32 @@
 
 import NIO
 
-struct ClientGreeting: Hashable {
-    var version: UInt8
-    var methods: [AuthenticationMethod]
+public struct ClientGreeting: Hashable {
+    public var version: UInt8
+    public var methods: [AuthenticationMethod]
+    
+    public init(methods: [AuthenticationMethod]) {
+        self.version = 5
+        self.methods = methods
+    }
+    
+    init?(buffer: inout ByteBuffer) {
+        guard
+            let version = buffer.readInteger(as: UInt8.self),
+            let numMethods = buffer.readInteger(as: UInt8.self)
+        else {
+            return nil
+        }
+        
+        var methods: [AuthenticationMethod] = []
+        methods.reserveCapacity(Int(numMethods))
+        for _ in 0..<numMethods {
+            guard let method = buffer.readInteger(as: UInt8.self) else {
+                return nil
+            }
+            methods.append(.init(value: method))
+        }
+        self.version = version
+        self.methods = methods
+    }
 }

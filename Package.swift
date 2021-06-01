@@ -22,8 +22,8 @@ var targets: [PackageDescription.Target] = [
     .target(name: "NIOWritePCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOWritePartialPCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
     .target(name: "NIOExtrasPerformanceTester", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
-    .target(name: "NIOSOCKS", dependencies: ["NIO"]),
-    .target(name: "NIOSOCKSClient", dependencies: ["NIO", "NIOSOCKS"]),
+    .target(name: "NIOSOCKS", dependencies: ["NIO", "NIOSSL"]),
+    .target(name: "NIOSOCKSClient", dependencies: ["NIO", "NIOSOCKS", "NIOSSL"]),
     .target(name: "CNIOExtrasZlib",
             dependencies: [],
             linkerSettings: [
@@ -47,6 +47,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.29.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.13.0"),
     ],
     targets: targets
 )

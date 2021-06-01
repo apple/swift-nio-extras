@@ -13,13 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import NIOSSL
 import NIOSOCKS
+
+let sslContext = try! NIOSSLContext(configuration: .clientDefault)
 
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
-    .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
     .channelInitializer { channel in
-        channel.pipeline.addHandler(SocksClientHandler(supportedAuthenticationMethods: [.noneRequired]))
+        channel.pipeline.addHandlers([
+            SocksClientHandler(supportedAuthenticationMethods: [.noneRequired])
+        ])
 }
-let channel = try bootstrap.connect(host: "127.0.0.1", port: 12345).wait()
+let channel = try bootstrap.connect(host: "127.0.0.1", port: 1080).wait()
 try channel.closeFuture.wait()
+print("Connection closed")
