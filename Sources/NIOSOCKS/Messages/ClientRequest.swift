@@ -21,7 +21,7 @@ import NIO
 struct ClientRequest: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
-    public var version: UInt8
+    public let version: UInt8 = 5
     
     /// How to connect to the host.
     public var command: Command
@@ -37,7 +37,6 @@ struct ClientRequest: Hashable {
     /// - parameter addressType: The target host address.
     /// - parameter desiredPort: The target host port.
     public init(command: Command, addressType: AddressType, desiredPort: UInt16) {
-        self.version = 5
         self.command = command
         self.addressType = addressType
         self.desiredPort = desiredPort

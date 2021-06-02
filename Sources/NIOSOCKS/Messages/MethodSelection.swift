@@ -20,7 +20,7 @@ import NIO
 struct MethodSelection: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
-    public var version: UInt8
+    public let version: UInt8 = 5
     
     /// The server's selected authentication method.
     public var method: AuthenticationMethod
@@ -28,7 +28,6 @@ struct MethodSelection: Hashable {
     /// Creates a new `MethodSelection` wrapping an `AuthenticationMethod`.
     /// - parameter method: The selected `AuthenticationMethod`.
     public init(method: AuthenticationMethod) {
-        self.version = 5
         self.method = method
     }
     
@@ -39,7 +38,6 @@ struct MethodSelection: Hashable {
         else {
             return nil
         }
-        self.version = version
         self.method = .init(value: method)
     }
 }

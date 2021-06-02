@@ -19,7 +19,7 @@ import NIO
 struct ClientGreeting: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
-    public var version: UInt8
+    public let version: UInt8 = 5
     
     /// The client's supported authentication methods, defined in RFC 1928.
     public var methods: [AuthenticationMethod]
@@ -27,7 +27,6 @@ struct ClientGreeting: Hashable {
     /// Creates a new client greeting with the given authentication methods.
     /// - parameter methods: The client's supported authentication methods.
     public init(methods: [AuthenticationMethod]) {
-        self.version = 5
         self.methods = methods
     }
     
@@ -47,7 +46,6 @@ struct ClientGreeting: Hashable {
             }
             methods.append(.init(value: method))
         }
-        self.version = version
         self.methods = methods
     }
 }

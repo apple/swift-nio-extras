@@ -21,7 +21,7 @@ import NIO
 struct ServerResponse: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
-    public var version: UInt8
+    public let version: UInt8 = 5
     
     /// The status of the connection - used to check if the request
     /// succeeded or failed.
@@ -39,7 +39,6 @@ struct ServerResponse: Hashable {
     /// - parameter boundAddress: The host address.
     /// - parameter boundPort: The host port.
     public init(reply: Reply, boundAddress: AddressType, boundPort: UInt16) {
-        self.version = 5
         self.reply = reply
         self.boundAddress = boundAddress
         self.boundPort = boundPort
@@ -55,7 +54,6 @@ struct ServerResponse: Hashable {
         else {
             return nil
         }
-        self.version = version
         self.reply = reply
         self.boundAddress = boundAddress
         self.boundPort = boundPort
