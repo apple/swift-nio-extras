@@ -63,6 +63,7 @@ struct ClientStateMachine {
         self.state = .waitingForServerResponse(request)
     }
     
+    // Returns `nil` if the buffer doesn't have enough data
     mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction? {
         switch self.state {
         case .waitingForAuthenticationMethod(let greeting):
