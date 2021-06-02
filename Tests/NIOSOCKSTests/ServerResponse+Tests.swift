@@ -20,12 +20,12 @@ public class ServerResponseTests: XCTestCase {
 }
 
 // MARK: - ServeResponse
-extension ServerResponse_Tests {
+extension ServerResponseTests {
     
     func testServerResponseReadFromByteBuffer() {
         var buffer = ByteBuffer(bytes: [0x05, 0x00, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x00, 0x50])
         XCTAssertEqual(buffer.readableBytes, 10)
-        XCTAssertEqual(ServerResponse(buffer: &buffer), .init(reply: .succeeded, boundAddress: .ipv4([1, 2, 3, 4]), boundPort: 80))
+        XCTAssertNoThrow(XCTAssertEqual(try ServerResponse(buffer: &buffer), .init(reply: .succeeded, boundAddress: .ipv4([1, 2, 3, 4]), boundPort: 80)))
         XCTAssertEqual(buffer.readableBytes, 0)
     }
     

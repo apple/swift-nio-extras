@@ -87,7 +87,7 @@ struct ClientStateMachine {
     }
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
-        guard let response = ServerResponse(buffer: &buffer) else {
+        guard let response = try ServerResponse(buffer: &buffer) else {
             return nil
         }
         guard response.reply == .succeeded else {

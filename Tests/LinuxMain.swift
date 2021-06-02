@@ -28,9 +28,9 @@ import XCTest
    @testable import NIOSOCKSTests
 
    XCTMain([
-         testCase(AuthenticationMethod_Tests.allTests),
-         testCase(ClientGreeting_Tests.allTests),
-         testCase(ClientRequest_Tests.allTests),
+         testCase(AuthenticationMethodTests.allTests),
+         testCase(ClientGreetingTests.allTests),
+         testCase(ClientRequestTests.allTests),
          testCase(DebugInboundEventsHandlerTest.allTests),
          testCase(DebugOutboundEventsHandlerTest.allTests),
          testCase(FixedLengthFrameDecoderTest.allTests),
@@ -43,12 +43,12 @@ import XCTest
          testCase(LengthFieldBasedFrameDecoderTest.allTests),
          testCase(LengthFieldPrependerTest.allTests),
          testCase(LineBasedFrameDecoderTest.allTests),
-         testCase(MethodSelection_Tests.allTests),
+         testCase(MethodSelectionTests.allTests),
          testCase(PCAPRingBufferTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
-         testCase(ServerResponse_Tests.allTests),
-         testCase(SocksClientHandler_Tests.allTests),
+         testCase(ServerResponseTests.allTests),
+         testCase(SocksClientHandlerTests.allTests),
          testCase(WritePCAPHandlerTest.allTests),
     ])
 #endif
