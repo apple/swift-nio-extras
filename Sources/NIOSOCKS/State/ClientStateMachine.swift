@@ -28,6 +28,14 @@ enum ClientAction: Hashable {
     case proxyEstablished
 }
 
+public struct InvalidAuthenticationSelection: Error {
+    
+}
+
+public struct ConnectionFailed: Error, Hashable {
+    public var reply: Reply
+}
+
 struct ClientStateMachine {
 
     private var state: ClientState
@@ -55,34 +63,34 @@ struct ClientStateMachine {
         self.state = .waitingForServerResponse(request)
     }
     
-    mutating func receiveBuffer(_ buffer: inout ByteBuffer) -> ClientAction? {
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction? {
         switch self.state {
         case .waitingForAuthenticationMethod(let greeting):
-            return self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
+            return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
         case .waitingForServerResponse(let request):
-            return self.handleServerResponse(&buffer, request: request)
+            return try self.handleServerResponse(&buffer, request: request)
         default:
             preconditionFailure("Invalid state")
         }
     }
     
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) -> ClientAction? {
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
         guard let selected = MethodSelection(buffer: &buffer) else {
             return nil
         }
         guard greeting.methods.contains(selected.method) else {
-            fatalError("Implement this")
+            throw InvalidAuthenticationSelection()
         }
         self.state = .waitingForClientRequest
         return .sendRequest
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) -> ClientAction? {
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
         guard let response = ServerResponse(buffer: &buffer) else {
             return nil
         }
         guard response.reply == .succeeded else {
-            fatalError("oh no")
+            throw ConnectionFailed(reply: response.reply)
         }
         self.state = .active
         return .proxyEstablished

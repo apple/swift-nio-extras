@@ -14,10 +14,19 @@
 
 import NIO
 
+/// Used by the SOCKS server to inform the client which
+/// authentication method it would like to use out of those
+/// offered.
 public struct MethodSelection: Hashable {
+    
+    /// The SOCKS protocol version - we currently only support v5.
     public var version: UInt8
+    
+    /// The server's selected authentication method.
     public var method: AuthenticationMethod
     
+    /// Creates a new `MethodSelection` wrapping an `AuthenticationMethod`.
+    /// - parameter method: The selected `AuthenticationMethod`.
     public init(method: AuthenticationMethod) {
         self.version = 5
         self.method = method

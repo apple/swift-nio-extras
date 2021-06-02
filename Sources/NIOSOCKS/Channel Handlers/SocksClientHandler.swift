@@ -18,7 +18,7 @@ public struct ProxyNotEstablished: Error {
     
 }
 
-public class SocksClientHandler: ChannelDuplexHandler, RemovableChannelHandler {
+public class SocksClientHandler: ChannelDuplexHandler {
     
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
@@ -26,15 +26,19 @@ public class SocksClientHandler: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias OutboundOut = ByteBuffer
     
     public let supportedAuthenticationMethods: [AuthenticationMethod]
+    public let targetAddress: AddressType
+    public let targetPort: UInt16
     
     private var state: ClientStateMachine
     private var buffered: ByteBuffer
     
-    public init(supportedAuthenticationMethods: [AuthenticationMethod]) {
+    public init(supportedAuthenticationMethods: [AuthenticationMethod], targetAddress: AddressType, targetPort: UInt16) {
         precondition(supportedAuthenticationMethods.count <= 255)
         self.supportedAuthenticationMethods = supportedAuthenticationMethods
         self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
+        self.targetAddress = targetAddress
+        self.targetPort = targetPort
     }
     
     public func channelInactive(context: ChannelHandlerContext) {
@@ -64,14 +68,23 @@ public class SocksClientHandler: ChannelDuplexHandler, RemovableChannelHandler {
         var buffer = self.unwrapInboundIn(data)
         self.buffered.writeBuffer(&buffer)
         let save = self.buffered
-        guard let action = self.state.receiveBuffer(&self.buffered) else {
-            self.buffered = save
-            return
+        do {
+            guard let action = try self.state.receiveBuffer(&self.buffered) else {
+                self.buffered = save
+                return
+            }
+            self.handleAction(action, context: context)
+        } catch {
+            context.fireErrorCaught(error)
+            context.close(mode: .all, promise: nil)
         }
+    }
+    
+    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
         
         switch action {
         case .sendRequest:
-            let request = ClientRequest(command: .connect, addressType: .ipv4([192, 168, 1, 2]), desiredPort: 8581)
+            let request = ClientRequest(command: .connect, addressType: self.targetAddress, desiredPort: self.targetPort)
             self.state.sendClientRequest(request)
             var buffer = ByteBuffer()
             buffer.writeClientRequest(request)

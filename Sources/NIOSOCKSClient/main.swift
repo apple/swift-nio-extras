@@ -16,15 +16,28 @@ import NIO
 import NIOSSL
 import NIOSOCKS
 
+class EchoHandler: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+    
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        context.writeAndFlush(data, promise: nil)
+    }
+    
+}
+
 let sslContext = try! NIOSSLContext(configuration: .clientDefault)
 
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
         channel.pipeline.addHandlers([
-            SocksClientHandler(supportedAuthenticationMethods: [.noneRequired])
+            SocksClientHandler(supportedAuthenticationMethods: [.noneRequired], targetAddress: .ipv4([127, 0, 0, 1]), targetPort: 12345),
+            EchoHandler()
         ])
 }
 let channel = try bootstrap.connect(host: "127.0.0.1", port: 1080).wait()
-try channel.closeFuture.wait()
-print("Connection closed")
+
+while let string = readLine(strippingNewline: true) {
+    let buffer = ByteBuffer(string: string)
+    channel.writeAndFlush(buffer, promise: nil)
+}

@@ -16,13 +16,26 @@ import NIO
 
 // MARK: - ClientRequest
 
+/// Instructs the SOCKS proxy server of the target host,
+/// and how to connect.
 public struct ClientRequest: Hashable {
     
+    /// The SOCKS protocol version - we currently only support v5.
     public var version: UInt8
+    
+    /// How to connect to the host.
     public var command: Command
+    
+    /// The target host address.
     public var addressType: AddressType
+    
+    /// The target host port.
     public var desiredPort: UInt16
     
+    /// Creates a new `ClientRequest`.
+    /// - parameter command: How to connect to the host.
+    /// - parameter addressType: The target host address.
+    /// - parameter desiredPort: The target host port.
     public init(command: Command, addressType: AddressType, desiredPort: UInt16) {
         self.version = 5
         self.command = command
@@ -47,17 +60,34 @@ extension ByteBuffer {
 
 // MARK: - Command
 
+/// What type of connection the SOCKS server should establish with
+/// the target host.
 public enum Command: UInt8 {
+    
+    /// Typically the primary connection type, suitable for HTTP.
     case connect = 0x01
+    
+    /// Used in protocols that require the client to accept connections
+    /// from the server, e.g. FTP.
     case bind = 0x02
+    
+    /// Used to establish an association within the UDP relay process to
+    /// handle UDP datagrams.
     case updAssociate = 0x03
 }
 
 // MARK: - AddressType
 
+/// The address used to connect to the target host.
 public enum AddressType: Hashable {
+    
+    /// An IPv4 address (4 bytes), e.g. *192.168.1.2*
     case ipv4([UInt8])
+    
+    /// A fullly-qualified domain name, e.g. *apple.com*
     case domain([UInt8])
+    
+    /// An IPv6 address (16 bytes), e.g. *aaaa:bbbb:cccc:dddd*
     case ipv6([UInt8])
     
     init?(buffer: inout ByteBuffer) {
