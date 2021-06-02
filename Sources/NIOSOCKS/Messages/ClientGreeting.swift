@@ -54,8 +54,6 @@ extension ByteBuffer {
     
     @discardableResult mutating func writeClientGreeting(_ greeting: ClientGreeting) -> Int {
         self.writeInteger(greeting.version)
-        
-        assert(greeting.methods.count > 0 && greeting.methods.count <= 255)
         self.writeInteger(UInt8(greeting.methods.count))
         
         for method in greeting.methods {
