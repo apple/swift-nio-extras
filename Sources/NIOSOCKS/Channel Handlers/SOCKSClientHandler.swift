@@ -18,7 +18,7 @@ public struct ProxyNotEstablished: Error {
     
 }
 
-public class SocksClientHandler: ChannelDuplexHandler {
+public class SOCKSClientHandler: ChannelDuplexHandler {
     
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer

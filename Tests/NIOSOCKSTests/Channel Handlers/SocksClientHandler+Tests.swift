@@ -19,11 +19,11 @@ import XCTest
 class SocksClientHandler_Tests: XCTestCase {
     
     var channel: EmbeddedChannel!
-    var handler: SocksClientHandler!
+    var handler: SOCKSClientHandler!
     
     override func setUp() {
         XCTAssertNil(self.channel)
-        self.handler = SocksClientHandler(supportedAuthenticationMethods: [.noneRequired], targetAddress: .ipv4([192, 168, 1, 1]), targetPort: 80)
+        self.handler = SOCKSClientHandler(supportedAuthenticationMethods: [.noneRequired], targetAddress: .ipv4([192, 168, 1, 1]), targetPort: 80)
         self.channel = EmbeddedChannel(handler: self.handler)
         try! self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
     }
