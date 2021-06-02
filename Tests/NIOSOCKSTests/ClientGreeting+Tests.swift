@@ -25,7 +25,7 @@ public class ClientGreeting_Tests: XCTestCase {
         XCTAssertTrue(buffer.readableBytes == 0)
         
         buffer.writeBytes([0x05, 0x03, 0x00, 0x01, 0x02])
-        XCTAssertEqual(ClientGreeting(buffer: &buffer), .init(methods: [.noneRequired, .gssAPI, .usernamePassword]))
+        XCTAssertEqual(ClientGreeting(buffer: &buffer), .init(methods: [.noneRequired, .gssapi, .usernamePassword]))
         XCTAssertTrue(buffer.readableBytes == 0)
     }
     

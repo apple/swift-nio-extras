@@ -21,7 +21,7 @@ public struct AuthenticationMethod: Hashable {
     public static var noneRequired = AuthenticationMethod(value: 0x00)
     
     /// Use GSSAPI
-    public static var gssAPI = AuthenticationMethod(value: 0x01)
+    public static var gssapi = AuthenticationMethod(value: 0x01)
     
     /// Username / password authentication
     public static var usernamePassword = AuthenticationMethod(value: 0x02)

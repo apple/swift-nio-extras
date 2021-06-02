@@ -21,7 +21,7 @@ public class AuthenticationMethod_Tests: XCTestCase {
     // prevent accidental regression of the built-in auth methods
     func testStaticVarsAreCorrect() {
         XCTAssertEqual(AuthenticationMethod.noneRequired.value, 0x00)
-        XCTAssertEqual(AuthenticationMethod.gssAPI.value, 0x01)
+        XCTAssertEqual(AuthenticationMethod.gssapi.value, 0x01)
         XCTAssertEqual(AuthenticationMethod.usernamePassword.value, 0x02)
         XCTAssertEqual(AuthenticationMethod.noneAcceptable.value, 0xFF)
     }
