@@ -31,13 +31,18 @@ struct MethodSelection: Hashable {
         self.method = method
     }
     
-    init?(buffer: inout ByteBuffer) {
+    init?(buffer: inout ByteBuffer) throws {
         guard
             let version = buffer.readInteger(as: UInt8.self),
             let method = buffer.readInteger(as: UInt8.self)
         else {
             return nil
         }
+        
+        guard version == 0x05 else {
+            throw InvalidProtocolVersion(actual: version)
+        }
+        
         self.method = .init(value: method)
     }
 }

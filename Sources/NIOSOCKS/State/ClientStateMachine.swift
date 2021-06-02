@@ -85,7 +85,7 @@ struct ClientStateMachine {
     }
     
     mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
-        guard let selected = MethodSelection(buffer: &buffer) else {
+        guard let selected = try MethodSelection(buffer: &buffer) else {
             return nil
         }
         guard greeting.methods.contains(selected.method) else {

@@ -14,13 +14,6 @@
 
 import NIO
 
-public struct InvalidReservedByte: Error, Hashable {
-    public var actual: UInt8
-    public init(actual: UInt8) {
-        self.actual = actual
-    }
-}
-
 // MARK: - ServerResponse
 
 /// The SOCKS Server's response to the client's request
@@ -56,7 +49,7 @@ struct ServerResponse: Hashable {
             let version = buffer.readInteger(as: UInt8.self),
             let reply = Reply(buffer: &buffer),
             let reserved = buffer.readInteger(as: UInt8.self),
-            let boundAddress = AddressType(buffer: &buffer),
+            let boundAddress = try AddressType(buffer: &buffer),
             let boundPort = buffer.readInteger(as: UInt16.self)
         else {
             return nil
@@ -64,6 +57,10 @@ struct ServerResponse: Hashable {
         
         guard reserved == 0x0 else {
             throw InvalidReservedByte(actual: reserved)
+        }
+        
+        guard version == 0x05 else {
+            throw InvalidProtocolVersion(actual: version)
         }
         
         self.reply = reply

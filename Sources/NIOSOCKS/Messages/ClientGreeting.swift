@@ -30,12 +30,16 @@ struct ClientGreeting: Hashable {
         self.methods = methods
     }
     
-    init?(buffer: inout ByteBuffer) {
+    init?(buffer: inout ByteBuffer) throws {
         guard
             let version = buffer.readInteger(as: UInt8.self),
             let numMethods = buffer.readInteger(as: UInt8.self)
         else {
             return nil
+        }
+        
+        guard version == 5 else {
+            throw InvalidProtocolVersion(actual: version)
         }
         
         var methods: [AuthenticationMethod] = []

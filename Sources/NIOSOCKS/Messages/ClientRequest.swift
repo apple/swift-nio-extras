@@ -104,7 +104,7 @@ public enum AddressType: Hashable {
         }
     }
     
-    init?(buffer: inout ByteBuffer) {
+    init?(buffer: inout ByteBuffer) throws {
         guard let type = buffer.readInteger(as: UInt8.self) else {
             return nil
         }
@@ -129,7 +129,7 @@ public enum AddressType: Hashable {
             }
             self = .ipv6(bytes)
         default:
-            fatalError("Unknown address type \(type)")
+            throw InvalidAddressType(actual: type)
         }
     }
 }

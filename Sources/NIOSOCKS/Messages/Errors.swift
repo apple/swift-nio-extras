@@ -13,16 +13,24 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-@testable import NIOSOCKS
-import XCTest
 
-public class MethodSelectionTests: XCTestCase {
- 
-    func testReadFromByteBuffer() {
-        var buffer = ByteBuffer(bytes: [0x05, 0x00])
-        XCTAssertEqual(buffer.readableBytes, 2)
-        XCTAssertNoThrow(XCTAssertEqual(try MethodSelection(buffer: &buffer), .init(method: .noneRequired)))
-        XCTAssertEqual(buffer.readableBytes, 0)
+public struct InvalidProtocolVersion: Error, Hashable {
+    public var actual: UInt8
+    public init(actual: UInt8) {
+        self.actual = actual
     }
-    
+}
+
+public struct InvalidReservedByte: Error, Hashable {
+    public var actual: UInt8
+    public init(actual: UInt8) {
+        self.actual = actual
+    }
+}
+
+public struct InvalidAddressType: Error, Hashable {
+    public var actual: UInt8
+    public init(actual: UInt8) {
+        self.actual = actual
+    }
 }
