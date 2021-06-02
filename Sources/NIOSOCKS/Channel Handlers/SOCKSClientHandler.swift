@@ -30,9 +30,9 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
     
-    public let supportedAuthenticationMethods: [AuthenticationMethod]
-    public let targetAddress: AddressType
-    public let targetPort: UInt16
+    private let supportedAuthenticationMethods: [AuthenticationMethod]
+    private let targetAddress: AddressType
+    private let targetPort: UInt16
     
     private var state: ClientStateMachine
     private var buffered: ByteBuffer
