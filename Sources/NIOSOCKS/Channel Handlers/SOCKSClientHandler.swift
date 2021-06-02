@@ -95,7 +95,8 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         case .sendRequest:
             let request = ClientRequest(command: .connect, addressType: self.targetAddress, desiredPort: self.targetPort)
             self.state.sendClientRequest(request)
-            var buffer = ByteBuffer()
+            let capacity = 6 + self.targetAddress.size
+            var buffer = context.channel.allocator.buffer(capacity: capacity)
             buffer.writeClientRequest(request)
             context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
         case .proxyEstablished:

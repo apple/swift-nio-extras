@@ -90,6 +90,18 @@ public enum AddressType: Hashable {
     /// An IPv6 address (16 bytes), e.g. *aaaa:bbbb:cccc:dddd*
     case ipv6([UInt8])
     
+    /// How many bytes are needed to represent the address
+    var size: Int {
+        switch self {
+        case .domain(let domain):
+            return domain.count + 1
+        case .ipv4:
+            return 4
+        case .ipv6:
+            return 16
+        }
+    }
+    
     init?(buffer: inout ByteBuffer) {
         guard let type = buffer.readInteger(as: UInt8.self) else {
             return nil
