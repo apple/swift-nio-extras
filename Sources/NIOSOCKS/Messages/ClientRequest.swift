@@ -49,7 +49,7 @@ extension ByteBuffer {
     @discardableResult mutating func writeClientRequest(_ request: ClientRequest) -> Int {
         var written = 0
         written += self.writeInteger(request.version)
-        written += self.writeInteger(request.command.rawValue)
+        written += self.writeInteger(request.command.value)
         written += self.writeInteger(0, as: UInt8.self)
         written +=  self.writeAddressType(request.addressType)
         written += self.writeInteger(request.desiredPort)
@@ -62,18 +62,20 @@ extension ByteBuffer {
 
 /// What type of connection the SOCKS server should establish with
 /// the target host.
-enum Command: UInt8 {
+struct Command: Hashable {
     
     /// Typically the primary connection type, suitable for HTTP.
-    case connect = 0x01
+    static var connect = Command(value: 0x01)
     
     /// Used in protocols that require the client to accept connections
     /// from the server, e.g. FTP.
-    case bind = 0x02
+    static var bind = Command(value: 0x02)
     
     /// Used to establish an association within the UDP relay process to
     /// handle UDP datagrams.
-    case updAssociate = 0x03
+    static var udpAssociate = Command(value: 0x03)
+    
+    var value: UInt8
 }
 
 // MARK: - AddressType
