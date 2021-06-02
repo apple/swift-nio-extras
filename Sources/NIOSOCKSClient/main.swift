@@ -24,8 +24,6 @@ class EchoHandler: ChannelInboundHandler {
     
 }
 
-let sslContext = try! NIOSSLContext(configuration: .clientDefault)
-
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
