@@ -57,7 +57,8 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         let greeting = ClientGreeting(
             methods: self.supportedAuthenticationMethods
         )
-        var buffer = ByteBuffer()
+        let capacity = 2 + self.supportedAuthenticationMethods.count
+        var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
         self.state.sendClientGreeting(greeting)
         
