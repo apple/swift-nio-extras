@@ -30,18 +30,13 @@ struct ServerResponse: Hashable {
     /// The host address.
     public var boundAddress: AddressType
     
-    /// The host port.
-    public var boundPort: UInt16
-    
     /// Creates a new `ServerResponse`.
     /// - parameter reply: The status of the connection - used to check if the request
     /// succeeded or failed.
     /// - parameter boundAddress: The host address.
-    /// - parameter boundPort: The host port.
-    public init(reply: Reply, boundAddress: AddressType, boundPort: UInt16) {
+    public init(reply: Reply, boundAddress: AddressType) {
         self.reply = reply
         self.boundAddress = boundAddress
-        self.boundPort = boundPort
     }
 }
 
@@ -52,8 +47,7 @@ extension ByteBuffer {
             let version = self.readInteger(as: UInt8.self),
             let reply = Reply(buffer: &self),
             let reserved = self.readInteger(as: UInt8.self),
-            let boundAddress = try self.readAddresType(),
-            let boundPort = self.readInteger(as: UInt16.self)
+            let boundAddress = try self.readAddresType()
         else {
             return nil
         }
@@ -66,7 +60,7 @@ extension ByteBuffer {
             throw InvalidProtocolVersion(actual: version)
         }
         
-        return .init(reply: reply, boundAddress: boundAddress, boundPort: boundPort)
+        return .init(reply: reply, boundAddress: boundAddress)
     }
     
 }

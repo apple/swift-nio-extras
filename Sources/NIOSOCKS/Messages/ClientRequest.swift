@@ -29,17 +29,13 @@ public struct ClientRequest: Hashable {
     /// The target host address.
     public var addressType: AddressType
     
-    /// The target host port.
-    public var desiredPort: UInt16
-    
     /// Creates a new `ClientRequest`.
     /// - parameter command: How to connect to the host.
     /// - parameter addressType: The target host address.
     /// - parameter desiredPort: The target host port.
-    public init(command: Command, addressType: AddressType, desiredPort: UInt16) {
+    public init(command: Command, addressType: AddressType) {
         self.command = command
         self.addressType = addressType
-        self.desiredPort = desiredPort
     }
     
 }
@@ -52,7 +48,6 @@ extension ByteBuffer {
         written += self.writeInteger(request.command.value)
         written += self.writeInteger(0, as: UInt8.self)
         written +=  self.writeAddressType(request.addressType)
-        written += self.writeInteger(request.desiredPort)
         return written
     }
     
@@ -81,27 +76,24 @@ public struct Command: Hashable {
 // MARK: - AddressType
 
 /// The address used to connect to the target host.
-public enum AddressType: Hashable {
+public struct AddressType: Hashable {
     
-    /// An IPv4 address (4 bytes), e.g. *192.168.1.2*
-    case ipv4([UInt8])
-    
-    /// A fullly-qualified domain name, e.g. *apple.com*
-    case domain([UInt8])
-    
-    /// An IPv6 address (16 bytes), e.g. *aaaa:bbbb:cccc:dddd*
-    case ipv6([UInt8])
+    public var address: SocketAddress
     
     /// How many bytes are needed to represent the address
-    var size: Int {
-        switch self {
-        case .domain(let domain):
-            return domain.count + 1
-        case .ipv4:
+    public var size: Int {
+        switch address {
+        case .v4:
             return 4
-        case .ipv6:
+        case .v6:
             return 16
+        case .unixDomainSocket:
+            fatalError("Unsupported")
         }
+    }
+    
+    public init(address: SocketAddress) {
+        self.address = address
     }
 }
 
@@ -114,43 +106,69 @@ extension ByteBuffer {
         
         switch type {
         case 0x01:
-            guard let bytes = self.readBytes(length: 4) else {
-                return nil
-            }
-            return .ipv4(bytes)
+            return try self.readIPv4Address()
         case 0x03:
-            guard
-                let length = self.readInteger(as: UInt8.self),
-                let bytes = self.readBytes(length: Int(length))
-            else {
-                return nil
-            }
-            return .domain(bytes)
+            return try self.readDomain()
         case 0x04:
-            guard let bytes = self.readBytes(length: 16) else {
-                return nil
-            }
-            return .ipv6(bytes)
+            return try self.readIPv6Address()
         default:
             throw InvalidAddressType(actual: type)
         }
     }
     
-    @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {
-        var written = 0
-        switch type {
-        case .ipv4(let bytes):
-            written += self.writeInteger(UInt8(1))
-            written += self.writeBytes(bytes)
-        case .domain(let bytes):
-            written += self.writeInteger(UInt8(3))
-            written += self.writeInteger(UInt8(bytes.count))
-            written += self.writeBytes(bytes)
-        case .ipv6(let bytes):
-            written += self.writeInteger(UInt8(4))
-            written += self.writeBytes(bytes)
+    mutating func readIPv4Address() throws -> AddressType? {
+        guard
+            let bytes = self.readBytes(length: 4),
+            let port = try self.readPort()
+        else {
+            return nil
         }
-        return written
+        return .init(address: try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
+    }
+    
+    mutating func readIPv6Address() throws -> AddressType? {
+        guard
+            let bytes = self.readBytes(length: 16),
+            let port = try self.readPort()
+        else {
+            return nil
+        }
+        return .init(address: try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
+    }
+    
+    mutating func readDomain() throws -> AddressType? {
+        guard
+            let length = self.readInteger(as: UInt8.self),
+            let bytes = self.readBytes(length: Int(length)),
+            let port = try self.readPort()
+        else {
+            return nil
+        }
+        let host = String(decoding: bytes, as: Unicode.UTF8.self)
+        return .init(address: try .makeAddressResolvingHost(host, port: port))
+    }
+    
+    mutating func readPort() throws -> Int? {
+        return self.readInteger(as: UInt16.self).flatMap { Int($0)}
+    }
+    
+    @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {
+        switch type.address {
+        case .v4(let address):
+            return self.writeInteger(UInt8(1))
+                + self.writeInteger(address.address.sin_addr.s_addr, endianness: .little)
+                + self.writeInteger(address.address.sin_port, endianness: .little)
+        case .v6(let address):
+            let (p1, p2, p3, p4) = address.address.sin6_addr.__u6_addr.__u6_addr32
+            return self.writeInteger(UInt8(4))
+                + self.writeInteger(p1, endianness: .little)
+                + self.writeInteger(p2, endianness: .little)
+                + self.writeInteger(p3, endianness: .little)
+                + self.writeInteger(p4, endianness: .little)
+                + self.writeInteger(address.address.sin6_port, endianness: .little)
+        case .unixDomainSocket:
+            fatalError("unsupported")
+        }
     }
     
 }

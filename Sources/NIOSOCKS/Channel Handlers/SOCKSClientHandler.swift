@@ -33,7 +33,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private let authenticationDelegate: SOCKSClientAuthenticationDelegate
     private let supportedAuthenticationMethods: [AuthenticationMethod]
     private let targetAddress: AddressType
-    private let targetPort: UInt16
     
     private var state: ClientStateMachine
     private var buffered: ByteBuffer
@@ -43,7 +42,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public init(
         supportedAuthenticationMethods: [AuthenticationMethod],
         targetAddress: AddressType,
-        targetPort: UInt16,
         authenticationDelegate: SOCKSClientAuthenticationDelegate
     ) {
         precondition(supportedAuthenticationMethods.count > 0,
@@ -54,7 +52,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
-        self.targetPort = targetPort
         self.authenticationDelegate = authenticationDelegate
     }
     
@@ -178,7 +175,7 @@ extension SOCKSClientHandler {
     }
     
     func handleActionSendRequest(context: ChannelHandlerContext) {
-        let request = ClientRequest(command: .connect, addressType: self.targetAddress, desiredPort: self.targetPort)
+        let request = ClientRequest(command: .connect, addressType: self.targetAddress)
         do {
             try self.state.sendClientRequest(request)
         } catch {

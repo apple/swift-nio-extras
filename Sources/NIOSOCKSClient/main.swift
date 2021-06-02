@@ -24,14 +24,17 @@ class EchoHandler: ChannelInboundHandler {
     
 }
 
+let targetIPAddress = "192.168.1.2"
+let targetPort = 12345
+let targetAddress = try SocketAddress(ipAddress: targetIPAddress, port: targetPort)
+
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
         channel.pipeline.addHandlers([
             SOCKSClientHandler(
                 supportedAuthenticationMethods: [.noneRequired],
-                targetAddress: .ipv4([127, 0, 0, 1]),
-                targetPort: 12345,
+                targetAddress: .init(address: targetAddress),
                 authenticationDelegate: DefaultAuthenticationDelegate()
             ),
             EchoHandler()
