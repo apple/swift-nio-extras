@@ -25,8 +25,6 @@ extension ClientRequestTests {
     
     func testWriteClientRequest() {
         var buffer = ByteBuffer()
-        XCTAssertTrue(buffer.readableBytes == 0)
-        
         let req = ClientRequest(command: .connect, addressType: .ipv4([192, 168, 1, 1]), desiredPort: 80)
         XCTAssertEqual(buffer.writeClientRequest(req), 11)
         XCTAssertEqual(buffer.readableBytes, 10)

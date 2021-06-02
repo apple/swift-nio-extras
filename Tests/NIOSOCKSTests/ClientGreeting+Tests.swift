@@ -30,10 +30,7 @@ public class ClientGreetingTests: XCTestCase {
     }
     
     func testWriting() {
-        
         var buffer = ByteBuffer()
-        XCTAssertTrue(buffer.readableBytes == 0)
-        
         let greeting = ClientGreeting(methods: [.noneRequired])
         XCTAssertTrue(buffer.writeClientGreeting(greeting) == 3)
         XCTAssertTrue(buffer.readableBytes == 3)
