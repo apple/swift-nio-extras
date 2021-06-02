@@ -18,16 +18,16 @@ import NIO
 public struct AuthenticationMethod: Hashable {
     
     /// No authentication required
-    public static var noneRequired = Self(value: 0x00)
+    public static var noneRequired = AuthenticationMethod(value: 0x00)
     
     /// Use GSSAPI
-    public static var gssAPI = Self(value: 0x01)
+    public static var gssAPI = AuthenticationMethod(value: 0x01)
     
     /// Username / password authentication
-    public static var usernamePassword = Self(value: 0x02)
+    public static var usernamePassword = AuthenticationMethod(value: 0x02)
     
     /// No acceptable authentication methods
-    public static var noneAcceptable = Self(value: 0xFF)
+    public static var noneAcceptable = AuthenticationMethod(value: 0xFF)
     
     /// The method identifier, valid values are in the range 0:255.
     public var value: UInt8

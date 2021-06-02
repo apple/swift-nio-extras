@@ -69,31 +69,31 @@ public struct ServerResponse: Hashable {
 public struct Reply: Hashable {
     
     /// The connection succeeded and data can now be transmitted.
-    static var succeeded = Self(value: 0x00)
+    static var succeeded = Reply(value: 0x00)
     
     /// The SOCKS server encountered an internal failure.
-    static var serverFailure = Self(value: 0x01)
+    static var serverFailure = Reply(value: 0x01)
     
     /// The connection to the host was not allowed.
-    static var notAllowed = Self(value: 0x02)
+    static var notAllowed = Reply(value: 0x02)
     
     /// The host network is not reachable.
-    static var networkUnreachable = Self(value: 0x03)
+    static var networkUnreachable = Reply(value: 0x03)
     
     /// The target host was not reachable.
-    static var hostUnreachable = Self(value: 0x04)
+    static var hostUnreachable = Reply(value: 0x04)
     
     /// The connection tot he host was refused
-    static var refused = Self(value: 0x05)
+    static var refused = Reply(value: 0x05)
     
     /// The host address's TTL has expired.
-    static var ttlExpired = Self(value: 0x06)
+    static var ttlExpired = Reply(value: 0x06)
     
     /// The provided command is not supported.
-    static var commandUnsupported = Self(value: 0x07)
+    static var commandUnsupported = Reply(value: 0x07)
     
     /// The provided address type is not supported.
-    static var addressUnsupported = Self(value: 0x08)
+    static var addressUnsupported = Reply(value: 0x08)
     
     /// The raw `UInt8` status code.
     public var value: UInt8
