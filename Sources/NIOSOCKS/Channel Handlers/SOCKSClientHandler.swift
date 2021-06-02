@@ -78,12 +78,11 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         
         var buffer = self.unwrapInboundIn(data)
         self.buffered.writeBuffer(&buffer)
-        let save = self.buffered
         do {
             let action = try self.state.receiveBuffer(&self.buffered)
             switch action {
             case .waitForMoreData:
-                self.buffered = save
+                break // do nothing, we've buffered the data already
             default:
                 self.handleAction(action, context: context)
             }

@@ -67,6 +67,55 @@ struct ClientStateMachine {
         self.state = .waitingForClientGreeting
     }
     
+}
+
+// MARK: - Incoming
+extension ClientStateMachine {
+    
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
+        switch self.state {
+        case .waitingForAuthenticationMethod(let greeting):
+            return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
+        case .waitingForServerResponse(let request):
+            return try self.handleServerResponse(&buffer, request: request)
+        default:
+            preconditionFailure("Invalid state")
+        }
+    }
+    
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
+        let save = buffer
+        guard let selected = try buffer.readMethodSelection() else {
+            buffer = save
+            return .waitForMoreData
+        }
+        guard greeting.methods.contains(selected.method) else {
+            buffer = save
+            throw InvalidAuthenticationSelection(selection: selected.method)
+        }
+        self.state = .pendingAuthentication
+        return .authenticateIfNeeded(selected.method)
+    }
+    
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
+        let save = buffer
+        guard let response = try buffer.readServerResponse() else {
+            buffer = save
+            return .waitForMoreData
+        }
+        guard response.reply == .succeeded else {
+            buffer = save
+            throw ConnectionFailed(reply: response.reply)
+        }
+        self.state = .active
+        return .proxyEstablished
+    }
+    
+}
+
+// MARK: - Outgoing
+extension ClientStateMachine {
+    
     mutating func connectionEstablished() -> ClientAction {
         self.state = .waitingForClientGreeting
         return .sendGreeting
@@ -96,40 +145,6 @@ struct ClientStateMachine {
             throw ConnectionStateError(expected: .waitingForClientRequest, actual: self.state)
         }
         self.state = .waitingForServerResponse(request)
-    }
-    
-    // Returns `nil` if the buffer doesn't have enough data
-    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
-        switch self.state {
-        case .waitingForAuthenticationMethod(let greeting):
-            return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
-        case .waitingForServerResponse(let request):
-            return try self.handleServerResponse(&buffer, request: request)
-        default:
-            preconditionFailure("Invalid state")
-        }
-    }
-    
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
-        guard let selected = try buffer.readMethodSelection() else {
-            return .waitForMoreData
-        }
-        guard greeting.methods.contains(selected.method) else {
-            throw InvalidAuthenticationSelection(selection: selected.method)
-        }
-        self.state = .pendingAuthentication
-        return .authenticateIfNeeded(selected.method)
-    }
-    
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
-        guard let response = try buffer.readServerResponse() else {
-            return .waitForMoreData
-        }
-        guard response.reply == .succeeded else {
-            throw ConnectionFailed(reply: response.reply)
-        }
-        self.state = .active
-        return .proxyEstablished
     }
     
 }

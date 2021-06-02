@@ -100,7 +100,9 @@ public struct AddressType: Hashable {
 extension ByteBuffer {
     
     mutating func readAddresType() throws -> AddressType? {
+        let save = self
         guard let type = self.readInteger(as: UInt8.self) else {
+            self = save
             return nil
         }
         
@@ -117,31 +119,37 @@ extension ByteBuffer {
     }
     
     mutating func readIPv4Address() throws -> AddressType? {
+        let save = self
         guard
             let bytes = self.readBytes(length: 4),
             let port = try self.readPort()
         else {
+            self = save
             return nil
         }
         return .init(address: try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
     }
     
     mutating func readIPv6Address() throws -> AddressType? {
+        let save = self
         guard
             let bytes = self.readBytes(length: 16),
             let port = try self.readPort()
         else {
+            self = save
             return nil
         }
         return .init(address: try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
     }
     
     mutating func readDomain() throws -> AddressType? {
+        let save = self
         guard
             let length = self.readInteger(as: UInt8.self),
             let bytes = self.readBytes(length: Int(length)),
             let port = try self.readPort()
         else {
+            self = save
             return nil
         }
         let host = String(decoding: bytes, as: Unicode.UTF8.self)

@@ -43,20 +43,24 @@ struct ServerResponse: Hashable {
 extension ByteBuffer {
     
     mutating func readServerResponse() throws -> ServerResponse? {
+        let save = self
         guard
             let version = self.readInteger(as: UInt8.self),
-            let reply = Reply(buffer: &self),
+            let reply = self.readInteger(as: UInt8.self).flatMap({ Reply(value: $0) }),
             let reserved = self.readInteger(as: UInt8.self),
             let boundAddress = try self.readAddresType()
         else {
+            self = save
             return nil
         }
         
         guard reserved == 0x0 else {
+            self = save
             throw InvalidReservedByte(actual: reserved)
         }
         
         guard version == 0x05 else {
+            self = save
             throw InvalidProtocolVersion(actual: version)
         }
         
@@ -105,13 +109,6 @@ public struct Reply: Hashable {
     /// statuses have convenience variables.
     /// - parameter value: The raw `UInt8` code sent by the SOCKS server.
     public init(value: UInt8) {
-        self.value = value
-    }
-    
-    init?(buffer: inout ByteBuffer) {
-        guard let value = buffer.readInteger(as: UInt8.self) else {
-            return nil
-        }
         self.value = value
     }
 }

@@ -35,14 +35,17 @@ struct MethodSelection: Hashable {
 extension ByteBuffer {
     
     mutating func readMethodSelection() throws -> MethodSelection? {
+        let save = self
         guard
             let version = self.readInteger(as: UInt8.self),
             let method = self.readInteger(as: UInt8.self)
         else {
+            self = save
             return nil
         }
         
         guard version == 0x05 else {
+            self = save
             throw InvalidProtocolVersion(actual: version)
         }
         

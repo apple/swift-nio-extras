@@ -34,14 +34,17 @@ public struct ClientGreeting: Hashable {
 extension ByteBuffer {
     
     mutating func readClientGreeting() throws -> ClientGreeting? {
+        let save = self
         guard
             let version = self.readInteger(as: UInt8.self),
             let numMethods = self.readInteger(as: UInt8.self)
         else {
+            self = save
             return nil
         }
         
         guard version == 5 else {
+            self = save
             throw InvalidProtocolVersion(actual: version)
         }
         
@@ -49,6 +52,7 @@ extension ByteBuffer {
         methods.reserveCapacity(Int(numMethods))
         for _ in 0..<numMethods {
             guard let method = self.readInteger(as: UInt8.self) else {
+                self = save
                 return nil
             }
             methods.append(.init(value: method))
