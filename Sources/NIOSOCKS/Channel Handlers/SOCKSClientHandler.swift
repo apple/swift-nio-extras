@@ -38,7 +38,10 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private var buffered: ByteBuffer
     
     public init(supportedAuthenticationMethods: [AuthenticationMethod], targetAddress: AddressType, targetPort: UInt16) {
-        precondition(supportedAuthenticationMethods.count <= 255)
+        precondition(supportedAuthenticationMethods.count > 0,
+                     "At least one supported authentication method required.")
+        precondition(supportedAuthenticationMethods.count <= 255,
+                     "There can't be more than 255 authentication methods listed.")
         self.supportedAuthenticationMethods = supportedAuthenticationMethods
         self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
