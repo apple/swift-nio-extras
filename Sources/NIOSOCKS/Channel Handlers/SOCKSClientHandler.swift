@@ -142,7 +142,7 @@ extension SOCKSClientHandler {
                 self.handleActionSendRequest(context: context)
             case .proxyEstablished:
                 self.handleActionProxyEstablished(context: context)
-            case.none, .waitForMoreData:
+            case .waitForMoreData:
                 break
             }
         } catch {

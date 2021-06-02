@@ -34,7 +34,6 @@ public struct ConnectionStateError: Error, Hashable {
 }
 
 enum ClientAction: Hashable {
-    case none
     case sendGreeting
     case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
