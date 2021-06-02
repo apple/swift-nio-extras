@@ -17,6 +17,7 @@ import NIO
 public enum ClientState: Hashable {
     case ready
     case waitingForAuthenticationMethod(ClientGreeting)
+    case pendingAuthentication
     case waitingForClientRequest
     case waitingForServerResponse(ClientRequest)
     case active
@@ -34,6 +35,7 @@ public struct ConnectionStateError: Error, Hashable {
 
 enum ClientAction: Hashable {
     case none
+    case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
     case proxyEstablished
 }
@@ -46,7 +48,7 @@ struct ClientStateMachine {
         switch self.state {
         case .active:
             return true
-        case .ready, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse:
+        case .ready, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
             return false
         }
     }
@@ -55,13 +57,25 @@ struct ClientStateMachine {
         switch self.state {
         case .ready:
             return true
-        case .active, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse:
+        case .active, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
             return false
         }
     }
     
     init() {
         self.state = .ready
+    }
+    
+    mutating func authenticationComplete() throws -> ClientAction {
+        switch self.state {
+        case .pendingAuthentication:
+            break
+        default:
+            throw ConnectionStateError(expected: .waitingForAuthenticationMethod(.init(methods: [.gssapi])), actual: self.state)
+        }
+        
+        self.state = .waitingForClientRequest
+        return .sendRequest
     }
 
     mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
@@ -97,8 +111,8 @@ struct ClientStateMachine {
         guard greeting.methods.contains(selected.method) else {
             throw InvalidAuthenticationSelection(selection: selected.method)
         }
-        self.state = .waitingForClientRequest
-        return .sendRequest
+        self.state = .pendingAuthentication
+        return .authenticateIfNeeded(selected.method)
     }
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {

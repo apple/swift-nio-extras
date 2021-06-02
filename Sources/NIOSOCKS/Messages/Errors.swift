@@ -42,6 +42,12 @@ public struct InvalidAuthenticationSelection: Error {
     }
 }
 
+public struct NoValidAuthenticationMethod: Error {
+    public init() {
+        
+    }
+}
+
 public struct ConnectionFailed: Error, Hashable {
     public var reply: Reply
     public init(reply: Reply) {

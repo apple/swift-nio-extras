@@ -30,6 +30,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
     
+    private let authenticationDelegate: SOCKSClientAuthenticationDelegate
     private let supportedAuthenticationMethods: [AuthenticationMethod]
     private let targetAddress: AddressType
     private let targetPort: UInt16
@@ -39,7 +40,12 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     
     private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
     
-    public init(supportedAuthenticationMethods: [AuthenticationMethod], targetAddress: AddressType, targetPort: UInt16) {
+    public init(
+        supportedAuthenticationMethods: [AuthenticationMethod],
+        targetAddress: AddressType,
+        targetPort: UInt16,
+        authenticationDelegate: SOCKSClientAuthenticationDelegate
+    ) {
         precondition(supportedAuthenticationMethods.count > 0,
                      "At least one supported authentication method required.")
         precondition(supportedAuthenticationMethods.count <= 255,
@@ -49,6 +55,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
         self.targetPort = targetPort
+        self.authenticationDelegate = authenticationDelegate
     }
     
     public func channelActive(context: ChannelHandlerContext) {
@@ -123,13 +130,34 @@ extension SOCKSClientHandler {
     }
     
     func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
-        switch action {
-        case .sendRequest:
-            self.handleActionSendRequest(context: context)
-        case .proxyEstablished:
-            self.handleActionProxyEstablished(context: context)
-        case.none:
+        do {
+            switch action {
+            case .authenticateIfNeeded(let method):
+                try self.handleActionAuthenticateIfNeeded(method: method, context: context)
+            case .sendRequest:
+                self.handleActionSendRequest(context: context)
+            case .proxyEstablished:
+                self.handleActionProxyEstablished(context: context)
+            case.none:
+                break
+            }
+        } catch {
+            context.fireErrorCaught(error)
+        }
+    }
+    
+    func handleActionAuthenticateIfNeeded(method: AuthenticationMethod, context: ChannelHandlerContext) throws {
+        let result = try self.authenticationDelegate.serverSelectedAuthenticationMethod(method)
+        switch result {
+        case .authenticationComplete:
+            self.handleAction(try self.state.authenticationComplete(), context: context)
             break
+        case .authenticationFailed:
+            break
+        case .needsMoreData:
+            break
+        case .respond(let bytes):
+            context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
         }
     }
     
