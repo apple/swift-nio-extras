@@ -15,7 +15,7 @@
 import NIO
 
 public enum ClientState: Hashable {
-    case ready
+    case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
     case pendingAuthentication
     case waitingForClientRequest
@@ -35,6 +35,7 @@ public struct ConnectionStateError: Error, Hashable {
 
 enum ClientAction: Hashable {
     case none
+    case sendGreeting
     case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
     case proxyEstablished
@@ -48,14 +49,14 @@ struct ClientStateMachine {
         switch self.state {
         case .active:
             return true
-        case .ready, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
+        case .waitingForClientGreeting, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
             return false
         }
     }
     
     var shouldBeginHandshake: Bool  {
         switch self.state {
-        case .ready:
+        case .waitingForClientGreeting:
             return true
         case .active, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
             return false
@@ -63,7 +64,12 @@ struct ClientStateMachine {
     }
     
     init() {
-        self.state = .ready
+        self.state = .waitingForClientGreeting
+    }
+    
+    mutating func connectionEstablished() -> ClientAction {
+        self.state = .waitingForClientGreeting
+        return .sendGreeting
     }
     
     mutating func authenticationComplete() throws -> ClientAction {
@@ -79,8 +85,8 @@ struct ClientStateMachine {
     }
 
     mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
-        guard self.state == .ready else {
-            throw ConnectionStateError(expected: .ready, actual: self.state)
+        guard self.state == .waitingForClientGreeting else {
+            throw ConnectionStateError(expected: .waitingForClientGreeting, actual: self.state)
         }
         self.state = .waitingForAuthenticationMethod(greeting)
     }

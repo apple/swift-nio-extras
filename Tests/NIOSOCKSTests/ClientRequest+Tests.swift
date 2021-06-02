@@ -44,8 +44,9 @@ extension ClientRequestTests {
         XCTAssertEqual(ipv4.readableBytes, 0)
         
         var domain = ByteBuffer(bytes: [0x03, 0x0a, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d, 0x00, 0x50])
+        let ipAddress = try! SocketAddress.makeAddressResolvingHost("google.com", port: 80)
         XCTAssertEqual(domain.readableBytes, 14)
-        XCTAssertNoThrow(XCTAssertEqual(try domain.readAddresType(), .init(address: try! .init(ipAddress: "172.217.169.78", port: 80))))
+        XCTAssertNoThrow(XCTAssertEqual(try domain.readAddresType(), .init(address: ipAddress)))
         XCTAssertEqual(domain.readableBytes, 0)
         
         var ipv6 = ByteBuffer(bytes: [0x04, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0xa0, 0x00, 0x50])

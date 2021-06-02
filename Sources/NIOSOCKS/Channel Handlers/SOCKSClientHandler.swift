@@ -56,12 +56,15 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func channelActive(context: ChannelHandlerContext) {
-        self.startHandshake(context: context)
+        self.handleAction(self.state.connectionEstablished(), context: context)
     }
     
     public func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
-            self.startHandshake(context: context)
+            guard self.state.shouldBeginHandshake else {
+                return
+            }
+            self.handleAction(self.state.connectionEstablished(), context: context)
         }
     }
     
@@ -129,6 +132,8 @@ extension SOCKSClientHandler {
     func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
         do {
             switch action {
+            case .sendGreeting:
+                self.startHandshake(context: context)
             case .authenticateIfNeeded(let method):
                 try self.handleActionAuthenticateIfNeeded(method: method, context: context)
             case .sendRequest:
