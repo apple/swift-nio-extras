@@ -39,6 +39,7 @@ enum ClientAction: Hashable {
     case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
     case proxyEstablished
+    case waitForMoreData
 }
 
 struct ClientStateMachine {
@@ -99,7 +100,7 @@ struct ClientStateMachine {
     }
     
     // Returns `nil` if the buffer doesn't have enough data
-    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction? {
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
         switch self.state {
         case .waitingForAuthenticationMethod(let greeting):
             return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
@@ -110,9 +111,9 @@ struct ClientStateMachine {
         }
     }
     
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
         guard let selected = try buffer.readMethodSelection() else {
-            return nil
+            return .waitForMoreData
         }
         guard greeting.methods.contains(selected.method) else {
             throw InvalidAuthenticationSelection(selection: selected.method)
@@ -121,9 +122,9 @@ struct ClientStateMachine {
         return .authenticateIfNeeded(selected.method)
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
         guard let response = try buffer.readServerResponse() else {
-            return nil
+            return .waitForMoreData
         }
         guard response.reply == .succeeded else {
             throw ConnectionFailed(reply: response.reply)

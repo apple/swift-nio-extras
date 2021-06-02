@@ -80,11 +80,13 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.buffered.writeBuffer(&buffer)
         let save = self.buffered
         do {
-            guard let action = try self.state.receiveBuffer(&self.buffered) else {
+            let action = try self.state.receiveBuffer(&self.buffered)
+            switch action {
+            case .waitForMoreData:
                 self.buffered = save
-                return
+            default:
+                self.handleAction(action, context: context)
             }
-            self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
             context.close(mode: .all, promise: nil)
@@ -140,7 +142,7 @@ extension SOCKSClientHandler {
                 self.handleActionSendRequest(context: context)
             case .proxyEstablished:
                 self.handleActionProxyEstablished(context: context)
-            case.none:
+            case.none, .waitForMoreData:
                 break
             }
         } catch {
