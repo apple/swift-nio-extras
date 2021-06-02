@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import NIOSSL
 import NIOSOCKS
 
 class EchoHandler: ChannelInboundHandler {
