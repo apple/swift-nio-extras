@@ -18,7 +18,7 @@ import NIO
 
 /// The SOCKS Server's response to the client's request
 /// indicating if the request succeeded or failed.
-public struct ServerResponse: Hashable {
+struct ServerResponse: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public var version: UInt8

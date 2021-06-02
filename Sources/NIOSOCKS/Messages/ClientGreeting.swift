@@ -16,7 +16,7 @@ import NIO
 
 /// The SOCKS handshake begins with the client sending a greeting
 /// containing supported authentication methods.
-public struct ClientGreeting: Hashable {
+struct ClientGreeting: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public var version: UInt8

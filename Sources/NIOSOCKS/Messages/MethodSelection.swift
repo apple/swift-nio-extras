@@ -17,7 +17,7 @@ import NIO
 /// Used by the SOCKS server to inform the client which
 /// authentication method it would like to use out of those
 /// offered.
-public struct MethodSelection: Hashable {
+struct MethodSelection: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public var version: UInt8
