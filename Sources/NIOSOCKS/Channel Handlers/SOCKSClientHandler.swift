@@ -49,10 +49,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.targetPort = targetPort
     }
     
-    public func channelInactive(context: ChannelHandlerContext) {
-        context.fireChannelInactive()
-    }
-    
     public func channelActive(context: ChannelHandlerContext) {
         let greeting = ClientGreeting(
             methods: self.supportedAuthenticationMethods
