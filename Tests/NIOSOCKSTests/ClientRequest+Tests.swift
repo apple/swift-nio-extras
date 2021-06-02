@@ -16,12 +16,12 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-public class ClientRequest_Tests: XCTestCase {
+public class ClientRequestTests: XCTestCase {
     
 }
 
 // MARK: - ClientRequest
-extension ClientRequest_Tests {
+extension ClientRequestTests {
     
     func testWriteClientRequest() {
         var buffer = ByteBuffer()
@@ -37,7 +37,7 @@ extension ClientRequest_Tests {
 }
 
 // MARK: - AddressType
-extension ClientRequest_Tests {
+extension ClientRequestTests {
     
     func testReadAddressType() {
         var ipv4 = ByteBuffer(bytes: [0x01, 0x10, 0x11, 0x12, 0x13])

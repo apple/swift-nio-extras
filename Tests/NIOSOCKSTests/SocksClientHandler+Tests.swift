@@ -16,7 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-class SocksClientHandler_Tests: XCTestCase {
+class SocksClientHandlerTests: XCTestCase {
     
     var channel: EmbeddedChannel!
     var handler: SOCKSClientHandler!

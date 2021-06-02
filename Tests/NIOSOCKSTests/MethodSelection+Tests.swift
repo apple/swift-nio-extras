@@ -16,7 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-public class MethodSelection_Tests: XCTestCase {
+public class MethodSelectionTests: XCTestCase {
  
     func testReadFromByteBuffer() {
         var buffer = ByteBuffer(bytes: [0x05, 0x00])

@@ -16,7 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-public class AuthenticationMethod_Tests: XCTestCase {
+public class AuthenticationMethodTests: XCTestCase {
     
     // prevent accidental regression of the built-in auth methods
     func testStaticVarsAreCorrect() {

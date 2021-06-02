@@ -16,7 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-public class ClientGreeting_Tests: XCTestCase {
+public class ClientGreetingTests: XCTestCase {
     
     func testInitFromBuffer() {
         var buffer = ByteBuffer()

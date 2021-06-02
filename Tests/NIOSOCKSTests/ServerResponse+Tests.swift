@@ -16,10 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-public class ServerResponse_Tests: XCTestCase {
- 
-    
-    
+public class ServerResponseTests: XCTestCase {
 }
 
 // MARK: - ServeResponse
