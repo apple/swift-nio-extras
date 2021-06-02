@@ -37,6 +37,8 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private var state: ClientStateMachine
     private var buffered: ByteBuffer
     
+    private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
+    
     public init(supportedAuthenticationMethods: [AuthenticationMethod], targetAddress: AddressType, targetPort: UInt16) {
         precondition(supportedAuthenticationMethods.count > 0,
                      "At least one supported authentication method required.")
@@ -119,6 +121,14 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
                 let data = self.wrapInboundOut(self.buffered)
                 context.fireChannelRead(data)
             }
+            
+            // If we have any buffered writes then now
+            // we can send them.
+            for (data, promise) in self.bufferedWrites {
+                context.write(data, promise: promise)
+            }
+            self.bufferedWrites = []
+            
             break
         case.none:
             break
@@ -127,7 +137,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         guard self.state.proxyEstablished else {
-            promise?.fail(ProxyNotEstablished())
+            self.bufferedWrites.append((data, promise))
             return
         }
         context.write(data, promise: nil)
