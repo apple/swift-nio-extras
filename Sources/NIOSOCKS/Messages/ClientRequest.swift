@@ -65,15 +65,15 @@ extension ByteBuffer {
 struct Command: Hashable {
     
     /// Typically the primary connection type, suitable for HTTP.
-    static var connect = Command(value: 0x01)
+    static let connect = Command(value: 0x01)
     
     /// Used in protocols that require the client to accept connections
     /// from the server, e.g. FTP.
-    static var bind = Command(value: 0x02)
+    static let bind = Command(value: 0x02)
     
     /// Used to establish an association within the UDP relay process to
     /// handle UDP datagrams.
-    static var udpAssociate = Command(value: 0x03)
+    static let udpAssociate = Command(value: 0x03)
     
     var value: UInt8
 }

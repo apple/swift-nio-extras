@@ -67,34 +67,34 @@ struct ServerResponse: Hashable {
 public struct Reply: Hashable {
     
     /// The connection succeeded and data can now be transmitted.
-    static var succeeded = Reply(value: 0x00)
+    static let succeeded = Reply(value: 0x00)
     
     /// The SOCKS server encountered an internal failure.
-    static var serverFailure = Reply(value: 0x01)
+    static let serverFailure = Reply(value: 0x01)
     
     /// The connection to the host was not allowed.
-    static var notAllowed = Reply(value: 0x02)
+    static let notAllowed = Reply(value: 0x02)
     
     /// The host network is not reachable.
-    static var networkUnreachable = Reply(value: 0x03)
+    static let networkUnreachable = Reply(value: 0x03)
     
     /// The target host was not reachable.
-    static var hostUnreachable = Reply(value: 0x04)
+    static let hostUnreachable = Reply(value: 0x04)
     
     /// The connection tot he host was refused
-    static var refused = Reply(value: 0x05)
+    static let refused = Reply(value: 0x05)
     
     /// The host address's TTL has expired.
-    static var ttlExpired = Reply(value: 0x06)
+    static let ttlExpired = Reply(value: 0x06)
     
     /// The provided command is not supported.
-    static var commandUnsupported = Reply(value: 0x07)
+    static let commandUnsupported = Reply(value: 0x07)
     
     /// The provided address type is not supported.
-    static var addressUnsupported = Reply(value: 0x08)
+    static let addressUnsupported = Reply(value: 0x08)
     
     /// The raw `UInt8` status code.
-    public var value: UInt8
+    public let value: UInt8
     
     /// Creates a new `Reply` from the given raw status code. Common
     /// statuses have convenience variables.
