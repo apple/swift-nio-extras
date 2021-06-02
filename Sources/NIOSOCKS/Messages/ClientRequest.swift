@@ -47,12 +47,13 @@ struct ClientRequest: Hashable {
 extension ByteBuffer {
     
     @discardableResult mutating func writeClientRequest(_ request: ClientRequest) -> Int {
-        self.writeInteger(request.version)
-        self.writeInteger(request.command.rawValue)
-        self.writeInteger(0, as: UInt8.self)
-        let addressSize = self.writeAddressType(request.addressType)
-        self.writeInteger(request.desiredPort)
-        return 1 + 1 + 2 + addressSize + 2
+        var written = 0
+        written += self.writeInteger(request.version)
+        written += self.writeInteger(request.command.rawValue)
+        written += self.writeInteger(0, as: UInt8.self)
+        written +=  self.writeAddressType(request.addressType)
+        written += self.writeInteger(request.desiredPort)
+        return written
     }
     
 }
@@ -134,21 +135,20 @@ public enum AddressType: Hashable {
 extension ByteBuffer {
     
     @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {
+        var written = 0
         switch type {
         case .ipv4(let bytes):
-            self.writeInteger(UInt8(1))
-            self.writeBytes(bytes)
-            return 1 + 4
+            written += self.writeInteger(UInt8(1))
+            written += self.writeBytes(bytes)
         case .domain(let bytes):
-            self.writeInteger(UInt8(3))
-            self.writeInteger(UInt8(bytes.count))
-            self.writeBytes(bytes)
-            return 1 + 1 + bytes.count
+            written += self.writeInteger(UInt8(3))
+            written += self.writeInteger(UInt8(bytes.count))
+            written += self.writeBytes(bytes)
         case .ipv6(let bytes):
-            self.writeInteger(UInt8(4))
-            self.writeBytes(bytes)
-            return 1 + 16
+            written += self.writeInteger(UInt8(4))
+            written += self.writeBytes(bytes)
         }
+        return written
     }
     
 }

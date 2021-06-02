@@ -53,14 +53,15 @@ struct ClientGreeting: Hashable {
 extension ByteBuffer {
     
     @discardableResult mutating func writeClientGreeting(_ greeting: ClientGreeting) -> Int {
-        self.writeInteger(greeting.version)
-        self.writeInteger(UInt8(greeting.methods.count))
+        var written = 0
+        written += self.writeInteger(greeting.version)
+        written += self.writeInteger(UInt8(greeting.methods.count))
         
         for method in greeting.methods {
-            self.writeInteger(method.value)
+            written += self.writeInteger(method.value)
         }
         
-        return 2 + greeting.methods.count
+        return written
     }
     
 }
