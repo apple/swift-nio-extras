@@ -30,11 +30,14 @@ struct MethodSelection: Hashable {
     public init(method: AuthenticationMethod) {
         self.method = method
     }
+}
+
+extension ByteBuffer {
     
-    init?(buffer: inout ByteBuffer) throws {
+    mutating func readMethodSelection() throws -> MethodSelection? {
         guard
-            let version = buffer.readInteger(as: UInt8.self),
-            let method = buffer.readInteger(as: UInt8.self)
+            let version = self.readInteger(as: UInt8.self),
+            let method = self.readInteger(as: UInt8.self)
         else {
             return nil
         }
@@ -43,6 +46,7 @@ struct MethodSelection: Hashable {
             throw InvalidProtocolVersion(actual: version)
         }
         
-        self.method = .init(value: method)
+        return .init(method: .init(value: method))
     }
+    
 }

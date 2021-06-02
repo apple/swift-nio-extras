@@ -18,7 +18,7 @@ import NIO
 
 /// Instructs the SOCKS proxy server of the target host,
 /// and how to connect.
-struct ClientRequest: Hashable {
+public struct ClientRequest: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -62,20 +62,20 @@ extension ByteBuffer {
 
 /// What type of connection the SOCKS server should establish with
 /// the target host.
-struct Command: Hashable {
+public struct Command: Hashable {
     
     /// Typically the primary connection type, suitable for HTTP.
-    static let connect = Command(value: 0x01)
+    public static let connect = Command(value: 0x01)
     
     /// Used in protocols that require the client to accept connections
     /// from the server, e.g. FTP.
-    static let bind = Command(value: 0x02)
+    public static let bind = Command(value: 0x02)
     
     /// Used to establish an association within the UDP relay process to
     /// handle UDP datagrams.
-    static let udpAssociate = Command(value: 0x03)
+    public static let udpAssociate = Command(value: 0x03)
     
-    var value: UInt8
+    public var value: UInt8
 }
 
 // MARK: - AddressType
@@ -103,38 +103,38 @@ public enum AddressType: Hashable {
             return 16
         }
     }
+}
+
+extension ByteBuffer {
     
-    init?(buffer: inout ByteBuffer) throws {
-        guard let type = buffer.readInteger(as: UInt8.self) else {
+    mutating func readAddresType() throws -> AddressType? {
+        guard let type = self.readInteger(as: UInt8.self) else {
             return nil
         }
         
         switch type {
         case 0x01:
-            guard let bytes = buffer.readBytes(length: 4) else {
+            guard let bytes = self.readBytes(length: 4) else {
                 return nil
             }
-            self = .ipv4(bytes)
+            return .ipv4(bytes)
         case 0x03:
             guard
-                let length = buffer.readInteger(as: UInt8.self),
-                let bytes = buffer.readBytes(length: Int(length))
+                let length = self.readInteger(as: UInt8.self),
+                let bytes = self.readBytes(length: Int(length))
             else {
                 return nil
             }
-            self = .domain(bytes)
+            return .domain(bytes)
         case 0x04:
-            guard let bytes = buffer.readBytes(length: 16) else {
+            guard let bytes = self.readBytes(length: 16) else {
                 return nil
             }
-            self = .ipv6(bytes)
+            return .ipv6(bytes)
         default:
             throw InvalidAddressType(actual: type)
         }
     }
-}
-
-extension ByteBuffer {
     
     @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {
         var written = 0

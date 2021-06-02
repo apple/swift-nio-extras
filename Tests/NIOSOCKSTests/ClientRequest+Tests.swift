@@ -40,17 +40,17 @@ extension ClientRequestTests {
     func testReadAddressType() {
         var ipv4 = ByteBuffer(bytes: [0x01, 0x10, 0x11, 0x12, 0x13])
         XCTAssertEqual(ipv4.readableBytes, 5)
-        XCTAssertNoThrow(XCTAssertEqual(try AddressType(buffer: &ipv4), .ipv4([0x10, 0x11, 0x12, 0x13])))
+        XCTAssertNoThrow(XCTAssertEqual(try ipv4.readAddresType(), .ipv4([0x10, 0x11, 0x12, 0x13])))
         XCTAssertEqual(ipv4.readableBytes, 0)
         
         var domain = ByteBuffer(bytes: [0x03, 0x04, 0x10, 0x11, 0x12, 0x13])
         XCTAssertEqual(domain.readableBytes, 6)
-        XCTAssertNoThrow(XCTAssertEqual(try AddressType(buffer: &domain), .domain([0x10, 0x11, 0x12, 0x13])))
+        XCTAssertNoThrow(XCTAssertEqual(try domain.readAddresType(), .domain([0x10, 0x11, 0x12, 0x13])))
         XCTAssertEqual(domain.readableBytes, 0)
         
         var ipv6 = ByteBuffer(bytes: [0x04, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
         XCTAssertEqual(ipv6.readableBytes, 17)
-        XCTAssertNoThrow(XCTAssertEqual(try AddressType(buffer: &ipv6), .ipv6([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])))
+        XCTAssertNoThrow(XCTAssertEqual(try ipv6.readAddresType(), .ipv6([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])))
         XCTAssertEqual(ipv6.readableBytes, 0)
         
     }

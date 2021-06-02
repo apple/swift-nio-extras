@@ -21,7 +21,7 @@ public class MethodSelectionTests: XCTestCase {
     func testReadFromByteBuffer() {
         var buffer = ByteBuffer(bytes: [0x05, 0x00])
         XCTAssertEqual(buffer.readableBytes, 2)
-        XCTAssertNoThrow(XCTAssertEqual(try MethodSelection(buffer: &buffer), .init(method: .noneRequired)))
+        XCTAssertNoThrow(XCTAssertEqual(try buffer.readMethodSelection(), .init(method: .noneRequired)))
         XCTAssertEqual(buffer.readableBytes, 0)
     }
     

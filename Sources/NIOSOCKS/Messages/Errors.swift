@@ -34,3 +34,17 @@ public struct InvalidAddressType: Error, Hashable {
         self.actual = actual
     }
 }
+
+public struct InvalidAuthenticationSelection: Error {
+    var selection: AuthenticationMethod
+    public init(selection: AuthenticationMethod) {
+        self.selection = selection
+    }
+}
+
+public struct ConnectionFailed: Error, Hashable {
+    public var reply: Reply
+    public init(reply: Reply) {
+        self.reply = reply
+    }
+}

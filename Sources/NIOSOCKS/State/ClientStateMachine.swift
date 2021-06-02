@@ -14,7 +14,7 @@
 
 import NIO
 
-fileprivate enum ClientState: Hashable {
+public enum ClientState: Hashable {
     case ready
     case waitingForAuthenticationMethod(ClientGreeting)
     case waitingForClientRequest
@@ -22,18 +22,20 @@ fileprivate enum ClientState: Hashable {
     case active
 }
 
+public struct ConnectionStateError: Error, Hashable {
+    var expected: ClientState
+    var actual: ClientState
+    
+    public init(expected: ClientState, actual: ClientState) {
+        self.expected = expected
+        self.actual = actual
+    }
+}
+
 enum ClientAction: Hashable {
     case none
     case sendRequest
     case proxyEstablished
-}
-
-public struct InvalidAuthenticationSelection: Error {
-    
-}
-
-public struct ConnectionFailed: Error, Hashable {
-    public var reply: Reply
 }
 
 struct ClientStateMachine {
@@ -62,13 +64,17 @@ struct ClientStateMachine {
         self.state = .ready
     }
 
-    mutating func sendClientGreeting(_ greeting: ClientGreeting) {
-        assert(self.state == .ready)
+    mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
+        guard self.state == .ready else {
+            throw ConnectionStateError(expected: .ready, actual: self.state)
+        }
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
-    mutating func sendClientRequest(_ request: ClientRequest) {
-        assert(self.state == .waitingForClientRequest)
+    mutating func sendClientRequest(_ request: ClientRequest) throws {
+        guard self.state == .waitingForClientRequest else {
+            throw ConnectionStateError(expected: .waitingForClientRequest, actual: self.state)
+        }
         self.state = .waitingForServerResponse(request)
     }
     
@@ -85,18 +91,18 @@ struct ClientStateMachine {
     }
     
     mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
-        guard let selected = try MethodSelection(buffer: &buffer) else {
+        guard let selected = try buffer.readMethodSelection() else {
             return nil
         }
         guard greeting.methods.contains(selected.method) else {
-            throw InvalidAuthenticationSelection()
+            throw InvalidAuthenticationSelection(selection: selected.method)
         }
         self.state = .waitingForClientRequest
         return .sendRequest
     }
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
-        guard let response = try ServerResponse(buffer: &buffer) else {
+        guard let response = try buffer.readServerResponse() else {
             return nil
         }
         guard response.reply == .succeeded else {

@@ -43,14 +43,17 @@ struct ServerResponse: Hashable {
         self.boundAddress = boundAddress
         self.boundPort = boundPort
     }
+}
+
+extension ByteBuffer {
     
-    init?(buffer: inout ByteBuffer) throws {
+    mutating func readServerResponse() throws -> ServerResponse? {
         guard
-            let version = buffer.readInteger(as: UInt8.self),
-            let reply = Reply(buffer: &buffer),
-            let reserved = buffer.readInteger(as: UInt8.self),
-            let boundAddress = try AddressType(buffer: &buffer),
-            let boundPort = buffer.readInteger(as: UInt16.self)
+            let version = self.readInteger(as: UInt8.self),
+            let reply = Reply(buffer: &self),
+            let reserved = self.readInteger(as: UInt8.self),
+            let boundAddress = try self.readAddresType(),
+            let boundPort = self.readInteger(as: UInt16.self)
         else {
             return nil
         }
@@ -63,10 +66,9 @@ struct ServerResponse: Hashable {
             throw InvalidProtocolVersion(actual: version)
         }
         
-        self.reply = reply
-        self.boundAddress = boundAddress
-        self.boundPort = boundPort
+        return .init(reply: reply, boundAddress: boundAddress, boundPort: boundPort)
     }
+    
 }
 
 // MARK: - Reply

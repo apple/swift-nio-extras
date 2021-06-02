@@ -61,26 +61,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         }
     }
     
-    func startHandshake(context: ChannelHandlerContext) {
-        
-        // if the handshake has already begun
-        // or completed, then don't start it again
-        guard self.state.shouldBeginHandshake else {
-            return
-        }
-        
-        let greeting = ClientGreeting(
-            methods: self.supportedAuthenticationMethods
-        )
-        let capacity = 2 + self.supportedAuthenticationMethods.count
-        var buffer = context.channel.allocator.buffer(capacity: capacity)
-        buffer.writeClientGreeting(greeting)
-        self.state.sendClientGreeting(greeting)
-        
-        context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
-        context.fireChannelActive()
-    }
-    
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         
         // if we've established the connection then forward on the data
@@ -104,43 +84,82 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         }
     }
     
-    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
-        
-        switch action {
-        case .sendRequest:
-            let request = ClientRequest(command: .connect, addressType: self.targetAddress, desiredPort: self.targetPort)
-            self.state.sendClientRequest(request)
-            let capacity = 6 + self.targetAddress.size
-            var buffer = context.channel.allocator.buffer(capacity: capacity)
-            buffer.writeClientRequest(request)
-            context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
-        case .proxyEstablished:
-            // for some reason we have extra bytes
-            // so let's send them down the pipe
-            if self.buffered.readableBytes > 0 {
-                let data = self.wrapInboundOut(self.buffered)
-                context.fireChannelRead(data)
-            }
-            
-            // If we have any buffered writes then now
-            // we can send them.
-            for (data, promise) in self.bufferedWrites {
-                context.write(data, promise: promise)
-            }
-            self.bufferedWrites = []
-            
-            break
-        case.none:
-            break
-        }
-    }
-    
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         guard self.state.proxyEstablished else {
             self.bufferedWrites.append((data, promise))
             return
         }
         context.write(data, promise: nil)
+    }
+    
+}
+
+extension SOCKSClientHandler {
+    
+    func startHandshake(context: ChannelHandlerContext) {
+        
+        // if the handshake has already begun
+        // or completed, then don't start it again
+        guard self.state.shouldBeginHandshake else {
+            return
+        }
+        
+        let greeting = ClientGreeting(
+            methods: self.supportedAuthenticationMethods
+        )
+        let capacity = 2 + self.supportedAuthenticationMethods.count
+        var buffer = context.channel.allocator.buffer(capacity: capacity)
+        buffer.writeClientGreeting(greeting)
+        
+        do {
+            try self.state.sendClientGreeting(greeting)
+        } catch {
+            context.fireErrorCaught(error)
+            return
+        }
+        
+        context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
+        context.fireChannelActive()
+    }
+    
+    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
+        switch action {
+        case .sendRequest:
+            self.handleActionSendRequest(context: context)
+        case .proxyEstablished:
+            self.handleActionProxyEstablished(context: context)
+        case.none:
+            break
+        }
+    }
+    
+    func handleActionProxyEstablished(context: ChannelHandlerContext) {
+        // for some reason we have extra bytes
+        // so let's send them down the pipe
+        if self.buffered.readableBytes > 0 {
+            let data = self.wrapInboundOut(self.buffered)
+            context.fireChannelRead(data)
+        }
+        
+        // If we have any buffered writes then now
+        // we can send them.
+        for (data, promise) in self.bufferedWrites {
+            context.write(data, promise: promise)
+        }
+        self.bufferedWrites = []
+    }
+    
+    func handleActionSendRequest(context: ChannelHandlerContext) {
+        let request = ClientRequest(command: .connect, addressType: self.targetAddress, desiredPort: self.targetPort)
+        do {
+            try self.state.sendClientRequest(request)
+        } catch {
+            context.fireErrorCaught(error)
+        }
+        let capacity = 6 + self.targetAddress.size
+        var buffer = context.channel.allocator.buffer(capacity: capacity)
+        buffer.writeClientRequest(request)
+        context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
 }

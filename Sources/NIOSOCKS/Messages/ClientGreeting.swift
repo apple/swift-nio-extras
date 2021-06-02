@@ -16,7 +16,7 @@ import NIO
 
 /// The SOCKS handshake begins with the client sending a greeting
 /// containing supported authentication methods.
-struct ClientGreeting: Hashable {
+public struct ClientGreeting: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -29,11 +29,14 @@ struct ClientGreeting: Hashable {
     public init(methods: [AuthenticationMethod]) {
         self.methods = methods
     }
+}
+
+extension ByteBuffer {
     
-    init?(buffer: inout ByteBuffer) throws {
+    mutating func readClientGreeting() throws -> ClientGreeting? {
         guard
-            let version = buffer.readInteger(as: UInt8.self),
-            let numMethods = buffer.readInteger(as: UInt8.self)
+            let version = self.readInteger(as: UInt8.self),
+            let numMethods = self.readInteger(as: UInt8.self)
         else {
             return nil
         }
@@ -45,16 +48,13 @@ struct ClientGreeting: Hashable {
         var methods: [AuthenticationMethod] = []
         methods.reserveCapacity(Int(numMethods))
         for _ in 0..<numMethods {
-            guard let method = buffer.readInteger(as: UInt8.self) else {
+            guard let method = self.readInteger(as: UInt8.self) else {
                 return nil
             }
             methods.append(.init(value: method))
         }
-        self.methods = methods
+        return .init(methods: methods)
     }
-}
-
-extension ByteBuffer {
     
     @discardableResult mutating func writeClientGreeting(_ greeting: ClientGreeting) -> Int {
         var written = 0
