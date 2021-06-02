@@ -50,6 +50,23 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func channelActive(context: ChannelHandlerContext) {
+        self.startHandshake(context: context)
+    }
+    
+    public func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive {
+            self.startHandshake(context: context)
+        }
+    }
+    
+    func startHandshake(context: ChannelHandlerContext) {
+        
+        // if the handshake has already begun
+        // or completed, then don't start it again
+        guard self.state.shouldBeginHandshake else {
+            return
+        }
+        
         let greeting = ClientGreeting(
             methods: self.supportedAuthenticationMethods
         )

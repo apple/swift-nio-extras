@@ -49,6 +49,15 @@ struct ClientStateMachine {
         }
     }
     
+    var shouldBeginHandshake: Bool  {
+        switch self.state {
+        case .ready:
+            return true
+        case .active, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse:
+            return false
+        }
+    }
+    
     init() {
         self.state = .ready
     }
