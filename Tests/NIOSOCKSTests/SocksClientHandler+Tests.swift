@@ -37,8 +37,11 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func assertOutputBuffer(_ bytes: [UInt8], line: UInt = #line) {
-        var buffer = try! self.channel.readOutbound(as: ByteBuffer.self)
-        XCTAssertEqual(buffer!.readBytes(length: buffer!.readableBytes), bytes, line: line)
+        if var buffer = try! self.channel.readOutbound(as: ByteBuffer.self) {
+            XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
+        } else if bytes.count > 0 {
+            XCTFail("Expected bytes but found none")
+        }
     }
     
     func writeInbound(_ bytes: [UInt8], line: UInt = #line) {
@@ -68,6 +71,32 @@ class SocksClientHandlerTests: XCTestCase {
         self.writeInbound([1, 2, 3, 4, 5])
         self.assertInbound([1, 2, 3, 4, 5])
         
+    }
+    
+    func testTypicalWorkflowDripfeed() {
+        
+        // the client should start the handshake instantly
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        
+        // server selects authentication method
+        // once the dripfeed is complete we should get the client request
+        self.writeInbound([0x05])
+        self.assertOutputBuffer([])
+        self.writeInbound([0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // drip feed server response
+        self.writeInbound([0x05, 0x00, 0x00, 0x01])
+        self.assertOutputBuffer([])
+        self.writeInbound([192, 168])
+        self.assertOutputBuffer([])
+        self.writeInbound([1, 1])
+        self.assertOutputBuffer([])
+        self.writeInbound([0x00, 0x50])
+        
+        // any inbound data should now go straight through
+        self.writeInbound([1, 2, 3, 4, 5])
+        self.assertInbound([1, 2, 3, 4, 5])
     }
     
     func testInvalidAuthenticationMethod() {
@@ -126,4 +155,5 @@ class SocksClientHandlerTests: XCTestCase {
             XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
         }
     }
+
 }
