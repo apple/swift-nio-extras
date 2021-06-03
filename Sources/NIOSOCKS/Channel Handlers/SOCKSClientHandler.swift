@@ -93,9 +93,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 extension SOCKSClientHandler {
     
     func beginHandshake(context: ChannelHandlerContext) {
-        guard self.state.shouldBeginHandshake else {
-            return
-        }
         assert(self.state.shouldBeginHandshake)
         self.handleAction(self.state.connectionEstablished(), context: context)
     }
