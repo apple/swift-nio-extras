@@ -150,10 +150,10 @@ extension SOCKSClientHandler {
         
         // If we have any buffered writes then now
         // we can send them.
-        for (data, promise) in self.bufferedWrites {
+        while let (data, promise) = self.bufferedWrites.first {
             context.write(data, promise: promise)
+            self.bufferedWrites.removeFirst()
         }
-        self.bufferedWrites = []
     }
     
     func handleActionSendRequest(context: ChannelHandlerContext) {
