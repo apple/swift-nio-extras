@@ -27,6 +27,7 @@ extension MethodSelectionTests {
    static var allTests : [(String, (MethodSelectionTests) -> () throws -> Void)] {
       return [
                 ("testReadFromByteBuffer", testReadFromByteBuffer),
+                ("testWriteToByteBuffer", testWriteToByteBuffer),
            ]
    }
 }
