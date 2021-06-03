@@ -181,8 +181,8 @@ extension ByteBuffer {
     }
     
     @discardableResult mutating func writeIPv6Address(_ addr: sockaddr_in6) -> Int {
-        withUnsafeBytes(of: addr.sin6_addr) { pointer in
-            self.writeBytes(pointer)
+        return withUnsafeBytes(of: addr.sin6_addr) { pointer in
+            return self.writeBytes(pointer)
         }
     }
 }
