@@ -119,6 +119,7 @@ extension SOCKSClientHandler {
             }
         } catch {
             context.fireErrorCaught(error)
+            context.close(mode: .all, promise: nil)
         }
     }
     
