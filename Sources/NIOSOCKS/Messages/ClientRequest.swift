@@ -167,12 +167,8 @@ extension ByteBuffer {
                 + self.writeInteger(address.address.sin_addr.s_addr, endianness: .little)
                 + self.writeInteger(address.address.sin_port, endianness: .little)
         case .address(.v6(let address)):
-            let (p1, p2, p3, p4) = address.address.sin6_addr.__u6_addr.__u6_addr32
             return self.writeInteger(UInt8(4))
-                + self.writeInteger(p1, endianness: .little)
-                + self.writeInteger(p2, endianness: .little)
-                + self.writeInteger(p3, endianness: .little)
-                + self.writeInteger(p4, endianness: .little)
+                + self.writeIPv6Address(address.address)
                 + self.writeInteger(address.address.sin6_port, endianness: .little)
         case .address(.unixDomainSocket):
             fatalError("unsupported")
@@ -184,4 +180,9 @@ extension ByteBuffer {
         }
     }
     
+    @discardableResult mutating func writeIPv6Address(_ addr: sockaddr_in6) -> Int {
+        withUnsafeBytes(of: addr.sin6_addr) { pointer in
+            self.writeBytes(pointer)
+        }
+    }
 }
