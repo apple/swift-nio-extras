@@ -83,7 +83,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
             switch action {
             case .waitForMoreData:
                 break // do nothing, we've buffered the data already
-            default:
+            case .action(let action):
                 self.handleAction(action, context: context)
             }
         } catch {
@@ -134,8 +134,6 @@ extension SOCKSClientHandler {
                 self.handleActionSendRequest(context: context)
             case .proxyEstablished:
                 self.handleActionProxyEstablished(context: context)
-            case .waitForMoreData:
-                break
             }
         } catch {
             context.fireErrorCaught(error)

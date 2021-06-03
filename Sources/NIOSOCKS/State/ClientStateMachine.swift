@@ -29,7 +29,11 @@ enum ClientAction: Hashable {
     case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
     case proxyEstablished
+}
+
+enum Action: Hashable {
     case waitForMoreData
+    case action(ClientAction)
 }
 
 struct ClientStateMachine {
@@ -58,12 +62,22 @@ struct ClientStateMachine {
         self.state = .waitingForClientGreeting
     }
     
+    private func unwindIfNeeded<T>(_ buffer: inout ByteBuffer, _ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
+        let save = buffer
+        do {
+            return try closure(&buffer)
+        } catch {
+            buffer = save
+            throw error
+        }
+    }
+    
 }
 
 // MARK: - Incoming
 extension ClientStateMachine {
     
-    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> Action {
         switch self.state {
         case .waitingForAuthenticationMethod(let greeting):
             return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
@@ -74,32 +88,30 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
-        let save = buffer
-        guard let selected = try buffer.readMethodSelection() else {
-            buffer = save
-            return .waitForMoreData
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> Action {
+        try self.unwindIfNeeded(&buffer) { buffer in
+            guard let selected = try buffer.readMethodSelection() else {
+                return .waitForMoreData
+            }
+            guard greeting.methods.contains(selected.method) else {
+                throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
+            }
+            self.state = .pendingAuthentication
+            return .action(.authenticateIfNeeded(selected.method))
         }
-        guard greeting.methods.contains(selected.method) else {
-            buffer = save
-            throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
-        }
-        self.state = .pendingAuthentication
-        return .authenticateIfNeeded(selected.method)
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
-        let save = buffer
-        guard let response = try buffer.readServerResponse() else {
-            buffer = save
-            return .waitForMoreData
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> Action {
+        try self.unwindIfNeeded(&buffer) { buffer in
+            guard let response = try buffer.readServerResponse() else {
+                return .waitForMoreData
+            }
+            guard response.reply == .succeeded else {
+                throw SOCKSError.ConnectionFailed(reply: response.reply)
+            }
+            self.state = .active
+            return .action(.proxyEstablished)
         }
-        guard response.reply == .succeeded else {
-            buffer = save
-            throw SOCKSError.ConnectionFailed(reply: response.reply)
-        }
-        self.state = .active
-        return .proxyEstablished
     }
     
 }
