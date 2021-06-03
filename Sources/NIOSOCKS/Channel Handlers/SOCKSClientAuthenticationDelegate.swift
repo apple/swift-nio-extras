@@ -42,7 +42,7 @@ public protocol SOCKSClientAuthenticationDelegate {
     
     /// Data received from the server is given to the delegate to process.
     /// The delegate can then decide to return data to the server if needed.
-    /// - parameter buffer: The data recieved from the server
+    /// - parameter buffer: The data received from the server
     /// - returns:
     func handleIncomingData(buffer: ByteBuffer) throws -> AuthenticationResult
     
