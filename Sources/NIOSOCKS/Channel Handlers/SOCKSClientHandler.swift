@@ -49,11 +49,11 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func channelActive(context: ChannelHandlerContext) {
-        self.ready(context: context)
+        self.beginHandshake(context: context)
     }
     
     public func handlerAdded(context: ChannelHandlerContext) {
-        self.ready(context: context)
+        self.beginHandshake(context: context)
     }
     
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -92,30 +92,19 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 
 extension SOCKSClientHandler {
     
-    func ready(context: ChannelHandlerContext) {
+    func beginHandshake(context: ChannelHandlerContext) {
         guard self.state.shouldBeginHandshake else {
             return
         }
+        assert(self.state.shouldBeginHandshake)
         self.handleAction(self.state.connectionEstablished(), context: context)
-    }
-    
-    func startHandshake(context: ChannelHandlerContext) {
-        let greeting = ClientGreeting(
-            methods: self.authenticationDelegate.supportedAuthenticationMethods
-        )
-        let capacity = 2 + self.authenticationDelegate.supportedAuthenticationMethods.count
-        var buffer = context.channel.allocator.buffer(capacity: capacity)
-        buffer.writeClientGreeting(greeting)
-        self.state.sendClientGreeting(greeting)
-        context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
-        context.fireChannelActive()
     }
     
     func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
         do {
             switch action {
             case .sendGreeting:
-                self.startHandshake(context: context)
+                self.handleActionSendRequest(context: context)
             case .authenticateIfNeeded(let method):
                 try self.handleActionAuthenticateIfNeeded(method: method, context: context)
             case .sendRequest:
@@ -126,6 +115,18 @@ extension SOCKSClientHandler {
         } catch {
             context.fireErrorCaught(error)
         }
+    }
+    
+    func handleSendClientGreeting(context: ChannelHandlerContext) {
+        let greeting = ClientGreeting(
+            methods: self.authenticationDelegate.supportedAuthenticationMethods
+        )
+        let capacity = 2 + self.authenticationDelegate.supportedAuthenticationMethods.count
+        var buffer = context.channel.allocator.buffer(capacity: capacity)
+        buffer.writeClientGreeting(greeting)
+        self.state.sendClientGreeting(greeting)
+        context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
+        context.fireChannelActive()
     }
     
     func handleActionAuthenticateIfNeeded(method: AuthenticationMethod, context: ChannelHandlerContext) throws {
