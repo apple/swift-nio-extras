@@ -121,38 +121,37 @@ extension ByteBuffer {
     mutating func readIPv4Address() throws -> AddressType? {
         let save = self
         guard
-            let bytes = self.readBytes(length: 4),
+            let bytes = self.readSlice(length: 4),
             let port = try self.readPort()
         else {
             self = save
             return nil
         }
-        return .address(try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
+        return .address(try .init(packedIPAddress: bytes, port: port))
     }
     
     mutating func readIPv6Address() throws -> AddressType? {
         let save = self
         guard
-            let bytes = self.readBytes(length: 16),
+            let bytes = self.readSlice(length: 16),
             let port = try self.readPort()
         else {
             self = save
             return nil
         }
-        return .address(try .init(packedIPAddress: ByteBuffer(bytes: bytes), port: port))
+        return .address(try .init(packedIPAddress: bytes, port: port))
     }
     
     mutating func readDomain() throws -> AddressType? {
         let save = self
         guard
             let length = self.readInteger(as: UInt8.self),
-            let bytes = self.readBytes(length: Int(length)),
+            let host = self.readString(length: Int(length)),
             let port = try self.readPort()
         else {
             self = save
             return nil
         }
-        let host = String(decoding: bytes, as: Unicode.UTF8.self)
         return .domain(host, port: UInt16(port))
     }
     
