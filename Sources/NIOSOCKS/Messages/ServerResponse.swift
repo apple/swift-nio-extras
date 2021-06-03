@@ -46,7 +46,7 @@ extension ByteBuffer {
         let save = self
         guard
             let version = self.readInteger(as: UInt8.self),
-            let reply = self.readInteger(as: UInt8.self).flatMap({ Reply(value: $0) }),
+            let reply = self.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
             let reserved = self.readInteger(as: UInt8.self),
             let boundAddress = try self.readAddresType()
         else {
@@ -103,7 +103,7 @@ public struct Reply: Hashable {
     static let addressUnsupported = Reply(value: 0x08)
     
     /// The raw `UInt8` status code.
-    public let value: UInt8
+    public var value: UInt8
     
     /// Creates a new `Reply` from the given raw status code. Common
     /// statuses have convenience variables.

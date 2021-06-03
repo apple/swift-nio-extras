@@ -46,8 +46,8 @@ extension ByteBuffer {
         var written = 0
         written += self.writeInteger(request.version)
         written += self.writeInteger(request.command.value)
-        written += self.writeInteger(0, as: UInt8.self)
-        written +=  self.writeAddressType(request.addressType)
+        written += self.writeInteger(UInt8(0))
+        written += self.writeAddressType(request.addressType)
         return written
     }
     
@@ -157,7 +157,7 @@ extension ByteBuffer {
     }
     
     mutating func readPort() throws -> Int? {
-        return self.readInteger(as: UInt16.self).flatMap { Int($0)}
+        return self.readInteger(as: UInt16.self).flatMap { Int($0) }
     }
     
     @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {

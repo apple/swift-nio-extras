@@ -36,7 +36,7 @@ public struct InvalidAddressType: Error, Hashable {
 }
 
 public struct InvalidAuthenticationSelection: Error {
-    var selection: AuthenticationMethod
+    public var selection: AuthenticationMethod
     public init(selection: AuthenticationMethod) {
         self.selection = selection
     }
