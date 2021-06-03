@@ -27,6 +27,7 @@ extension SOCKSClientAuthenticationClientTests {
    static var allTests : [(String, (SOCKSClientAuthenticationClientTests) -> () throws -> Void)] {
       return [
                 ("testSelectedMethod", testSelectedMethod),
+                ("testTypicalWorkflow", testTypicalWorkflow),
            ]
    }
 }

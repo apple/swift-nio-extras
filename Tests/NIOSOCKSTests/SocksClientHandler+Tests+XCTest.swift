@@ -27,6 +27,7 @@ extension SocksClientHandlerTests {
    static var allTests : [(String, (SocksClientHandlerTests) -> () throws -> Void)] {
       return [
                 ("testTypicalWorkflow", testTypicalWorkflow),
+                ("testTypicalWorkflowDripfeed", testTypicalWorkflowDripfeed),
                 ("testInvalidAuthenticationMethod", testInvalidAuthenticationMethod),
                 ("testProxyConnectionFailed", testProxyConnectionFailed),
            ]

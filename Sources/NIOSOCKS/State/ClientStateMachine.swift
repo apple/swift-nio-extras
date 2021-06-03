@@ -94,7 +94,7 @@ extension ClientStateMachine {
     }
     
     mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> Action {
-        try self.unwindIfNeeded(&buffer) { buffer -> Action in
+        return try self.unwindIfNeeded(&buffer) { buffer -> Action in
             guard let selected = try buffer.readMethodSelection() else {
                 return .waitForMoreData
             }
@@ -110,7 +110,7 @@ extension ClientStateMachine {
     }
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> Action {
-        try self.unwindIfNeeded(&buffer) { buffer -> Action in
+        return try self.unwindIfNeeded(&buffer) { buffer -> Action in
             guard let response = try buffer.readServerResponse() else {
                 return .waitForMoreData
             }
@@ -123,7 +123,7 @@ extension ClientStateMachine {
     }
     
     mutating func authenticate(_ buffer: inout ByteBuffer) throws -> Action {
-        try self.unwindIfNeeded(&buffer) { buffer -> Action in
+        return try self.unwindIfNeeded(&buffer) { buffer -> Action in
             let result = try self.authenticationDelegate.handleIncomingData(buffer: &buffer)
             switch result {
             case .needsMoreData:
