@@ -15,22 +15,13 @@
 import NIO
 
 enum ClientState: Hashable {
+    case inactive
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
     case pendingAuthentication
     case waitingForClientRequest
     case waitingForServerResponse(ClientRequest)
     case active
-}
-
-struct ConnectionStateError: Error, Hashable {
-    var expected: ClientState
-    var actual: ClientState
-    
-    init(expected: ClientState, actual: ClientState) {
-        self.expected = expected
-        self.actual = actual
-    }
 }
 
 enum ClientAction: Hashable {
@@ -49,16 +40,16 @@ struct ClientStateMachine {
         switch self.state {
         case .active:
             return true
-        case .waitingForClientGreeting, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
+        default:
             return false
         }
     }
     
     var shouldBeginHandshake: Bool  {
         switch self.state {
-        case .waitingForClientGreeting:
+        case .inactive:
             return true
-        case .active, .waitingForAuthenticationMethod, .waitingForClientRequest, .waitingForServerResponse, .pendingAuthentication:
+        default:
             return false
         }
     }
@@ -117,33 +108,24 @@ extension ClientStateMachine {
 extension ClientStateMachine {
     
     mutating func connectionEstablished() -> ClientAction {
+        assert(self.state == .inactive)
         self.state = .waitingForClientGreeting
         return .sendGreeting
     }
     
-    mutating func authenticationComplete() throws -> ClientAction {
-        switch self.state {
-        case .pendingAuthentication:
-            break
-        default:
-            throw ConnectionStateError(expected: .waitingForAuthenticationMethod(.init(methods: [.gssapi])), actual: self.state)
-        }
-        
+    mutating func authenticationComplete() -> ClientAction {
+        assert(self.state == .pendingAuthentication)
         self.state = .waitingForClientRequest
         return .sendRequest
     }
 
-    mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
-        guard self.state == .waitingForClientGreeting else {
-            throw ConnectionStateError(expected: .waitingForClientGreeting, actual: self.state)
-        }
+    mutating func sendClientGreeting(_ greeting: ClientGreeting) {
+        assert(self.state == .waitingForClientGreeting)
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
-    mutating func sendClientRequest(_ request: ClientRequest) throws {
-        guard self.state == .waitingForClientRequest else {
-            throw ConnectionStateError(expected: .waitingForClientRequest, actual: self.state)
-        }
+    mutating func sendClientRequest(_ request: ClientRequest) {
+        assert(self.state == .waitingForClientRequest)
         self.state = .waitingForServerResponse(request)
     }
     

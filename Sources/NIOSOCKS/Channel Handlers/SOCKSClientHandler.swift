@@ -118,14 +118,7 @@ extension SOCKSClientHandler {
         let capacity = 2 + self.supportedAuthenticationMethods.count
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
-        
-        do {
-            try self.state.sendClientGreeting(greeting)
-        } catch {
-            context.fireErrorCaught(error)
-            return
-        }
-        
+        self.state.sendClientGreeting(greeting)
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
         context.fireChannelActive()
     }
@@ -153,7 +146,7 @@ extension SOCKSClientHandler {
         let result = try self.authenticationDelegate.serverSelectedAuthenticationMethod(method)
         switch result {
         case .authenticationComplete:
-            self.handleAction(try self.state.authenticationComplete(), context: context)
+            self.handleAction(self.state.authenticationComplete(), context: context)
             break
         case .authenticationFailed:
             break
@@ -182,11 +175,7 @@ extension SOCKSClientHandler {
     
     func handleActionSendRequest(context: ChannelHandlerContext) {
         let request = ClientRequest(command: .connect, addressType: self.targetAddress)
-        do {
-            try self.state.sendClientRequest(request)
-        } catch {
-            context.fireErrorCaught(error)
-        }
+        self.state.sendClientRequest(request)
         
         // the client request is always 5 bytes + the address info
         // [protocol_version, command, reserved, address type, <address>, port (2bytes)]

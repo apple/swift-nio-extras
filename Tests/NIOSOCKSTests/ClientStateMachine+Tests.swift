@@ -22,7 +22,7 @@ public class ClientStateMachineTests: XCTestCase {
         
         // create state machine and immediately send greeting
         var stateMachine = ClientStateMachine()
-        XCTAssertNoThrow(try stateMachine.sendClientGreeting(.init(methods: [.noneRequired])))
+        stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // provide the given server greeting, check what to do next
@@ -31,12 +31,11 @@ public class ClientStateMachineTests: XCTestCase {
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // finish authentication
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.authenticationComplete(), .sendRequest))
+        XCTAssertEqual(stateMachine.authenticationComplete(), .sendRequest)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // send the client request
-        XCTAssertNoThrow(
-            try stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))))
+        stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80))))
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // recieve server response
