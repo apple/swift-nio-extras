@@ -83,7 +83,7 @@ public enum AddressType: Hashable {
     case domain(String, port: UInt16)
     
     /// How many bytes are needed to represent the address, excluding the port
-    public var size: Int {
+    var size: Int {
         switch self {
         case .address(.v4):
             return 4
