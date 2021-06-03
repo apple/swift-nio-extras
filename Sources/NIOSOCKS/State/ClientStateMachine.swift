@@ -91,7 +91,7 @@ extension ClientStateMachine {
         }
         guard greeting.methods.contains(selected.method) else {
             buffer = save
-            throw InvalidAuthenticationSelection(selection: selected.method)
+            throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
         }
         self.state = .pendingAuthentication
         return .authenticateIfNeeded(selected.method)
@@ -105,7 +105,7 @@ extension ClientStateMachine {
         }
         guard response.reply == .succeeded else {
             buffer = save
-            throw ConnectionFailed(reply: response.reply)
+            throw SOCKSError.ConnectionFailed(reply: response.reply)
         }
         self.state = .active
         return .proxyEstablished

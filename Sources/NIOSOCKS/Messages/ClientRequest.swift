@@ -114,7 +114,7 @@ extension ByteBuffer {
         case 0x04:
             return try self.readIPv6Address()
         default:
-            throw InvalidAddressType(actual: type)
+            throw SOCKSError.InvalidAddressType(actual: type)
         }
     }
     

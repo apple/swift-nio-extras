@@ -94,7 +94,7 @@ class SocksClientHandlerTests: XCTestCase {
         try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
         self.writeInbound([0x05, 0x01])
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
-            XCTAssertTrue(e is InvalidAuthenticationSelection)
+            XCTAssertTrue(e is SOCKSError.InvalidAuthenticationSelection)
         }
     }
     
@@ -124,7 +124,7 @@ class SocksClientHandlerTests: XCTestCase {
         try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
-            XCTAssertEqual(e as? ConnectionFailed, .init(reply: .serverFailure))
+            XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
         }
     }
 }

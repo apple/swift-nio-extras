@@ -45,7 +45,7 @@ extension ByteBuffer {
         
         guard version == 5 else {
             self = save
-            throw InvalidProtocolVersion(actual: version)
+            throw SOCKSError.InvalidProtocolVersion(actual: version)
         }
         
         var methods: [AuthenticationMethod] = []

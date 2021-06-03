@@ -14,43 +14,47 @@
 
 import NIO
 
-public struct InvalidProtocolVersion: Error, Hashable {
-    public var actual: UInt8
-    public init(actual: UInt8) {
-        self.actual = actual
+public enum SOCKSError {
+    
+    public struct InvalidProtocolVersion: Error, Hashable {
+        public var actual: UInt8
+        public init(actual: UInt8) {
+            self.actual = actual
+        }
     }
-}
 
-public struct InvalidReservedByte: Error, Hashable {
-    public var actual: UInt8
-    public init(actual: UInt8) {
-        self.actual = actual
+    public struct InvalidReservedByte: Error, Hashable {
+        public var actual: UInt8
+        public init(actual: UInt8) {
+            self.actual = actual
+        }
     }
-}
 
-public struct InvalidAddressType: Error, Hashable {
-    public var actual: UInt8
-    public init(actual: UInt8) {
-        self.actual = actual
+    public struct InvalidAddressType: Error, Hashable {
+        public var actual: UInt8
+        public init(actual: UInt8) {
+            self.actual = actual
+        }
     }
-}
 
-public struct InvalidAuthenticationSelection: Error {
-    public var selection: AuthenticationMethod
-    public init(selection: AuthenticationMethod) {
-        self.selection = selection
+    public struct InvalidAuthenticationSelection: Error {
+        public var selection: AuthenticationMethod
+        public init(selection: AuthenticationMethod) {
+            self.selection = selection
+        }
     }
-}
 
-public struct NoValidAuthenticationMethod: Error {
-    public init() {
-        
+    public struct NoValidAuthenticationMethod: Error {
+        public init() {
+            
+        }
     }
-}
 
-public struct ConnectionFailed: Error, Hashable {
-    public var reply: Reply
-    public init(reply: Reply) {
-        self.reply = reply
+    public struct ConnectionFailed: Error, Hashable {
+        public var reply: Reply
+        public init(reply: Reply) {
+            self.reply = reply
+        }
     }
+    
 }

@@ -56,12 +56,12 @@ extension ByteBuffer {
         
         guard reserved == 0x0 else {
             self = save
-            throw InvalidReservedByte(actual: reserved)
+            throw SOCKSError.InvalidReservedByte(actual: reserved)
         }
         
         guard version == 0x05 else {
             self = save
-            throw InvalidProtocolVersion(actual: version)
+            throw SOCKSError.InvalidProtocolVersion(actual: version)
         }
         
         return .init(reply: reply, boundAddress: boundAddress)

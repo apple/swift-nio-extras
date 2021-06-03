@@ -46,7 +46,7 @@ extension ByteBuffer {
         
         guard version == 0x05 else {
             self = save
-            throw InvalidProtocolVersion(actual: version)
+            throw SOCKSError.InvalidProtocolVersion(actual: version)
         }
         
         return .init(method: .init(value: method))
