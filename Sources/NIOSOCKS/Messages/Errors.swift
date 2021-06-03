@@ -57,4 +57,10 @@ public enum SOCKSError {
         }
     }
     
+    public struct UnexpectedRead: Error, Hashable {
+        public init() {
+            
+        }
+    }
+    
 }

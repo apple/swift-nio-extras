@@ -84,7 +84,7 @@ extension ClientStateMachine {
         case .waitingForServerResponse(let request):
             return try self.handleServerResponse(&buffer, request: request)
         default:
-            preconditionFailure("Invalid state")
+            throw SOCKSError.UnexpectedRead()
         }
     }
     
