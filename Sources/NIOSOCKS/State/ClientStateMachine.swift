@@ -14,7 +14,7 @@
 
 import NIO
 
-public enum ClientState: Hashable {
+enum ClientState: Hashable {
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
     case pendingAuthentication
@@ -23,11 +23,11 @@ public enum ClientState: Hashable {
     case active
 }
 
-public struct ConnectionStateError: Error, Hashable {
+struct ConnectionStateError: Error, Hashable {
     var expected: ClientState
     var actual: ClientState
     
-    public init(expected: ClientState, actual: ClientState) {
+    init(expected: ClientState, actual: ClientState) {
         self.expected = expected
         self.actual = actual
     }
