@@ -35,7 +35,8 @@ public class ClientStateMachineTests: XCTestCase {
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // send the client request
-        XCTAssertNoThrow(try stateMachine.sendClientRequest(.init(command: .bind, addressType: .init(address: try! .init(ipAddress: "192.168.1.1", port: 80)))))
+        XCTAssertNoThrow(
+            try stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))))
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // recieve server response

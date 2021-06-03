@@ -25,7 +25,7 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertNil(self.channel)
         self.handler = SOCKSClientHandler(
             supportedAuthenticationMethods: [.noneRequired],
-            targetAddress: .init(address: try! .init(ipAddress: "192.168.1.1", port: 80)),
+            targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)),
             authenticationDelegate: DefaultAuthenticationDelegate()
         )
         self.channel = EmbeddedChannel(handler: self.handler)
