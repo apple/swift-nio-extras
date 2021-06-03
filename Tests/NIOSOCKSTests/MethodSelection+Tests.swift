@@ -25,4 +25,10 @@ public class MethodSelectionTests: XCTestCase {
         XCTAssertEqual(buffer.readableBytes, 0)
     }
     
+    func testWriteToByteBuffer() {
+        var buffer = ByteBuffer()
+        XCTAssertEqual(buffer.writeMethodSelection(.init(method: .noneRequired)), 2)
+        XCTAssertEqual(buffer, ByteBuffer(bytes: [0x05, 0x00]))
+    }
+    
 }

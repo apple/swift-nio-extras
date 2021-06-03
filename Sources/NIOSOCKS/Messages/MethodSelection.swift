@@ -52,4 +52,8 @@ extension ByteBuffer {
         return .init(method: .init(value: method))
     }
     
+    @discardableResult mutating func writeMethodSelection(_ method: MethodSelection) -> Int {
+        return self.writeInteger(method.version) + self.writeInteger(method.method.value)
+    }
+    
 }
