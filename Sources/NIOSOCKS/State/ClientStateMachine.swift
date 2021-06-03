@@ -22,13 +22,14 @@ enum ClientState: Hashable {
     case waitingForClientRequest
     case waitingForServerResponse(ClientRequest)
     case active
+    case error
 }
 
 enum ClientAction: Hashable {
     case sendGreeting
-    case authenticateIfNeeded(AuthenticationMethod)
     case sendRequest
     case proxyEstablished
+    case sendData(ByteBuffer)
 }
 
 enum Action: Hashable {
@@ -39,6 +40,7 @@ enum Action: Hashable {
 struct ClientStateMachine {
 
     private var state: ClientState
+    private var authenticationDelegate: SOCKSClientAuthenticationDelegate
     
     var proxyEstablished: Bool {
         switch self.state {
@@ -58,8 +60,9 @@ struct ClientStateMachine {
         }
     }
     
-    init() {
+    init(authenticationDelegate: SOCKSClientAuthenticationDelegate) {
         self.state = .inactive
+        self.authenticationDelegate = authenticationDelegate
     }
     
     private func unwindIfNeeded<T>(_ buffer: inout ByteBuffer, _ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
@@ -83,6 +86,8 @@ extension ClientStateMachine {
             return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
         case .waitingForServerResponse(let request):
             return try self.handleServerResponse(&buffer, request: request)
+        case .pendingAuthentication:
+            return try self.authenticate(&buffer)
         default:
             throw SOCKSError.UnexpectedRead()
         }
@@ -96,8 +101,11 @@ extension ClientStateMachine {
             guard greeting.methods.contains(selected.method) else {
                 throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
             }
+                
+            // start authentication with the delegate
+            try self.authenticationDelegate.serverSelectedAuthenticationMethod(selected.method)
             self.state = .pendingAuthentication
-            return .action(.authenticateIfNeeded(selected.method))
+            return try self.authenticate(&buffer)
         }
     }
     
@@ -114,6 +122,26 @@ extension ClientStateMachine {
         }
     }
     
+    mutating func authenticate(_ buffer: inout ByteBuffer) throws -> Action {
+        try self.unwindIfNeeded(&buffer) { buffer -> Action in
+            let result = try self.authenticationDelegate.handleIncomingData(buffer: &buffer)
+            switch result {
+            case .needsMoreData:
+                self.state = .pendingAuthentication
+                return .waitForMoreData
+            case .authenticationFailed:
+                self.state = .error
+                throw SOCKSError.NoValidAuthenticationMethod()
+            case .authenticationComplete:
+                self.state = .waitingForClientRequest
+                return .action(.sendRequest)
+            case .respond(let buffer):
+                self.state = .pendingAuthentication
+                return .action(.sendData(buffer))
+            }
+        }
+    }
+    
 }
 
 // MARK: - Outgoing
@@ -123,12 +151,6 @@ extension ClientStateMachine {
         assert(self.state == .inactive)
         self.state = .waitingForClientGreeting
         return .sendGreeting
-    }
-    
-    mutating func authenticationComplete() -> ClientAction {
-        assert(self.state == .pendingAuthentication)
-        self.state = .waitingForClientRequest
-        return .sendRequest
     }
 
     mutating func sendClientGreeting(_ greeting: ClientGreeting) {

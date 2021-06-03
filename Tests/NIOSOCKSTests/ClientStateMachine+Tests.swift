@@ -21,7 +21,7 @@ public class ClientStateMachineTests: XCTestCase {
     func testUsualWorkflow() {
         
         // create state machine and immediately connect
-        var stateMachine = ClientStateMachine()
+        var stateMachine = ClientStateMachine(authenticationDelegate: DefaultAuthenticationDelegate())
         XCTAssertTrue(stateMachine.shouldBeginHandshake)
         XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
         XCTAssertFalse(stateMachine.proxyEstablished)
@@ -33,12 +33,11 @@ public class ClientStateMachineTests: XCTestCase {
         
         // provide the given server greeting, check what to do next
         var serverGreeting = ByteBuffer(bytes: [0x05, 0x00])
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreeting), .action(.authenticateIfNeeded(.noneRequired))))
+        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreeting), .action(.sendRequest)))
         XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // finish authentication
-        XCTAssertEqual(stateMachine.authenticationComplete(), .sendRequest)
         XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         

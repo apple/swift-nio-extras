@@ -28,13 +28,29 @@ public class SOCKSClientAuthenticationClientTests: XCTestCase {
         let delegate = DefaultAuthenticationDelegate()
         
         // .noneRequired is valid
-        XCTAssertNoThrow(XCTAssertEqual(try delegate.serverSelectedAuthenticationMethod(.noneRequired), .authenticationComplete))
+        XCTAssertEqual(delegate.status, .notStarted)
+        XCTAssertNoThrow(try delegate.serverSelectedAuthenticationMethod(.noneRequired))
+        XCTAssertEqual(delegate.status, .complete)
         
         // everything else should throw an error
         self.assertUnexpectedError(delegate: delegate, input: .gssapi)
+        XCTAssertEqual(delegate.status, .failed)
         self.assertUnexpectedError(delegate: delegate, input: .noneAcceptable)
+        XCTAssertEqual(delegate.status, .failed)
         self.assertUnexpectedError(delegate: delegate, input: .usernamePassword)
+        XCTAssertEqual(delegate.status, .failed)
         self.assertUnexpectedError(delegate: delegate, input: .init(value: 123))
+        XCTAssertEqual(delegate.status, .failed)
+    }
+    
+    func testTypicalWorkflow() {
+        let delegate = DefaultAuthenticationDelegate()
+        XCTAssertNoThrow(try delegate.serverSelectedAuthenticationMethod(.noneRequired))
+        
+        // make sure no data is consumed by the default delegate
+        var buffer = ByteBuffer(string: "hello")
+        XCTAssertNoThrow(XCTAssertEqual(try delegate.handleIncomingData(buffer: &buffer), .authenticationComplete))
+        XCTAssertEqual(String(buffer: buffer), "hello")
     }
     
 }

@@ -31,22 +31,30 @@ public enum AuthenticationResult: Hashable {
     case authenticationComplete
 }
 
+public enum AuthenticationStatus: Hashable {
+    case notStarted
+    case failed
+    case complete
+}
+
 public protocol SOCKSClientAuthenticationDelegate {
     
     var supportedAuthenticationMethods: [AuthenticationMethod] { get }
+    
+    var status: AuthenticationStatus { get }
     
     /// Called when the SOCKS server has responded to the client's greeting
     /// and selected an authentication method. Note that this will only be called
     /// if the selected authentication mechanism requires some action. For example
     /// `.noneRequired` will not result in this function being called.
     /// - parameter method: The authentication method selected by the server.
-    func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws -> AuthenticationResult
+    func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws
     
     /// Data received from the server is given to the delegate to process.
     /// The delegate can then decide to return data to the server if needed.
     /// - parameter buffer: The data received from the server
     /// - returns:
-    func handleIncomingData(buffer: ByteBuffer) throws -> AuthenticationResult
+    func handleIncomingData(buffer: inout ByteBuffer) throws -> AuthenticationResult
     
 }
 
@@ -54,18 +62,23 @@ public protocol SOCKSClientAuthenticationDelegate {
 /// authentication method.
 public class DefaultAuthenticationDelegate: SOCKSClientAuthenticationDelegate {
     
+    private(set) public var status: AuthenticationStatus
+    
     public let supportedAuthenticationMethods: [AuthenticationMethod] = [.noneRequired]
     
-    public init() { }
+    public init() {
+        self.status = .notStarted
+    }
     
-    public func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws -> AuthenticationResult {
+    public func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws {
         guard method == .noneRequired else {
+            self.status = .failed
             throw UnexpectedAuthenticationMethod(expected: [.noneRequired], actual: method)
         }
-        return .authenticationComplete
+        self.status = .complete
     }
 
-    public func handleIncomingData(buffer: ByteBuffer) throws -> AuthenticationResult {
-        fatalError("This should never be called and is a NIO failure.")
+    public func handleIncomingData(buffer: inout ByteBuffer) throws -> AuthenticationResult {
+        return .authenticationComplete
     }
 }

@@ -42,7 +42,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         targetAddress: AddressType,
         authenticationDelegate: SOCKSClientAuthenticationDelegate
     ) {
-        self.state = ClientStateMachine()
+        self.state = ClientStateMachine(authenticationDelegate: authenticationDelegate)
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
         self.authenticationDelegate = authenticationDelegate
@@ -108,20 +108,15 @@ extension SOCKSClientHandler {
     }
     
     func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
-        do {
-            switch action {
-            case .sendGreeting:
-                self.handleActionSendClientGreeting(context: context)
-            case .authenticateIfNeeded(let method):
-                try self.handleActionAuthenticateIfNeeded(method: method, context: context)
-            case .sendRequest:
-                self.handleActionSendRequest(context: context)
-            case .proxyEstablished:
-                self.handleActionProxyEstablished(context: context)
-            }
-        } catch {
-            context.fireErrorCaught(error)
-            context.close(mode: .all, promise: nil)
+        switch action {
+        case .sendGreeting:
+            self.handleActionSendClientGreeting(context: context)
+        case .sendRequest:
+            self.handleActionSendRequest(context: context)
+        case .proxyEstablished:
+            self.handleActionProxyEstablished(context: context)
+        case .sendData(let data):
+            context.writeAndFlush(self.wrapOutboundOut(data), promise: nil)
         }
     }
     
@@ -134,21 +129,6 @@ extension SOCKSClientHandler {
         buffer.writeClientGreeting(greeting)
         self.state.sendClientGreeting(greeting)
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
-    }
-    
-    func handleActionAuthenticateIfNeeded(method: AuthenticationMethod, context: ChannelHandlerContext) throws {
-        let result = try self.authenticationDelegate.serverSelectedAuthenticationMethod(method)
-        switch result {
-        case .authenticationComplete:
-            self.handleAction(self.state.authenticationComplete(), context: context)
-            break
-        case .authenticationFailed:
-            break
-        case .needsMoreData:
-            break
-        case .respond(let bytes):
-            context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
-        }
     }
     
     func handleActionProxyEstablished(context: ChannelHandlerContext) {
