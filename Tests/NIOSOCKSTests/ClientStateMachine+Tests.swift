@@ -20,22 +20,31 @@ public class ClientStateMachineTests: XCTestCase {
  
     func testUsualWorkflow() {
         
-        // create state machine and immediately send greeting
+        // create state machine and immediately connect
         var stateMachine = ClientStateMachine()
+        XCTAssertTrue(stateMachine.shouldBeginHandshake)
+        XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
+        XCTAssertFalse(stateMachine.proxyEstablished)
+        
+        // send the client greeting
         stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
+        XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // provide the given server greeting, check what to do next
         var serverGreeting = ByteBuffer(bytes: [0x05, 0x00])
         XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreeting), .action(.authenticateIfNeeded(.noneRequired))))
+        XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // finish authentication
         XCTAssertEqual(stateMachine.authenticationComplete(), .sendRequest)
+        XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // send the client request
         stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80))))
+        XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // recieve server response
@@ -43,6 +52,7 @@ public class ClientStateMachineTests: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverResponse), .action(.proxyEstablished)))
         
         // proxy should be good to go
+        XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertTrue(stateMachine.proxyEstablished)
     }
     

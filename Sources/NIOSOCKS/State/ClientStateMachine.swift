@@ -59,7 +59,7 @@ struct ClientStateMachine {
     }
     
     init() {
-        self.state = .waitingForClientGreeting
+        self.state = .inactive
     }
     
     private func unwindIfNeeded<T>(_ buffer: inout ByteBuffer, _ closure: (inout ByteBuffer) throws -> T) rethrows -> T {

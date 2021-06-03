@@ -31,7 +31,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public typealias OutboundOut = ByteBuffer
     
     private let authenticationDelegate: SOCKSClientAuthenticationDelegate
-    private let supportedAuthenticationMethods: [AuthenticationMethod]
     private let targetAddress: AddressType
     
     private var state: ClientStateMachine
@@ -40,15 +39,9 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
     
     public init(
-        supportedAuthenticationMethods: [AuthenticationMethod],
         targetAddress: AddressType,
         authenticationDelegate: SOCKSClientAuthenticationDelegate
     ) {
-        precondition(supportedAuthenticationMethods.count > 0,
-                     "At least one supported authentication method required.")
-        precondition(supportedAuthenticationMethods.count <= 255,
-                     "There can't be more than 255 authentication methods listed.")
-        self.supportedAuthenticationMethods = supportedAuthenticationMethods
         self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
@@ -56,16 +49,11 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func channelActive(context: ChannelHandlerContext) {
-        self.handleAction(self.state.connectionEstablished(), context: context)
+        self.ready(context: context)
     }
     
     public func handlerAdded(context: ChannelHandlerContext) {
-        if context.channel.isActive {
-            guard self.state.shouldBeginHandshake else {
-                return
-            }
-            self.handleAction(self.state.connectionEstablished(), context: context)
-        }
+        self.ready(context: context)
     }
     
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -104,18 +92,18 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 
 extension SOCKSClientHandler {
     
-    func startHandshake(context: ChannelHandlerContext) {
-        
-        // if the handshake has already begun
-        // or completed, then don't start it again
+    func ready(context: ChannelHandlerContext) {
         guard self.state.shouldBeginHandshake else {
             return
         }
-        
+        self.handleAction(self.state.connectionEstablished(), context: context)
+    }
+    
+    func startHandshake(context: ChannelHandlerContext) {
         let greeting = ClientGreeting(
-            methods: self.supportedAuthenticationMethods
+            methods: self.authenticationDelegate.supportedAuthenticationMethods
         )
-        let capacity = 2 + self.supportedAuthenticationMethods.count
+        let capacity = 2 + self.authenticationDelegate.supportedAuthenticationMethods.count
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
         self.state.sendClientGreeting(greeting)

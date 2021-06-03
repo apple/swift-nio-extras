@@ -33,6 +33,8 @@ public enum AuthenticationResult: Hashable {
 
 public protocol SOCKSClientAuthenticationDelegate {
     
+    var supportedAuthenticationMethods: [AuthenticationMethod] { get }
+    
     /// Called when the SOCKS server has responded to the client's greeting
     /// and selected an authentication method. Note that this will only be called
     /// if the selected authentication mechanism requires some action. For example
@@ -51,6 +53,8 @@ public protocol SOCKSClientAuthenticationDelegate {
 /// Use if you're connecting to a server where you're confident that `.noneRequired` is a valid
 /// authentication method.
 public class DefaultAuthenticationDelegate: SOCKSClientAuthenticationDelegate {
+    
+    public let supportedAuthenticationMethods: [AuthenticationMethod] = [.noneRequired]
     
     public init() { }
     

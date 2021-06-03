@@ -33,7 +33,6 @@ let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
         channel.pipeline.addHandlers([
             SOCKSClientHandler(
-                supportedAuthenticationMethods: [.noneRequired],
                 targetAddress: targetAddress,
                 authenticationDelegate: DefaultAuthenticationDelegate()
             ),
