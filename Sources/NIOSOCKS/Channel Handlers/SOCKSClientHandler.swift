@@ -85,7 +85,15 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
             self.bufferedWrites.append((data, promise))
             return
         }
+        self.writeBufferedData(context: context)
         context.write(data, promise: nil)
+    }
+    
+    public func writeBufferedData(context: ChannelHandlerContext) {
+        while let (data, promise) = self.bufferedWrites.first {
+            context.write(data, promise: promise)
+            self.bufferedWrites.removeFirst()
+        }
     }
     
 }
@@ -150,10 +158,7 @@ extension SOCKSClientHandler {
         
         // If we have any buffered writes then now
         // we can send them.
-        while let (data, promise) = self.bufferedWrites.first {
-            context.write(data, promise: promise)
-            self.bufferedWrites.removeFirst()
-        }
+        self.writeBufferedData(context: context)
     }
     
     func handleActionSendRequest(context: ChannelHandlerContext) {
