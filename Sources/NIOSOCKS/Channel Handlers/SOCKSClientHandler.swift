@@ -101,7 +101,9 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 extension SOCKSClientHandler {
     
     func beginHandshake(context: ChannelHandlerContext) {
-        assert(self.state.shouldBeginHandshake)
+        guard self.state.shouldBeginHandshake else {
+            return
+        }
         self.handleAction(self.state.connectionEstablished(), context: context)
     }
     
@@ -109,7 +111,7 @@ extension SOCKSClientHandler {
         do {
             switch action {
             case .sendGreeting:
-                self.handleActionSendRequest(context: context)
+                self.handleActionSendClientGreeting(context: context)
             case .authenticateIfNeeded(let method):
                 try self.handleActionAuthenticateIfNeeded(method: method, context: context)
             case .sendRequest:
@@ -123,7 +125,7 @@ extension SOCKSClientHandler {
         }
     }
     
-    func handleSendClientGreeting(context: ChannelHandlerContext) {
+    func handleActionSendClientGreeting(context: ChannelHandlerContext) {
         let greeting = ClientGreeting(
             methods: self.authenticationDelegate.supportedAuthenticationMethods
         )
