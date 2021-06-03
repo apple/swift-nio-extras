@@ -126,7 +126,6 @@ extension SOCKSClientHandler {
         buffer.writeClientGreeting(greeting)
         self.state.sendClientGreeting(greeting)
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
-        context.fireChannelActive()
     }
     
     func handleActionAuthenticateIfNeeded(method: AuthenticationMethod, context: ChannelHandlerContext) throws {
