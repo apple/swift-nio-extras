@@ -27,6 +27,8 @@ extension ClientStateMachineTests {
    static var allTests : [(String, (ClientStateMachineTests) -> () throws -> Void)] {
       return [
                 ("testUsualWorkflow", testUsualWorkflow),
+                ("testAuthenticationFlow", testAuthenticationFlow),
+                ("testErrorsAreHandled", testErrorsAreHandled),
            ]
    }
 }
