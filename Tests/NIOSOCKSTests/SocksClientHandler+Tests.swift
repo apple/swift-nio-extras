@@ -23,10 +23,7 @@ class SocksClientHandlerTests: XCTestCase {
     
     override func setUp() {
         XCTAssertNil(self.channel)
-        self.handler = SOCKSClientHandler(
-            targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)),
-            authenticationDelegate: DefaultAuthenticationDelegate()
-        )
+        self.handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
         self.channel = EmbeddedChannel(handler: self.handler)
         try! self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
     }

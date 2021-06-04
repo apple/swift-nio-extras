@@ -28,7 +28,6 @@ import XCTest
    @testable import NIOSOCKSTests
 
    XCTMain([
-         testCase(AuthenticationMethodTests.allTests),
          testCase(ClientGreetingTests.allTests),
          testCase(ClientRequestTests.allTests),
          testCase(ClientStateMachineTests.allTests),
@@ -48,7 +47,6 @@ import XCTest
          testCase(PCAPRingBufferTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
-         testCase(SOCKSClientAuthenticationClientTests.allTests),
          testCase(ServerResponseTests.allTests),
          testCase(SocksClientHandlerTests.allTests),
          testCase(WritePCAPHandlerTest.allTests),

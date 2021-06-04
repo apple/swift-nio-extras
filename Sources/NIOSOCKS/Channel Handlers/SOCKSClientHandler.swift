@@ -30,7 +30,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
     
-    private let authenticationDelegate: SOCKSClientAuthenticationDelegate
     private let targetAddress: AddressType
     
     private var state: ClientStateMachine
@@ -38,14 +37,10 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     
     private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
     
-    public init(
-        targetAddress: AddressType,
-        authenticationDelegate: SOCKSClientAuthenticationDelegate
-    ) {
-        self.state = ClientStateMachine(authenticationDelegate: authenticationDelegate)
+    public init(targetAddress: AddressType) {
+        self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
-        self.authenticationDelegate = authenticationDelegate
     }
     
     public func channelActive(context: ChannelHandlerContext) {
@@ -121,10 +116,8 @@ extension SOCKSClientHandler {
     }
     
     func handleActionSendClientGreeting(context: ChannelHandlerContext) {
-        let greeting = ClientGreeting(
-            methods: self.authenticationDelegate.supportedAuthenticationMethods
-        )
-        let capacity = 2 + self.authenticationDelegate.supportedAuthenticationMethods.count
+        let greeting = ClientGreeting(methods: [.noneRequired]) // no authentication currently supported
+        let capacity = 1 + 1 + 1 // [version, #methods, methods...]
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
         self.state.sendClientGreeting(greeting)

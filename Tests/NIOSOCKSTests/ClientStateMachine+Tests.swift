@@ -21,7 +21,7 @@ public class ClientStateMachineTests: XCTestCase {
     func testUsualWorkflow() {
         
         // create state machine and immediately connect
-        var stateMachine = ClientStateMachine(authenticationDelegate: DefaultAuthenticationDelegate())
+        var stateMachine = ClientStateMachine()
         XCTAssertTrue(stateMachine.shouldBeginHandshake)
         XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
         XCTAssertFalse(stateMachine.proxyEstablished)
@@ -55,85 +55,13 @@ public class ClientStateMachineTests: XCTestCase {
         XCTAssertTrue(stateMachine.proxyEstablished)
     }
     
-    // Use a mock authentication delegate that waits until it
-    // recieves the byte 0x05 from the server, at which point
-    // authentication has succeeded. Also tests drip feeding.
-    // 0xAA is our special secret test auth method.
-    func testAuthenticationFlow() {
-        
-        class MockDelegate: SOCKSClientAuthenticationDelegate {
-            var supportedAuthenticationMethods: [AuthenticationMethod] = [.init(value: 0xAA)]
-            
-            var status: AuthenticationStatus = .notStarted
-            
-            func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws {
-                
-            }
-            
-            func handleIncomingData(buffer: inout ByteBuffer) throws -> AuthenticationResult {
-                guard let byte = buffer.readInteger(as: UInt8.self) else {
-                    return .needsMoreData
-                }
-                switch byte {
-                case 0x05:
-                    return .authenticationComplete
-                default:
-                    return .respond(.init(bytes: [byte]))
-                }
-            }
-        }
-        
-        var stateMachine = ClientStateMachine(authenticationDelegate: MockDelegate())
-        XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
-        stateMachine.sendClientGreeting(.init(methods: [.init(value: 0xAA)]))
-        
-        // Server responds with the selected auth method.
-        // Auth should now begin, but we have no data
-        // so we should receive a "wait" action.
-        var serverGreetingBuffer = ByteBuffer(bytes: [0x05, 0xAA])
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreetingBuffer), .waitForMoreData))
-        
-        // Alright let's drip feed in a few bytes
-        // We're expecting the mock delegate to just
-        // return them.
-        func assertReceivedBuffer(_ buffer: ByteBuffer, line: UInt = #line) {
-            do {
-                var rBuffer = buffer
-                switch try stateMachine.receiveBuffer(&rBuffer) {
-                case .action(.sendData(let data)):
-                    XCTAssertEqual(data, buffer, line: line)
-                    XCTAssertEqual(rBuffer.readableBytes, 0)
-                default:
-                    XCTFail(line: line)
-                }
-            } catch {
-                XCTFail("\(error)", line: line)
-            }
-        }
-        assertReceivedBuffer(ByteBuffer(bytes: [0x00]))
-        assertReceivedBuffer(ByteBuffer(bytes: [0x01]))
-        assertReceivedBuffer(ByteBuffer(bytes: [0x02]))
-        assertReceivedBuffer(ByteBuffer(bytes: [0x03]))
-        assertReceivedBuffer(ByteBuffer(bytes: [0x04]))
-        
-        // Now send nothing, we should be told that we need more data
-        var emptyBuffer = ByteBuffer()
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&emptyBuffer), .waitForMoreData))
-        
-        // With this special 0x05 byte we should see the authentication complete.
-        // So now we should be told to send the client request.
-        // Business as usual from here.
-        var finalAuthByte = ByteBuffer(bytes: [0x05])
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&finalAuthByte), .action(.sendRequest)))
-    }
-    
     // Once an error occurs the state machine
     // should refuse to progress further, as
     // the connection should instead be closed.
     func testErrorsAreHandled() {
         
         // prepare the state machine
-        var stateMachine = ClientStateMachine(authenticationDelegate: DefaultAuthenticationDelegate())
+        var stateMachine = ClientStateMachine()
         XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
         stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
         

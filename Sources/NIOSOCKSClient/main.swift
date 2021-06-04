@@ -32,10 +32,7 @@ let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
         channel.pipeline.addHandlers([
-            SOCKSClientHandler(
-                targetAddress: targetAddress,
-                authenticationDelegate: DefaultAuthenticationDelegate()
-            ),
+            SOCKSClientHandler(targetAddress: targetAddress),
             EchoHandler()
         ])
 }
