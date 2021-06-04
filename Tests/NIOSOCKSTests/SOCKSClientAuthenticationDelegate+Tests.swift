@@ -20,7 +20,7 @@ public class SOCKSClientAuthenticationClientTests: XCTestCase {
 
     func assertUnexpectedError(delegate: SOCKSClientAuthenticationDelegate, input: AuthenticationMethod) {
         XCTAssertThrowsError(try delegate.serverSelectedAuthenticationMethod(input)) { e in
-            XCTAssertTrue(e is UnexpectedAuthenticationMethod)
+            XCTAssertTrue(e is SOCKSError.UnexpectedAuthenticationMethod)
         }
     }
     

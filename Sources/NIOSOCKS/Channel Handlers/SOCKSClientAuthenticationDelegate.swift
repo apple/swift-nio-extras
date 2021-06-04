@@ -14,16 +14,6 @@
 
 import NIO
 
-public struct UnexpectedAuthenticationMethod: Error {
-    public var expected: [AuthenticationMethod]
-    public var actual: AuthenticationMethod
-    
-    public init(expected: [AuthenticationMethod], actual: AuthenticationMethod) {
-        self.expected = expected
-        self.actual = actual
-    }
-}
-
 public enum AuthenticationResult: Hashable {
     case needsMoreData
     case respond(ByteBuffer)
@@ -73,7 +63,7 @@ public class DefaultAuthenticationDelegate: SOCKSClientAuthenticationDelegate {
     public func serverSelectedAuthenticationMethod(_ method: AuthenticationMethod) throws {
         guard method == .noneRequired else {
             self.status = .failed
-            throw UnexpectedAuthenticationMethod(expected: [.noneRequired], actual: method)
+            throw SOCKSError.UnexpectedAuthenticationMethod(expected: [.noneRequired], actual: method)
         }
         self.status = .complete
     }

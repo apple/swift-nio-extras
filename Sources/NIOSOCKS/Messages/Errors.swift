@@ -63,4 +63,14 @@ public enum SOCKSError {
         }
     }
     
+    public struct UnexpectedAuthenticationMethod: Error {
+        public var expected: [AuthenticationMethod]
+        public var actual: AuthenticationMethod
+        
+        public init(expected: [AuthenticationMethod], actual: AuthenticationMethod) {
+            self.expected = expected
+            self.actual = actual
+        }
+    }
+    
 }
