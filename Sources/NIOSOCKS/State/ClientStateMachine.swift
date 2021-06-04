@@ -25,15 +25,11 @@ enum ClientState: Hashable {
 }
 
 enum ClientAction: Hashable {
+    case waitForMoreData
     case sendGreeting
     case sendRequest
     case proxyEstablished
     case sendData(ByteBuffer)
-}
-
-enum Action: Hashable {
-    case waitForMoreData
-    case action(ClientAction)
 }
 
 struct ClientStateMachine {
@@ -77,7 +73,7 @@ struct ClientStateMachine {
 // MARK: - Incoming
 extension ClientStateMachine {
     
-    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> Action {
+    mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
         do {
             switch self.state {
             case .waitingForAuthenticationMethod(let greeting):
@@ -93,8 +89,8 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> Action {
-        return try self.unwindIfNeeded(&buffer) { buffer -> Action in
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
+        return try self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
             guard let selected = try buffer.readMethodSelection() else {
                 return .waitForMoreData
             }
@@ -107,8 +103,8 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> Action {
-        return try self.unwindIfNeeded(&buffer) { buffer -> Action in
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
+        return try self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
             guard let response = try buffer.readServerResponse() else {
                 return .waitForMoreData
             }
@@ -116,18 +112,18 @@ extension ClientStateMachine {
                 throw SOCKSError.ConnectionFailed(reply: response.reply)
             }
             self.state = .active
-            return .action(.proxyEstablished)
+            return .proxyEstablished
         }
     }
     
-    mutating func authenticate(_ buffer: inout ByteBuffer) -> Action {
-        return self.unwindIfNeeded(&buffer) { buffer -> Action in
+    mutating func authenticate(_ buffer: inout ByteBuffer) -> ClientAction {
+        return self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
             
             // we don't currently support any authentication
             // so assume all is fine, and instruct the client
             // to send the request
             self.state = .waitingForClientRequest
-            return .action(.sendRequest)
+            return .sendRequest
         }
     }
     

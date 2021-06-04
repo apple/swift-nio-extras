@@ -33,7 +33,7 @@ public class ClientStateMachineTests: XCTestCase {
         
         // provide the given server greeting, check what to do next
         var serverGreeting = ByteBuffer(bytes: [0x05, 0x00])
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreeting), .action(.sendRequest)))
+        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverGreeting), .sendRequest))
         XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
@@ -48,7 +48,7 @@ public class ClientStateMachineTests: XCTestCase {
         
         // recieve server response
         var serverResponse = ByteBuffer(bytes: [0x05, 0x00, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x00, 0x50])
-        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverResponse), .action(.proxyEstablished)))
+        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&serverResponse), .proxyEstablished))
         
         // proxy should be good to go
         XCTAssertFalse(stateMachine.shouldBeginHandshake)

@@ -57,12 +57,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.buffered.writeBuffer(&buffer)
         do {
             let action = try self.state.receiveBuffer(&self.buffered)
-            switch action {
-            case .waitForMoreData:
-                break // do nothing, we've buffered the data already
-            case .action(let action):
-                self.handleAction(action, context: context)
-            }
+            self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
             context.close(mode: .all, promise: nil)
@@ -98,6 +93,8 @@ extension SOCKSClientHandler {
     
     func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
         switch action {
+        case .waitForMoreData:
+            break // do nothing, we've already buffered the data
         case .sendGreeting:
             self.handleActionSendClientGreeting(context: context)
         case .sendRequest:
