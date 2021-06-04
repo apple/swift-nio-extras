@@ -14,12 +14,6 @@
 
 import NIO
 
-/// Data was unexpectedly written or read before the SOCKS proxy
-/// connection has been fully established.
-public struct ProxyNotEstablished: Error {
-    
-}
-
 /// Connects to a SOCKS server to establish a proxied connection
 /// to a host. This handler should be inserted at the beginning of a
 /// channel's pipeline.
