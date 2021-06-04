@@ -126,4 +126,31 @@ public class ClientStateMachineTests: XCTestCase {
         var finalAuthByte = ByteBuffer(bytes: [0x05])
         XCTAssertNoThrow(XCTAssertEqual(try stateMachine.receiveBuffer(&finalAuthByte), .action(.sendRequest)))
     }
+    
+    // Once an error occurs the state machine
+    // should refuse to progress further, as
+    // the connection should instead be closed.
+    func testErrorsAreHandled() {
+        
+        // prepare the state machine
+        var stateMachine = ClientStateMachine(authenticationDelegate: DefaultAuthenticationDelegate())
+        XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
+        stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
+        
+        // write some invalid bytes from the server
+        // the state machine should throw
+        var buffer = ByteBuffer(bytes: [0xFF, 0xFF])
+        XCTAssertThrowsError(try stateMachine.receiveBuffer(&buffer)) { e in
+            XCTAssertTrue(e is SOCKSError.InvalidProtocolVersion)
+        }
+        
+        // Now write some valid bytes. This time
+        // the state machine should throw an
+        // UnexpectedRead, as we should have closed
+        // the connection
+        buffer = ByteBuffer(bytes: [0x05, 0x00])
+        XCTAssertThrowsError(try stateMachine.receiveBuffer(&buffer)) { e in
+            XCTAssertTrue(e is SOCKSError.UnexpectedRead)
+        }
+    }
 }

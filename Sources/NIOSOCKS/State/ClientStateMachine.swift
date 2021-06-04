@@ -81,15 +81,20 @@ struct ClientStateMachine {
 extension ClientStateMachine {
     
     mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> Action {
-        switch self.state {
-        case .waitingForAuthenticationMethod(let greeting):
-            return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
-        case .waitingForServerResponse(let request):
-            return try self.handleServerResponse(&buffer, request: request)
-        case .pendingAuthentication:
-            return try self.authenticate(&buffer)
-        default:
-            throw SOCKSError.UnexpectedRead()
+        do {
+            switch self.state {
+            case .waitingForAuthenticationMethod(let greeting):
+                return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
+            case .waitingForServerResponse(let request):
+                return try self.handleServerResponse(&buffer, request: request)
+            case .pendingAuthentication:
+                return try self.authenticate(&buffer)
+            default:
+                throw SOCKSError.UnexpectedRead()
+            }
+        } catch {
+            self.state = .error
+            throw error
         }
     }
     
