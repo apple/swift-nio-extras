@@ -89,7 +89,7 @@ extension ClientStateMachine {
             }
                 
             // we don't current support any form of authentication
-            return self.authenticate(&buffer)
+            return self.authenticate(&buffer, method: selected.method)
         }
     }
     
@@ -104,7 +104,9 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func authenticate(_ buffer: inout ByteBuffer) -> ClientAction {
+    mutating func authenticate(_ buffer: inout ByteBuffer, method: AuthenticationMethod) -> ClientAction {
+        precondition(method == .noneRequired, "No authentication mechanism is supported. Use .noneRequired only.")
+        
         // we don't currently support any authentication
         // so assume all is fine, and instruct the client
         // to send the request
