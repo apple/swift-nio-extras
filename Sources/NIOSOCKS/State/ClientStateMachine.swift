@@ -73,6 +73,8 @@ extension ClientStateMachine {
             case .active, .error, .inactive, .waitingForClientGreeting, .waitingForClientRequest:
                 throw SOCKSError.UnexpectedRead()
             }
+        } catch is SOCKSError.MissingBytes {
+            return .waitForMoreData
         } catch {
             self.state = .error
             throw error
@@ -81,9 +83,7 @@ extension ClientStateMachine {
     
     mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
         return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
-            guard let selected = try buffer.readMethodSelection() else {
-                return .waitForMoreData
-            }
+            let selected = try buffer.readMethodSelection()
             guard greeting.methods.contains(selected.method) else {
                 throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
             }
@@ -95,9 +95,7 @@ extension ClientStateMachine {
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
         return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
-            guard let response = try buffer.readServerResponse() else {
-                return .waitForMoreData
-            }
+            let response = try buffer.readServerResponse()
             guard response.reply == .succeeded else {
                 throw SOCKSError.ConnectionFailed(reply: response.reply)
             }

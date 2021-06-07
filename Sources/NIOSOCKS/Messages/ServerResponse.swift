@@ -42,16 +42,14 @@ struct ServerResponse: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readServerResponse() throws -> ServerResponse? {
+    mutating func readServerResponse() throws -> ServerResponse {
         return try self.parseUnwindingIfNeeded { buffer in
             try buffer.readAndValidateProtocolVersion()
             guard let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }) else {
                 throw SOCKSError.MissingBytes()
             }
             try buffer.readAndValidateReserved()
-            guard let boundAddress = try buffer.readAddressType() else {
-                throw SOCKSError.MissingBytes()
-            }
+            let boundAddress = try buffer.readAddressType()
             return .init(reply: reply, boundAddress: boundAddress)
         }
     }

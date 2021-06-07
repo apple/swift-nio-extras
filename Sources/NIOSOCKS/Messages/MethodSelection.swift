@@ -34,7 +34,7 @@ struct MethodSelection: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readMethodSelection() throws -> MethodSelection? {
+    mutating func readMethodSelection() throws -> MethodSelection {
         return try self.parseUnwindingIfNeeded { buffer in
             try buffer.readAndValidateProtocolVersion()
             guard let method = buffer.readInteger(as: UInt8.self) else {

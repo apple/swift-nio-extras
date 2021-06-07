@@ -21,7 +21,7 @@ struct ClientGreeting: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readClientGreeting() throws -> ClientGreeting? {
+    mutating func readClientGreeting() throws -> ClientGreeting {
         return try self.parseUnwindingIfNeeded { buffer in
             try buffer.readAndValidateProtocolVersion()
             guard let numMethods = buffer.readInteger(as: UInt8.self) else {
