@@ -166,12 +166,12 @@ extension ByteBuffer {
         switch type {
         case .address(.v4(let address)):
             return self.writeInteger(UInt8(1))
-                + self.writeInteger(address.address.sin_addr.s_addr, endianness: .little)
-                + self.writeInteger(address.address.sin_port, endianness: .little)
+                + self.writeInteger(address.address.sin_addr.s_addr)
+                + self.writeInteger(address.address.sin_port)
         case .address(.v6(let address)):
             return self.writeInteger(UInt8(4))
                 + self.writeIPv6Address(address.address)
-                + self.writeInteger(address.address.sin6_port, endianness: .little)
+                + self.writeInteger(address.address.sin6_port)
         case .address(.unixDomainSocket):
             // enforced in the channel initalisers.
             fatalError("UNIX domain sockets are not supported")
