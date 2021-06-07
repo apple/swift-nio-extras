@@ -84,7 +84,7 @@ public enum AddressType: Hashable {
     
     case address(SocketAddress)
     
-    case domain(String, port: UInt16)
+    case domain(String, port: Int)
     
     /// How many bytes are needed to represent the address, excluding the port
     var size: Int {
@@ -155,7 +155,7 @@ extension ByteBuffer {
             else {
                 throw SOCKSError.MissingBytes()
             }
-            return .domain(host, port: UInt16(port))
+            return .domain(host, port: port)
         }
     }
     
