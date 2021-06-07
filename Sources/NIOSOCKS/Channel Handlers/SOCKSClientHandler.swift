@@ -132,7 +132,7 @@ extension SOCKSClientHandler {
         let request = ClientRequest(command: .connect, addressType: self.targetAddress)
         self.state.sendClientRequest(request)
         
-        // the client request is always 5 bytes + the address info
+        // the client request is always 6 bytes + the address info
         // [protocol_version, command, reserved, address type, <address>, port (2bytes)]
         let capacity = 6 + self.targetAddress.size
         var buffer = context.channel.allocator.buffer(capacity: capacity)

@@ -71,7 +71,7 @@ struct ClientStateMachine {
         switch self.state {
         case .active:
             return true
-        default:
+        case .error, .inactive, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest, .waitingForServerResponse:
             return false
         }
     }
@@ -80,7 +80,7 @@ struct ClientStateMachine {
         switch self.state {
         case .inactive:
             return true
-        default:
+        case .active, .error, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest, .waitingForServerResponse:
             return false
         }
     }
@@ -101,7 +101,7 @@ extension ClientStateMachine {
                 return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
             case .waitingForServerResponse(let request):
                 return try self.handleServerResponse(&buffer, request: request)
-            default:
+            case .active, .error, .inactive, .waitingForClientGreeting, .waitingForClientRequest:
                 throw SOCKSError.UnexpectedRead()
             }
         } catch {

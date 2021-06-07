@@ -99,7 +99,7 @@ public enum AddressType: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readAddresType() throws -> AddressType? {
+    mutating func readAddressType() throws -> AddressType? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard let type = buffer.readInteger(as: UInt8.self) else {
                 throw MissingBytes()

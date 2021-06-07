@@ -40,17 +40,17 @@ extension ClientRequestTests {
     func testReadAddressType() {
         var ipv4 = ByteBuffer(bytes: [0x01, 0x0a, 0x0b, 0x0c, 0x0d, 0x00, 0x50])
         XCTAssertEqual(ipv4.readableBytes, 7)
-        XCTAssertNoThrow(XCTAssertEqual(try ipv4.readAddresType(), .address(try! .init(ipAddress: "10.11.12.13", port: 80))))
+        XCTAssertNoThrow(XCTAssertEqual(try ipv4.readAddressType(), .address(try! .init(ipAddress: "10.11.12.13", port: 80))))
         XCTAssertEqual(ipv4.readableBytes, 0)
         
         var domain = ByteBuffer(bytes: [0x03, 0x0a, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d, 0x00, 0x50])
         XCTAssertEqual(domain.readableBytes, 14)
-        XCTAssertNoThrow(XCTAssertEqual(try domain.readAddresType(), .domain("google.com", port: 80)))
+        XCTAssertNoThrow(XCTAssertEqual(try domain.readAddressType(), .domain("google.com", port: 80)))
         XCTAssertEqual(domain.readableBytes, 0)
         
         var ipv6 = ByteBuffer(bytes: [0x04, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0xa0, 0x00, 0x50])
         XCTAssertEqual(ipv6.readableBytes, 19)
-        XCTAssertNoThrow(XCTAssertEqual(try ipv6.readAddresType(), .address(try! .init(ipAddress: "0102:0304:0506:0708:090a:0b0c:0d0e:0fa0", port: 80))))
+        XCTAssertNoThrow(XCTAssertEqual(try ipv6.readAddressType(), .address(try! .init(ipAddress: "0102:0304:0506:0708:090a:0b0c:0d0e:0fa0", port: 80))))
         XCTAssertEqual(ipv6.readableBytes, 0)
         
     }

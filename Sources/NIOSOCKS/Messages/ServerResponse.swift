@@ -48,7 +48,7 @@ extension ByteBuffer {
                 let version = buffer.readInteger(as: UInt8.self),
                 let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
                 let reserved = buffer.readInteger(as: UInt8.self),
-                let boundAddress = try buffer.readAddresType()
+                let boundAddress = try buffer.readAddressType()
             else {
                 throw MissingBytes()
             }

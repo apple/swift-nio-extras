@@ -98,7 +98,7 @@ struct PCAPRecordHeader {
             addressTuple = .v4(src: src, dst: dst)
         case (.v6(let src), .v6(let dst)):
             addressTuple = .v6(src: src, dst: dst)
-        default:
+        case (_, _):
             throw Error.incompatibleAddressPair(src, dst)
         }
         self = .init(payloadLength: payloadLength, addresses: addressTuple, tcp: tcp)
