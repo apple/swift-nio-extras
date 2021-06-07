@@ -35,21 +35,20 @@ struct MethodSelection: Hashable {
 extension ByteBuffer {
     
     mutating func readMethodSelection() throws -> MethodSelection? {
-        let save = self
-        guard
-            let version = self.readInteger(as: UInt8.self),
-            let method = self.readInteger(as: UInt8.self)
-        else {
-            self = save
-            return nil
+        return try self.parseUnwindingIfNeeded { buffer in
+            guard
+                let version = buffer.readInteger(as: UInt8.self),
+                let method = buffer.readInteger(as: UInt8.self)
+            else {
+                throw MissingBytes()
+            }
+            
+            guard version == 0x05 else {
+                throw SOCKSError.InvalidProtocolVersion(actual: version)
+            }
+            
+            return .init(method: .init(value: method))
         }
-        
-        guard version == 0x05 else {
-            self = save
-            throw SOCKSError.InvalidProtocolVersion(actual: version)
-        }
-        
-        return .init(method: .init(value: method))
     }
     
     @discardableResult mutating func writeMethodSelection(_ method: MethodSelection) -> Int {

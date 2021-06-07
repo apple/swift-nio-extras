@@ -22,30 +22,28 @@ struct ClientGreeting: Hashable {
 extension ByteBuffer {
     
     mutating func readClientGreeting() throws -> ClientGreeting? {
-        let save = self
-        guard
-            let version = self.readInteger(as: UInt8.self),
-            let numMethods = self.readInteger(as: UInt8.self)
-        else {
-            self = save
-            return nil
-        }
-        
-        guard version == 5 else {
-            self = save
-            throw SOCKSError.InvalidProtocolVersion(actual: version)
-        }
-        
-        var methods: [AuthenticationMethod] = []
-        methods.reserveCapacity(Int(numMethods))
-        for _ in 0..<numMethods {
-            guard let method = self.readInteger(as: UInt8.self) else {
-                self = save
-                return nil
+        return try self.parseUnwindingIfNeeded { buffer in
+            guard
+                let version = buffer.readInteger(as: UInt8.self),
+                let numMethods = buffer.readInteger(as: UInt8.self)
+            else {
+                throw MissingBytes()
             }
-            methods.append(.init(value: method))
+            
+            guard version == 5 else {
+                throw SOCKSError.InvalidProtocolVersion(actual: version)
+            }
+            
+            var methods: [AuthenticationMethod] = []
+            methods.reserveCapacity(Int(numMethods))
+            for _ in 0..<numMethods {
+                guard let method = buffer.readInteger(as: UInt8.self) else {
+                    throw MissingBytes()
+                }
+                methods.append(.init(value: method))
+            }
+            return .init(methods: methods)
         }
-        return .init(methods: methods)
     }
     
     @discardableResult mutating func writeClientGreeting(_ greeting: ClientGreeting) -> Int {

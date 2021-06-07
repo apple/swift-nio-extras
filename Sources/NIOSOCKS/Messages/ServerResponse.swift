@@ -43,28 +43,26 @@ struct ServerResponse: Hashable {
 extension ByteBuffer {
     
     mutating func readServerResponse() throws -> ServerResponse? {
-        let save = self
-        guard
-            let version = self.readInteger(as: UInt8.self),
-            let reply = self.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
-            let reserved = self.readInteger(as: UInt8.self),
-            let boundAddress = try self.readAddresType()
-        else {
-            self = save
-            return nil
+        return try self.parseUnwindingIfNeeded { buffer in
+            guard
+                let version = buffer.readInteger(as: UInt8.self),
+                let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
+                let reserved = buffer.readInteger(as: UInt8.self),
+                let boundAddress = try buffer.readAddresType()
+            else {
+                throw MissingBytes()
+            }
+            
+            guard reserved == 0x0 else {
+                throw SOCKSError.InvalidReservedByte(actual: reserved)
+            }
+            
+            guard version == 0x05 else {
+                throw SOCKSError.InvalidProtocolVersion(actual: version)
+            }
+            
+            return .init(reply: reply, boundAddress: boundAddress)
         }
-        
-        guard reserved == 0x0 else {
-            self = save
-            throw SOCKSError.InvalidReservedByte(actual: reserved)
-        }
-        
-        guard version == 0x05 else {
-            self = save
-            throw SOCKSError.InvalidProtocolVersion(actual: version)
-        }
-        
-        return .init(reply: reply, boundAddress: boundAddress)
     }
     
 }

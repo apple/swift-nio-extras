@@ -14,6 +14,37 @@
 
 import NIO
 
+struct MissingBytes: Error {
+    
+}
+
+extension ByteBuffer {
+    
+    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T?) rethrows -> T? {
+        let save = self
+        do {
+            return try closure(&self)
+        } catch is MissingBytes {
+            self = save
+            return nil
+        } catch {
+            self = save
+            throw error
+        }
+    }
+    
+    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
+        let save = self
+        do {
+            return try closure(&self)
+        } catch {
+            self = save
+            throw error
+        }
+    }
+    
+}
+
 enum ClientState: Hashable {
     case inactive
     case waitingForClientGreeting
@@ -58,16 +89,6 @@ struct ClientStateMachine {
         self.state = .inactive
     }
     
-    private func unwindIfNeeded<T>(_ buffer: inout ByteBuffer, _ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
-        let save = buffer
-        do {
-            return try closure(&buffer)
-        } catch {
-            buffer = save
-            throw error
-        }
-    }
-    
 }
 
 // MARK: - Incoming
@@ -90,7 +111,7 @@ extension ClientStateMachine {
     }
     
     mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
-        return try self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
+        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
             guard let selected = try buffer.readMethodSelection() else {
                 return .waitForMoreData
             }
@@ -104,7 +125,7 @@ extension ClientStateMachine {
     }
     
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
-        return try self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
+        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
             guard let response = try buffer.readServerResponse() else {
                 return .waitForMoreData
             }
@@ -117,14 +138,11 @@ extension ClientStateMachine {
     }
     
     mutating func authenticate(_ buffer: inout ByteBuffer) -> ClientAction {
-        return self.unwindIfNeeded(&buffer) { buffer -> ClientAction in
-            
-            // we don't currently support any authentication
-            // so assume all is fine, and instruct the client
-            // to send the request
-            self.state = .waitingForClientRequest
-            return .sendRequest
-        }
+        // we don't currently support any authentication
+        // so assume all is fine, and instruct the client
+        // to send the request
+        self.state = .waitingForClientRequest
+        return .sendRequest
     }
     
 }
