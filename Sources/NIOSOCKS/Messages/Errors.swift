@@ -16,6 +16,11 @@ import NIO
 
 public enum SOCKSError {
     
+    public struct InvalidState: Error, Hashable {
+        var expected: ClientState
+        var actual: ClientState
+    }
+    
     public struct InvalidProtocolVersion: Error, Hashable {
         public var actual: UInt8
         public init(actual: UInt8) {

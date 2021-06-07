@@ -23,11 +23,11 @@ public class ClientStateMachineTests: XCTestCase {
         // create state machine and immediately connect
         var stateMachine = ClientStateMachine()
         XCTAssertTrue(stateMachine.shouldBeginHandshake)
-        XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
+        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.connectionEstablished(), .sendGreeting))
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // send the client greeting
-        stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
+        XCTAssertNoThrow(try stateMachine.sendClientGreeting(.init(methods: [.noneRequired])))
         XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
@@ -42,7 +42,7 @@ public class ClientStateMachineTests: XCTestCase {
         XCTAssertFalse(stateMachine.proxyEstablished)
         
         // send the client request
-        stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80))))
+        XCTAssertNoThrow(try stateMachine.sendClientRequest(.init(command: .bind, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))))
         XCTAssertFalse(stateMachine.shouldBeginHandshake)
         XCTAssertFalse(stateMachine.proxyEstablished)
         
@@ -62,8 +62,8 @@ public class ClientStateMachineTests: XCTestCase {
         
         // prepare the state machine
         var stateMachine = ClientStateMachine()
-        XCTAssertEqual(stateMachine.connectionEstablished(), .sendGreeting)
-        stateMachine.sendClientGreeting(.init(methods: [.noneRequired]))
+        XCTAssertNoThrow(XCTAssertEqual(try stateMachine.connectionEstablished(), .sendGreeting))
+        XCTAssertNoThrow(try stateMachine.sendClientGreeting(.init(methods: [.noneRequired])))
         
         // write some invalid bytes from the server
         // the state machine should throw

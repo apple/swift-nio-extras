@@ -57,7 +57,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         self.buffered.writeBuffer(&buffer)
         do {
             let action = try self.state.receiveBuffer(&self.buffered)
-            self.handleAction(action, context: context)
+            try self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
             context.close(mode: .all, promise: nil)
@@ -85,20 +85,25 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 extension SOCKSClientHandler {
     
     func beginHandshake(context: ChannelHandlerContext) {
-        guard self.state.shouldBeginHandshake else {
-            return
+        do {
+            guard self.state.shouldBeginHandshake else {
+                return
+            }
+            try self.handleAction(self.state.connectionEstablished(), context: context)
+        } catch {
+            context.fireErrorCaught(error)
+            context.close(promise: nil)
         }
-        self.handleAction(self.state.connectionEstablished(), context: context)
     }
     
-    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) {
+    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) throws {
         switch action {
         case .waitForMoreData:
             break // do nothing, we've already buffered the data
         case .sendGreeting:
-            self.handleActionSendClientGreeting(context: context)
+            try self.handleActionSendClientGreeting(context: context)
         case .sendRequest:
-            self.handleActionSendRequest(context: context)
+            try self.handleActionSendRequest(context: context)
         case .proxyEstablished:
             self.handleActionProxyEstablished(context: context)
         case .sendData(let data):
@@ -106,12 +111,12 @@ extension SOCKSClientHandler {
         }
     }
     
-    func handleActionSendClientGreeting(context: ChannelHandlerContext) {
+    func handleActionSendClientGreeting(context: ChannelHandlerContext) throws {
         let greeting = ClientGreeting(methods: [.noneRequired]) // no authentication currently supported
         let capacity = 1 + 1 + 1 // [version, #methods, methods...]
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
-        self.state.sendClientGreeting(greeting)
+        try self.state.sendClientGreeting(greeting)
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
@@ -128,9 +133,9 @@ extension SOCKSClientHandler {
         self.writeBufferedData(context: context)
     }
     
-    func handleActionSendRequest(context: ChannelHandlerContext) {
+    func handleActionSendRequest(context: ChannelHandlerContext) throws {
         let request = ClientRequest(command: .connect, addressType: self.targetAddress)
-        self.state.sendClientRequest(request)
+        try self.state.sendClientRequest(request)
         
         // the client request is always 6 bytes + the address info
         // [protocol_version, command, reserved, address type, <address>, port (2bytes)]
