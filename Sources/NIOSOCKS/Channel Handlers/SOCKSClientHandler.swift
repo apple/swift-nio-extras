@@ -32,6 +32,14 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
     
     public init(targetAddress: AddressType) {
+        
+        switch targetAddress {
+        case .address(.unixDomainSocket):
+            preconditionFailure("UNIX domain sockets are not supported.")
+        case .domain(_, port: _), .address(.v4), .address(.v6):
+            break
+        }
+        
         self.state = ClientStateMachine()
         self.buffered = ByteBuffer()
         self.targetAddress = targetAddress

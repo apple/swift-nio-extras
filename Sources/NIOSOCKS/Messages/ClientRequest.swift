@@ -170,7 +170,8 @@ extension ByteBuffer {
                 + self.writeIPv6Address(address.address)
                 + self.writeInteger(address.address.sin6_port, endianness: .little)
         case .address(.unixDomainSocket):
-            fatalError("unsupported")
+            // enforced in the channel initalisers.
+            fatalError("UNIX domain sockets are not supported")
         case .domain(let domain, port: let port):
             return self.writeInteger(UInt8(3))
                 + self.writeInteger(UInt8(domain.count))
