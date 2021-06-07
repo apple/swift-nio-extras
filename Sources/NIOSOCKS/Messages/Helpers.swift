@@ -15,19 +15,6 @@
 import NIO
 
 extension ByteBuffer {
- 
-    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T?) rethrows -> T? {
-        let save = self
-        do {
-            return try closure(&self)
-        } catch is SOCKSError.MissingBytes {
-            self = save
-            return nil
-        } catch {
-            self = save
-            throw error
-        }
-    }
     
     mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
         let save = self
