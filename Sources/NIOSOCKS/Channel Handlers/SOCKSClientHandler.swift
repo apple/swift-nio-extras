@@ -36,7 +36,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         switch targetAddress {
         case .address(.unixDomainSocket):
             preconditionFailure("UNIX domain sockets are not supported.")
-        case .domain(_, port: _), .address(.v4), .address(.v6):
+        case .domain, .address(.v4), .address(.v6):
             break
         }
         
@@ -81,7 +81,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         context.write(data, promise: nil)
     }
     
-    public func writeBufferedData(context: ChannelHandlerContext) {
+    func writeBufferedData(context: ChannelHandlerContext) {
         while let (data, promise) = self.bufferedWrites.first {
             context.write(data, promise: promise)
             self.bufferedWrites.removeFirst()

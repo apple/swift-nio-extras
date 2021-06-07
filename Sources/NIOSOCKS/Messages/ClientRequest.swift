@@ -92,7 +92,7 @@ public enum AddressType: Hashable {
         case .address(.unixDomainSocket):
             fatalError("Unsupported")
         case .domain(let domain, port: _):
-            return domain.count + 1
+            return domain.utf8.count + 1
         }
     }
 }
@@ -174,7 +174,7 @@ extension ByteBuffer {
             fatalError("UNIX domain sockets are not supported")
         case .domain(let domain, port: let port):
             return self.writeInteger(UInt8(3))
-                + self.writeInteger(UInt8(domain.count))
+                + self.writeInteger(UInt8(domain.utf8.count))
                 + self.writeString(domain)
                 + self.writeInteger(port)
         }
