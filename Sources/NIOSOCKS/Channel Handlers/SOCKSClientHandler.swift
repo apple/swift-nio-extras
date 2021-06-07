@@ -82,9 +82,9 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     func writeBufferedData(context: ChannelHandlerContext) {
-        while let (data, promise) = self.bufferedWrites.first {
+        while self.bufferedWrites.count > 0 {
+            let (data, promise) = self.bufferedWrites.removeFirst()
             context.write(data, promise: promise)
-            self.bufferedWrites.removeFirst()
         }
     }
     
