@@ -18,7 +18,7 @@ import NIO
 
 /// Instructs the SOCKS proxy server of the target host,
 /// and how to connect.
-public struct ClientRequest: Hashable {
+struct ClientRequest: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
