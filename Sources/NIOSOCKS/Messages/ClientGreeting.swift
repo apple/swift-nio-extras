@@ -23,22 +23,16 @@ extension ByteBuffer {
     
     mutating func readClientGreeting() throws -> ClientGreeting? {
         return try self.parseUnwindingIfNeeded { buffer in
-            guard
-                let version = buffer.readInteger(as: UInt8.self),
-                let numMethods = buffer.readInteger(as: UInt8.self)
-            else {
-                throw MissingBytes()
-            }
-            
-            guard version == 5 else {
-                throw SOCKSError.InvalidProtocolVersion(actual: version)
+            try buffer.readAndValidateProtocolVersion()
+            guard let numMethods = buffer.readInteger(as: UInt8.self) else {
+                throw SOCKSError.MissingBytes()
             }
             
             var methods: [AuthenticationMethod] = []
             methods.reserveCapacity(Int(numMethods))
             for _ in 0..<numMethods {
                 guard let method = buffer.readInteger(as: UInt8.self) else {
-                    throw MissingBytes()
+                    throw SOCKSError.MissingBytes()
                 }
                 methods.append(.init(value: method))
             }

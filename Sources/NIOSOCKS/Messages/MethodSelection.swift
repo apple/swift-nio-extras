@@ -36,17 +36,10 @@ extension ByteBuffer {
     
     mutating func readMethodSelection() throws -> MethodSelection? {
         return try self.parseUnwindingIfNeeded { buffer in
-            guard
-                let version = buffer.readInteger(as: UInt8.self),
-                let method = buffer.readInteger(as: UInt8.self)
-            else {
-                throw MissingBytes()
+            try buffer.readAndValidateProtocolVersion()
+            guard let method = buffer.readInteger(as: UInt8.self) else {
+                throw SOCKSError.MissingBytes()
             }
-            
-            guard version == 0x05 else {
-                throw SOCKSError.InvalidProtocolVersion(actual: version)
-            }
-            
             return .init(method: .init(value: method))
         }
     }

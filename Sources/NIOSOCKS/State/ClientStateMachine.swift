@@ -14,37 +14,6 @@
 
 import NIO
 
-struct MissingBytes: Error {
-    
-}
-
-extension ByteBuffer {
-    
-    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T?) rethrows -> T? {
-        let save = self
-        do {
-            return try closure(&self)
-        } catch is MissingBytes {
-            self = save
-            return nil
-        } catch {
-            self = save
-            throw error
-        }
-    }
-    
-    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
-        let save = self
-        do {
-            return try closure(&self)
-        } catch {
-            self = save
-            throw error
-        }
-    }
-    
-}
-
 enum ClientState: Hashable {
     case inactive
     case waitingForClientGreeting

@@ -44,23 +44,14 @@ extension ByteBuffer {
     
     mutating func readServerResponse() throws -> ServerResponse? {
         return try self.parseUnwindingIfNeeded { buffer in
-            guard
-                let version = buffer.readInteger(as: UInt8.self),
-                let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
-                let reserved = buffer.readInteger(as: UInt8.self),
-                let boundAddress = try buffer.readAddressType()
-            else {
-                throw MissingBytes()
+            try buffer.readAndValidateProtocolVersion()
+            guard let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }) else {
+                throw SOCKSError.MissingBytes()
             }
-            
-            guard reserved == 0x0 else {
-                throw SOCKSError.InvalidReservedByte(actual: reserved)
+            try buffer.readAndValidateReserved()
+            guard let boundAddress = try buffer.readAddressType() else {
+                throw SOCKSError.MissingBytes()
             }
-            
-            guard version == 0x05 else {
-                throw SOCKSError.InvalidProtocolVersion(actual: version)
-            }
-            
             return .init(reply: reply, boundAddress: boundAddress)
         }
     }

@@ -102,7 +102,7 @@ extension ByteBuffer {
     mutating func readAddressType() throws -> AddressType? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard let type = buffer.readInteger(as: UInt8.self) else {
-                throw MissingBytes()
+                throw SOCKSError.MissingBytes()
             }
             
             switch type {
@@ -124,7 +124,7 @@ extension ByteBuffer {
                 let bytes = buffer.readSlice(length: 4),
                 let port = try buffer.readPort()
             else {
-                throw MissingBytes()
+                throw SOCKSError.MissingBytes()
             }
             return .address(try .init(packedIPAddress: bytes, port: port))
         }
@@ -136,7 +136,7 @@ extension ByteBuffer {
                 let bytes = buffer.readSlice(length: 16),
                 let port = try buffer.readPort()
             else {
-                throw MissingBytes()
+                throw SOCKSError.MissingBytes()
             }
             return .address(try .init(packedIPAddress: bytes, port: port))
         }
@@ -149,7 +149,7 @@ extension ByteBuffer {
                 let host = buffer.readString(length: Int(length)),
                 let port = try buffer.readPort()
             else {
-                throw MissingBytes()
+                throw SOCKSError.MissingBytes()
             }
             return .domain(host, port: UInt16(port))
         }
