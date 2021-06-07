@@ -32,4 +32,8 @@ public struct AuthenticationMethod: Hashable {
     /// The method identifier, valid values are in the range 0:255.
     public var value: UInt8
     
+    public init(value: UInt8) {
+        self.value = value
+    }
+    
 }

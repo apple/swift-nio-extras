@@ -71,6 +71,10 @@ public struct Command: Hashable {
     public static let udpAssociate = Command(value: 0x03)
     
     public var value: UInt8
+    
+    public init(value: UInt8) {
+        self.value = value
+    }
 }
 
 // MARK: - AddressType
