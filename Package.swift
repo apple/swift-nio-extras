@@ -34,10 +34,6 @@ var targets: [PackageDescription.Target] = [
 let package = Package(
     name: "swift-nio-extras",
     products: [
-        .executable(name: "HTTPServerWithQuiescingDemo", targets: ["HTTPServerWithQuiescingDemo"]),
-        .executable(name: "NIOWritePCAPDemo", targets: ["NIOWritePCAPDemo"]),
-        .executable(name: "NIOWritePartialPCAPDemo", targets: ["NIOWritePartialPCAPDemo"]),
-        .executable(name: "NIOExtrasPerformanceTester", targets: ["NIOExtrasPerformanceTester"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
