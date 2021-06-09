@@ -65,31 +65,31 @@ extension ByteBuffer {
 public struct SOCKSServerReply: Hashable {
     
     /// The connection succeeded and data can now be transmitted.
-    static let succeeded = SOCKSServerReply(value: 0x00)
+    public static let succeeded = SOCKSServerReply(value: 0x00)
     
     /// The SOCKS server encountered an internal failure.
-    static let serverFailure = SOCKSServerReply(value: 0x01)
+    public static let serverFailure = SOCKSServerReply(value: 0x01)
     
     /// The connection to the host was not allowed.
-    static let notAllowed = SOCKSServerReply(value: 0x02)
+    public static let notAllowed = SOCKSServerReply(value: 0x02)
     
     /// The host network is not reachable.
-    static let networkUnreachable = SOCKSServerReply(value: 0x03)
+    public static let networkUnreachable = SOCKSServerReply(value: 0x03)
     
     /// The target host was not reachable.
-    static let hostUnreachable = SOCKSServerReply(value: 0x04)
+    public static let hostUnreachable = SOCKSServerReply(value: 0x04)
     
     /// The connection tot he host was refused
-    static let refused = SOCKSServerReply(value: 0x05)
+    public static let refused = SOCKSServerReply(value: 0x05)
     
     /// The host address's TTL has expired.
-    static let ttlExpired = SOCKSServerReply(value: 0x06)
+    public static let ttlExpired = SOCKSServerReply(value: 0x06)
     
     /// The provided command is not supported.
-    static let commandUnsupported = SOCKSServerReply(value: 0x07)
+    public static let commandUnsupported = SOCKSServerReply(value: 0x07)
     
     /// The provided address type is not supported.
-    static let addressUnsupported = SOCKSServerReply(value: 0x08)
+    public static let addressUnsupported = SOCKSServerReply(value: 0x08)
     
     /// The raw `UInt8` status code.
     public var value: UInt8

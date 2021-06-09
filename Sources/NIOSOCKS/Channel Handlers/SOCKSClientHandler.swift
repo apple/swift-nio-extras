@@ -18,7 +18,7 @@ import NIO
 /// to a host. This handler should be inserted at the beginning of a
 /// channel's pipeline. Note that SOCKS only supports fully-qualified
 /// domain names and IPv4 or IPv6 sockets, and not UNIX sockets.
-public class SOCKSClientHandler: ChannelDuplexHandler {
+public final class SOCKSClientHandler: ChannelDuplexHandler {
     
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
@@ -32,6 +32,9 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     
     private var bufferedWrites: CircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init()
     
+    /// Creates a new `SOCKSClientHandler` that connects to a server
+    /// and instructs the server to connect to `targetAddress`.
+    /// - parameter targetAddress: The desired end point - note that only IPv4, IPv6, and FQDNs are supported.
     public init(targetAddress: SOCKSAddress) {
         
         switch targetAddress {

@@ -37,8 +37,8 @@ extension ByteBuffer {
     mutating func readMethodSelection() throws -> SelectedAuthenticationMethod? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
-                let method = buffer.readInteger(as: UInt8.self),
-                try buffer.readAndValidateProtocolVersion() != nil
+                try buffer.readAndValidateProtocolVersion() != nil,
+                let method = buffer.readInteger(as: UInt8.self)
             else {
                 return nil
             }
