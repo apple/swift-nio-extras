@@ -20,12 +20,12 @@ public class ClientRequestTests: XCTestCase {
     
 }
 
-// MARK: - ClientRequest
+// MARK: - SOCKSRequest
 extension ClientRequestTests {
     
     func testWriteClientRequest() {
         var buffer = ByteBuffer()
-        let req = ClientRequest(command: .connect, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let req = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
         XCTAssertEqual(buffer.writeClientRequest(req), 10)
         XCTAssertEqual(buffer.readableBytes, 10)
         XCTAssertEqual(buffer.readBytes(length: 10)!,

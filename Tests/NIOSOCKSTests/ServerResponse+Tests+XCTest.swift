@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// ServerResponse+Tests+XCTest.swift
+// SOCKSResponse+Tests+XCTest.swift
 //
 import XCTest
 

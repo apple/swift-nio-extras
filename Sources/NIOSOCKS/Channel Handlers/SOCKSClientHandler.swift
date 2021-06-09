@@ -25,14 +25,14 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public typealias OutboundIn = ByteBuffer
     public typealias OutboundOut = ByteBuffer
     
-    private let targetAddress: AddressType
+    private let targetAddress: SOCKSAddress
     
     private var state: ClientStateMachine
     private var buffered: ByteBuffer?
     
     private var bufferedWrites: CircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init()
     
-    public init(targetAddress: AddressType) {
+    public init(targetAddress: SOCKSAddress) {
         
         switch targetAddress {
         case .address(.unixDomainSocket):
@@ -148,7 +148,7 @@ extension SOCKSClientHandler {
     }
     
     private func handleActionSendRequest(context: ChannelHandlerContext) throws {
-        let request = ClientRequest(command: .connect, addressType: self.targetAddress)
+        let request = SOCKSRequest(command: .connect, addressType: self.targetAddress)
         try self.state.sendClientRequest(request)
         
         // the client request is always 6 bytes + the address info

@@ -18,21 +18,21 @@ import NIO
 
 /// Instructs the SOCKS proxy server of the target host,
 /// and how to connect.
-struct ClientRequest: Hashable {
+struct SOCKSRequest: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
     
     /// How to connect to the host.
-    public var command: Command
+    public var command: SOCKSCommand
     
     /// The target host address.
-    public var addressType: AddressType
+    public var addressType: SOCKSAddress
     
-    /// Creates a new `ClientRequest`.
+    /// Creates a new `SOCKSRequest`.
     /// - parameter command: How to connect to the host.
     /// - parameter addressType: The target host address.
-    public init(command: Command, addressType: AddressType) {
+    public init(command: SOCKSCommand, addressType: SOCKSAddress) {
         self.command = command
         self.addressType = addressType
     }
@@ -41,7 +41,7 @@ struct ClientRequest: Hashable {
 
 extension ByteBuffer {
     
-    @discardableResult mutating func writeClientRequest(_ request: ClientRequest) -> Int {
+    @discardableResult mutating func writeClientRequest(_ request: SOCKSRequest) -> Int {
         var written = self.writeInteger(request.version)
         written += self.writeInteger(request.command.value)
         written += self.writeInteger(UInt8(0))
@@ -51,22 +51,22 @@ extension ByteBuffer {
     
 }
 
-// MARK: - Command
+// MARK: - SOCKSCommand
 
 /// What type of connection the SOCKS server should establish with
 /// the target host.
-public struct Command: Hashable {
+public struct SOCKSCommand: Hashable {
     
     /// Typically the primary connection type, suitable for HTTP.
-    public static let connect = Command(value: 0x01)
+    public static let connect = SOCKSCommand(value: 0x01)
     
     /// Used in protocols that require the client to accept connections
     /// from the server, e.g. FTP.
-    public static let bind = Command(value: 0x02)
+    public static let bind = SOCKSCommand(value: 0x02)
     
     /// Used to establish an association within the UDP relay process to
     /// handle UDP datagrams.
-    public static let udpAssociate = Command(value: 0x03)
+    public static let udpAssociate = SOCKSCommand(value: 0x03)
     
     public var value: UInt8
     
@@ -75,10 +75,10 @@ public struct Command: Hashable {
     }
 }
 
-// MARK: - AddressType
+// MARK: - SOCKSAddress
 
 /// The address used to connect to the target host.
-public enum AddressType: Hashable {
+public enum SOCKSAddress: Hashable {
     
     case address(SocketAddress)
     
@@ -108,18 +108,18 @@ public enum AddressType: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readAddressType() throws -> AddressType? {
+    mutating func readAddressType() throws -> SOCKSAddress? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard let type = buffer.readInteger(as: UInt8.self) else {
                 return nil
             }
             
             switch type {
-            case AddressType.ipv4IdentifierByte:
+            case SOCKSAddress.ipv4IdentifierByte:
                 return try buffer.readIPv4Address()
-            case AddressType.domainIdentifierByte:
+            case SOCKSAddress.domainIdentifierByte:
                 return buffer.readDomain()
-            case AddressType.ipv6IdentifierByte:
+            case SOCKSAddress.ipv6IdentifierByte:
                 return try buffer.readIPv6Address()
             default:
                 throw SOCKSError.InvalidAddressType(actual: type)
@@ -127,7 +127,7 @@ extension ByteBuffer {
         }
     }
     
-    mutating func readIPv4Address() throws -> AddressType? {
+    mutating func readIPv4Address() throws -> SOCKSAddress? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 let bytes = buffer.readSlice(length: 4),
@@ -139,7 +139,7 @@ extension ByteBuffer {
         }
     }
     
-    mutating func readIPv6Address() throws -> AddressType? {
+    mutating func readIPv6Address() throws -> SOCKSAddress? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 let bytes = buffer.readSlice(length: 16),
@@ -151,7 +151,7 @@ extension ByteBuffer {
         }
     }
     
-    mutating func readDomain() -> AddressType? {
+    mutating func readDomain() -> SOCKSAddress? {
         return self.parseUnwindingIfNeeded { buffer in
             guard
                 let length = buffer.readInteger(as: UInt8.self),
@@ -171,7 +171,7 @@ extension ByteBuffer {
         return Int(port)
     }
     
-    @discardableResult mutating func writeAddressType(_ type: AddressType) -> Int {
+    @discardableResult mutating func writeAddressType(_ type: SOCKSAddress) -> Int {
         switch type {
         case .address(.v4(let address)):
             return self.writeInteger(UInt8(1))

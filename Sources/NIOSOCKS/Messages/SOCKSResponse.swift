@@ -14,11 +14,11 @@
 
 import NIO
 
-// MARK: - ServerResponse
+// MARK: - SOCKSResponse
 
 /// The SOCKS Server's response to the client's request
 /// indicating if the request succeeded or failed.
-struct ServerResponse: Hashable {
+struct SOCKSResponse: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -28,13 +28,13 @@ struct ServerResponse: Hashable {
     public var reply: SOCKSServerReply
     
     /// The host address.
-    public var boundAddress: AddressType
+    public var boundAddress: SOCKSAddress
     
-    /// Creates a new `ServerResponse`.
+    /// Creates a new `SOCKSResponse`.
     /// - parameter reply: The status of the connection - used to check if the request
     /// succeeded or failed.
     /// - parameter boundAddress: The host address.
-    public init(reply: SOCKSServerReply, boundAddress: AddressType) {
+    public init(reply: SOCKSServerReply, boundAddress: SOCKSAddress) {
         self.reply = reply
         self.boundAddress = boundAddress
     }
@@ -42,7 +42,7 @@ struct ServerResponse: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readServerResponse() throws -> ServerResponse? {
+    mutating func readServerResponse() throws -> SOCKSResponse? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 try buffer.readAndValidateProtocolVersion() != nil,

@@ -26,7 +26,7 @@ class EchoHandler: ChannelInboundHandler {
 
 let targetIPAddress = "192.168.1.2"
 let targetPort = 12345
-let targetAddress = AddressType.address(try SocketAddress(ipAddress: targetIPAddress, port: targetPort))
+let targetAddress = SOCKSAddress.address(try SocketAddress(ipAddress: targetIPAddress, port: targetPort))
 
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)

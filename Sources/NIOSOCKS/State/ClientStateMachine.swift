@@ -19,7 +19,7 @@ enum ClientState: Hashable {
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
     case waitingForClientRequest
-    case waitingForServerResponse(ClientRequest)
+    case waitingForServerResponse(SOCKSRequest)
     case active
     case error
 }
@@ -99,7 +99,7 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: SOCKSRequest) throws -> ClientAction? {
         return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
             guard let response = try buffer.readServerResponse() else {
                 return nil
@@ -142,7 +142,7 @@ extension ClientStateMachine {
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
-    mutating func sendClientRequest(_ request: ClientRequest) throws {
+    mutating func sendClientRequest(_ request: SOCKSRequest) throws {
         guard self.state == .waitingForClientRequest else {
             throw SOCKSError.InvalidState(expected: .waitingForClientRequest, actual: self.state)
         }

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// ClientRequest+Tests+XCTest.swift
+// SOCKSRequest+Tests+XCTest.swift
 //
 import XCTest
 
