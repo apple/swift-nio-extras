@@ -16,10 +16,14 @@ import NIO
 
 extension ByteBuffer {
     
-    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T) rethrows -> T {
+    mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T?) rethrows -> T? {
         let save = self
         do {
-            return try closure(&self)
+            guard let value = try closure(&self) else {
+                self = save
+                return nil
+            }
+            return value
         } catch {
             self = save
             throw error

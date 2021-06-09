@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// SelectedAuthenticationMethod+Tests+XCTest.swift
+// MethodSelection+Tests+XCTest.swift
 //
 import XCTest
 
