@@ -16,7 +16,8 @@ import NIO
 
 /// Connects to a SOCKS server to establish a proxied connection
 /// to a host. This handler should be inserted at the beginning of a
-/// channel's pipeline.
+/// channel's pipeline. Note that SOCKS only supports fully-qualified
+/// domain names and IPv4 or IPv6 sockets, and not UNIX sockets.
 public class SOCKSClientHandler: ChannelDuplexHandler {
     
     public typealias InboundIn = ByteBuffer
