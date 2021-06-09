@@ -30,7 +30,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private var state: ClientStateMachine
     private var buffered: ByteBuffer
     
-    private var bufferedWrites: [(NIOAny, EventLoopPromise<Void>?)] = []
+    private var bufferedWrites: CircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init()
     
     public init(targetAddress: AddressType) {
         
