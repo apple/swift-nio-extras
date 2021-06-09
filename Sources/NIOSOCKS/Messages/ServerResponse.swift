@@ -25,7 +25,7 @@ struct ServerResponse: Hashable {
     
     /// The status of the connection - used to check if the request
     /// succeeded or failed.
-    public var reply: Reply
+    public var reply: SOCKSServerReply
     
     /// The host address.
     public var boundAddress: AddressType
@@ -34,7 +34,7 @@ struct ServerResponse: Hashable {
     /// - parameter reply: The status of the connection - used to check if the request
     /// succeeded or failed.
     /// - parameter boundAddress: The host address.
-    public init(reply: Reply, boundAddress: AddressType) {
+    public init(reply: SOCKSServerReply, boundAddress: AddressType) {
         self.reply = reply
         self.boundAddress = boundAddress
     }
@@ -46,7 +46,7 @@ extension ByteBuffer {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 try buffer.readAndValidateProtocolVersion() != nil,
-                let reply = buffer.readInteger(as: UInt8.self).map({ Reply(value: $0) }),
+                let reply = buffer.readInteger(as: UInt8.self).map({ SOCKSServerReply(value: $0) }),
                 try buffer.readAndValidateReserved() != nil,
                 let boundAddress = try buffer.readAddressType()
             else {
@@ -58,38 +58,38 @@ extension ByteBuffer {
     
 }
 
-// MARK: - Reply
+// MARK: - SOCKSServerReply
 
 /// Used to indicate if the SOCKS client's connection request succeeded
 /// or failed.
-public struct Reply: Hashable {
+public struct SOCKSServerReply: Hashable {
     
     /// The connection succeeded and data can now be transmitted.
-    static let succeeded = Reply(value: 0x00)
+    static let succeeded = SOCKSServerReply(value: 0x00)
     
     /// The SOCKS server encountered an internal failure.
-    static let serverFailure = Reply(value: 0x01)
+    static let serverFailure = SOCKSServerReply(value: 0x01)
     
     /// The connection to the host was not allowed.
-    static let notAllowed = Reply(value: 0x02)
+    static let notAllowed = SOCKSServerReply(value: 0x02)
     
     /// The host network is not reachable.
-    static let networkUnreachable = Reply(value: 0x03)
+    static let networkUnreachable = SOCKSServerReply(value: 0x03)
     
     /// The target host was not reachable.
-    static let hostUnreachable = Reply(value: 0x04)
+    static let hostUnreachable = SOCKSServerReply(value: 0x04)
     
     /// The connection tot he host was refused
-    static let refused = Reply(value: 0x05)
+    static let refused = SOCKSServerReply(value: 0x05)
     
     /// The host address's TTL has expired.
-    static let ttlExpired = Reply(value: 0x06)
+    static let ttlExpired = SOCKSServerReply(value: 0x06)
     
     /// The provided command is not supported.
-    static let commandUnsupported = Reply(value: 0x07)
+    static let commandUnsupported = SOCKSServerReply(value: 0x07)
     
     /// The provided address type is not supported.
-    static let addressUnsupported = Reply(value: 0x08)
+    static let addressUnsupported = SOCKSServerReply(value: 0x08)
     
     /// The raw `UInt8` status code.
     public var value: UInt8

@@ -56,8 +56,8 @@ public enum SOCKSError {
     }
 
     public struct ConnectionFailed: Error, Hashable {
-        public var reply: Reply
-        public init(reply: Reply) {
+        public var reply: SOCKSServerReply
+        public init(reply: SOCKSServerReply) {
             self.reply = reply
         }
     }
