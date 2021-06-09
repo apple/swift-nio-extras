@@ -117,7 +117,7 @@ extension SOCKSClientHandler {
         case .sendRequest:
             try self.handleActionSendRequest(context: context)
         case .proxyEstablished:
-            self.handleActionProxyEstablished(context: context)
+            self.handleProxyEstablished(context: context)
         case .sendData(let data):
             context.writeAndFlush(self.wrapOutboundOut(data), promise: nil)
         }
@@ -132,7 +132,7 @@ extension SOCKSClientHandler {
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
-    private func handleActionProxyEstablished(context: ChannelHandlerContext) {
+    private func handleProxyEstablished(context: ChannelHandlerContext) {
         // for some reason we have extra bytes
         // so let's send them down the pipe
         // (Safe to bang, self.buffered will always exist at this point)
