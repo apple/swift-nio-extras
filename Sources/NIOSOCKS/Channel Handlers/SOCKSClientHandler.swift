@@ -79,7 +79,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
             return
         }
         self.writeBufferedData(context: context)
-        context.write(data, promise: nil)
+        context.write(data, promise: promise)
     }
     
     func writeBufferedData(context: ChannelHandlerContext) {
