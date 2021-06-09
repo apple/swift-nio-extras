@@ -57,7 +57,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         
         // if we've established the connection then forward on the data
-        guard !self.state.proxyEstablished else {
+        if self.state.proxyEstablished {
             context.fireChannelRead(data)
             return
         }
