@@ -78,7 +78,4 @@ public enum SOCKSError {
         }
     }
     
-    struct MissingBytes: Error {
-        
-    }
 }

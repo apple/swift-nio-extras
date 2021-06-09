@@ -67,23 +67,29 @@ extension ClientStateMachine {
         do {
             switch self.state {
             case .waitingForAuthenticationMethod(let greeting):
-                return try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting)
+                guard let action = try self.handleSelectedAuthenticationMethod(&buffer, greeting: greeting) else {
+                    return .waitForMoreData
+                }
+                return action
             case .waitingForServerResponse(let request):
-                return try self.handleServerResponse(&buffer, request: request)
+                guard let action = try self.handleServerResponse(&buffer, request: request) else {
+                    return .waitForMoreData
+                }
+                return action
             case .active, .error, .inactive, .waitingForClientGreeting, .waitingForClientRequest:
                 throw SOCKSError.UnexpectedRead()
             }
-        } catch is SOCKSError.MissingBytes {
-            return .waitForMoreData
         } catch {
             self.state = .error
             throw error
         }
     }
     
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction {
-        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
-            let selected = try buffer.readMethodSelection()
+    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
+        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
+            guard let selected = try buffer.readMethodSelection() else {
+                return nil
+            }
             guard greeting.methods.contains(selected.method) else {
                 throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
             }
@@ -93,9 +99,11 @@ extension ClientStateMachine {
         }
     }
     
-    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction {
-        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction in
-            let response = try buffer.readServerResponse()
+    mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: ClientRequest) throws -> ClientAction? {
+        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
+            guard let response = try buffer.readServerResponse() else {
+                return nil
+            }
             guard response.reply == .succeeded else {
                 throw SOCKSError.ConnectionFailed(reply: response.reply)
             }

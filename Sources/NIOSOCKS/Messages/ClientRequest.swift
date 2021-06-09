@@ -103,17 +103,17 @@ public enum AddressType: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readAddressType() throws -> AddressType {
+    mutating func readAddressType() throws -> AddressType? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard let type = buffer.readInteger(as: UInt8.self) else {
-                throw SOCKSError.MissingBytes()
+                return nil
             }
             
             switch type {
             case 0x01:
                 return try buffer.readIPv4Address()
             case 0x03:
-                return try buffer.readDomain()
+                return buffer.readDomain()
             case 0x04:
                 return try buffer.readIPv6Address()
             default:
@@ -122,42 +122,46 @@ extension ByteBuffer {
         }
     }
     
-    mutating func readIPv4Address() throws -> AddressType {
-        return try self.parseUnwindingIfNeeded { buffer in
-            guard let bytes = buffer.readSlice(length: 4) else {
-                throw SOCKSError.MissingBytes()
-            }
-            let port = try buffer.readPort()
-            return .address(try .init(packedIPAddress: bytes, port: port))
-        }
-    }
-    
-    mutating func readIPv6Address() throws -> AddressType {
-        return try self.parseUnwindingIfNeeded { buffer in
-            guard let bytes = buffer.readSlice(length: 16) else {
-                throw SOCKSError.MissingBytes()
-            }
-            let port = try buffer.readPort()
-            return .address(try .init(packedIPAddress: bytes, port: port))
-        }
-    }
-    
-    mutating func readDomain() throws -> AddressType {
+    mutating func readIPv4Address() throws -> AddressType? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
-                let length = buffer.readInteger(as: UInt8.self),
-                let host = buffer.readString(length: Int(length))
+                let bytes = buffer.readSlice(length: 4),
+                let port = buffer.readPort()
             else {
-                throw SOCKSError.MissingBytes()
+                return nil
             }
-            let port = try buffer.readPort()
+            return .address(try .init(packedIPAddress: bytes, port: port))
+        }
+    }
+    
+    mutating func readIPv6Address() throws -> AddressType? {
+        return try self.parseUnwindingIfNeeded { buffer in
+            guard
+                let bytes = buffer.readSlice(length: 16),
+                let port = buffer.readPort()
+            else {
+                return nil
+            }
+            return .address(try .init(packedIPAddress: bytes, port: port))
+        }
+    }
+    
+    mutating func readDomain() -> AddressType? {
+        return self.parseUnwindingIfNeeded { buffer in
+            guard
+                let length = buffer.readInteger(as: UInt8.self),
+                let host = buffer.readString(length: Int(length)),
+                let port = buffer.readPort()
+            else {
+                return nil
+            }
             return .domain(host, port: port)
         }
     }
     
-    mutating func readPort() throws -> Int {
+    mutating func readPort() -> Int? {
         guard let port = self.readInteger(as: UInt16.self) else {
-            throw SOCKSError.MissingBytes()
+            return nil
         }
         return Int(port)
     }

@@ -26,25 +26,27 @@ extension ByteBuffer {
         }
     }
     
-    mutating func readAndValidateProtocolVersion() throws {
+    mutating func readAndValidateProtocolVersion() throws -> UInt8? {
         try self.parseUnwindingIfNeeded { buffer in
             guard let version = buffer.readInteger(as: UInt8.self) else {
-                throw SOCKSError.MissingBytes()
+                return nil
             }
             guard version == 0x05 else {
                 throw SOCKSError.InvalidProtocolVersion(actual: version)
             }
+            return version
         }
     }
     
-    mutating func readAndValidateReserved() throws {
+    mutating func readAndValidateReserved() throws -> UInt8? {
         try self.parseUnwindingIfNeeded { buffer in
             guard let reserved = buffer.readInteger(as: UInt8.self) else {
-                throw SOCKSError.MissingBytes()
+                return nil
             }
             guard reserved == 0x00 else {
                 throw SOCKSError.InvalidReservedByte(actual: reserved)
             }
+            return reserved
         }
     }
     
