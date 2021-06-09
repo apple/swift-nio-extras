@@ -41,7 +41,6 @@ let package = Package(
         .executable(name: "NIOWritePCAPDemo", targets: ["NIOWritePCAPDemo"]),
         .executable(name: "NIOWritePartialPCAPDemo", targets: ["NIOWritePartialPCAPDemo"]),
         .executable(name: "NIOExtrasPerformanceTester", targets: ["NIOExtrasPerformanceTester"]),
-        .executable(name: "NIOSOCKSClient", targets: ["NIOSOCKSClient"]),
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
         .library(name: "NIOSOCKS", targets: ["NIOSOCKS"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
