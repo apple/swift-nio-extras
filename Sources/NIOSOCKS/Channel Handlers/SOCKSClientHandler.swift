@@ -28,7 +28,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
     private let targetAddress: AddressType
     
     private var state: ClientStateMachine
-    private var buffered: ByteBuffer
+    private var buffered: ByteBuffer?
     
     private var bufferedWrites: CircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init()
     
@@ -42,7 +42,6 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         }
         
         self.state = ClientStateMachine()
-        self.buffered = ByteBuffer()
         self.targetAddress = targetAddress
     }
     
@@ -62,10 +61,14 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
             return
         }
         
-        var buffer = self.unwrapInboundIn(data)
-        self.buffered.writeBuffer(&buffer)
+        var inboundBuffer = self.unwrapInboundIn(data)
+        
+        if self.buffered == nil {
+            self.buffered = context.channel.allocator.buffer(capacity: inboundBuffer.readableBytes)
+        }
+        self.buffered!.writeBuffer(&inboundBuffer)
         do {
-            let action = try self.state.receiveBuffer(&self.buffered)
+            let action = try self.state.receiveBuffer(&self.buffered!)
             try self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
@@ -132,8 +135,10 @@ extension SOCKSClientHandler {
     func handleActionProxyEstablished(context: ChannelHandlerContext) {
         // for some reason we have extra bytes
         // so let's send them down the pipe
-        if self.buffered.readableBytes > 0 {
-            let data = self.wrapInboundOut(self.buffered)
+        // (Safe to bang, self.buffered will always exist at this point)
+        assert(self.buffered != nil)
+        if self.buffered!.readableBytes > 0 {
+            let data = self.wrapInboundOut(self.buffered!)
             context.fireChannelRead(data)
         }
         
