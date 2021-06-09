@@ -97,10 +97,10 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 extension SOCKSClientHandler {
     
     private func beginHandshake(context: ChannelHandlerContext) {
+        guard self.state.shouldBeginHandshake else {
+            return
+        }
         do {
-            guard self.state.shouldBeginHandshake else {
-                return
-            }
             try self.handleAction(self.state.connectionEstablished(), context: context)
         } catch {
             context.fireErrorCaught(error)
@@ -125,7 +125,7 @@ extension SOCKSClientHandler {
     
     private func handleActionSendClientGreeting(context: ChannelHandlerContext) throws {
         let greeting = ClientGreeting(methods: [.noneRequired]) // no authentication currently supported
-        let capacity = 1 + 1 + 1 // [version, #methods, methods...]
+        let capacity = 3 // [version, #methods, methods...]
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientGreeting(greeting)
         try self.state.sendClientGreeting(greeting)

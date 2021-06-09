@@ -32,7 +32,6 @@ struct ClientRequest: Hashable {
     /// Creates a new `ClientRequest`.
     /// - parameter command: How to connect to the host.
     /// - parameter addressType: The target host address.
-    /// - parameter desiredPort: The target host port.
     public init(command: Command, addressType: AddressType) {
         self.command = command
         self.addressType = addressType
@@ -43,8 +42,7 @@ struct ClientRequest: Hashable {
 extension ByteBuffer {
     
     @discardableResult mutating func writeClientRequest(_ request: ClientRequest) -> Int {
-        var written = 0
-        written += self.writeInteger(request.version)
+        var written = self.writeInteger(request.version)
         written += self.writeInteger(request.command.value)
         written += self.writeInteger(UInt8(0))
         written += self.writeAddressType(request.addressType)
@@ -86,6 +84,10 @@ public enum AddressType: Hashable {
     
     case domain(String, port: Int)
     
+    static let ipv4IdentifierByte: UInt8 = 0x01
+    static let domainIdentifierByte: UInt8 = 0x03
+    static let ipv6IdentifierByte: UInt8 = 0x04
+    
     /// How many bytes are needed to represent the address, excluding the port
     var size: Int {
         switch self {
@@ -96,6 +98,9 @@ public enum AddressType: Hashable {
         case .address(.unixDomainSocket):
             fatalError("Unsupported")
         case .domain(let domain, port: _):
+            // the +1 is for the leading "count" byte
+            // containing how many UTF8 bytes are in the
+            // domain
             return domain.utf8.count + 1
         }
     }
@@ -110,11 +115,11 @@ extension ByteBuffer {
             }
             
             switch type {
-            case 0x01:
+            case AddressType.ipv4IdentifierByte:
                 return try buffer.readIPv4Address()
-            case 0x03:
+            case AddressType.domainIdentifierByte:
                 return buffer.readDomain()
-            case 0x04:
+            case AddressType.ipv6IdentifierByte:
                 return try buffer.readIPv6Address()
             default:
                 throw SOCKSError.InvalidAddressType(actual: type)
