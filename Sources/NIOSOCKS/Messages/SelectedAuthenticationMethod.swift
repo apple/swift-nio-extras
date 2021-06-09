@@ -17,7 +17,7 @@ import NIO
 /// Used by the SOCKS server to inform the client which
 /// authentication method it would like to use out of those
 /// offered.
-struct MethodSelection: Hashable {
+struct SelectedAuthenticationMethod: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -34,7 +34,7 @@ struct MethodSelection: Hashable {
 
 extension ByteBuffer {
     
-    mutating func readMethodSelection() throws -> MethodSelection? {
+    mutating func readMethodSelection() throws -> SelectedAuthenticationMethod? {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 let method = buffer.readInteger(as: UInt8.self),
@@ -46,7 +46,7 @@ extension ByteBuffer {
         }
     }
     
-    @discardableResult mutating func writeMethodSelection(_ method: MethodSelection) -> Int {
+    @discardableResult mutating func writeMethodSelection(_ method: SelectedAuthenticationMethod) -> Int {
         return self.writeInteger(method.version) + self.writeInteger(method.method.value)
     }
     
