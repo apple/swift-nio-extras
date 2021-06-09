@@ -22,18 +22,18 @@ public class ClientGreetingTests: XCTestCase {
         var buffer = ByteBuffer()
         buffer.writeBytes([0x05, 0x01, 0x00])
         XCTAssertNoThrow(XCTAssertEqual(try buffer.readClientGreeting(), .init(methods: [.noneRequired])))
-        XCTAssertTrue(buffer.readableBytes == 0)
+        XCTAssertEqual(buffer.readableBytes, 0)
         
         buffer.writeBytes([0x05, 0x03, 0x00, 0x01, 0x02])
         XCTAssertNoThrow(XCTAssertEqual(try buffer.readClientGreeting(), .init(methods: [.noneRequired, .gssapi, .usernamePassword])))
-        XCTAssertTrue(buffer.readableBytes == 0)
+        XCTAssertEqual(buffer.readableBytes, 0)
     }
     
     func testWriting() {
         var buffer = ByteBuffer()
         let greeting = ClientGreeting(methods: [.noneRequired])
-        XCTAssertTrue(buffer.writeClientGreeting(greeting) == 3)
-        XCTAssertTrue(buffer.readableBytes == 3)
-        XCTAssertTrue(buffer.readBytes(length: 3)! == [0x05, 0x01, 0x00])
+        XCTAssertEqual(buffer.writeClientGreeting(greeting), 3)
+        XCTAssertEqual(buffer.readableBytes, 3)
+        XCTAssertEqual(buffer.readBytes(length: 3)!, [0x05, 0x01, 0x00])
     }
 }
