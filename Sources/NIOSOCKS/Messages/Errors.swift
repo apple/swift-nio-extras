@@ -42,14 +42,14 @@ public enum SOCKSError {
         }
     }
 
-    public struct InvalidAuthenticationSelection: Error {
+    public struct InvalidAuthenticationSelection: Error, Hashable {
         public var selection: AuthenticationMethod
         public init(selection: AuthenticationMethod) {
             self.selection = selection
         }
     }
 
-    public struct NoValidAuthenticationMethod: Error {
+    public struct NoValidAuthenticationMethod: Error, Hashable {
         public init() {
             
         }
@@ -68,7 +68,7 @@ public enum SOCKSError {
         }
     }
     
-    public struct UnexpectedAuthenticationMethod: Error {
+    public struct UnexpectedAuthenticationMethod: Error, Hashable {
         public var expected: [AuthenticationMethod]
         public var actual: AuthenticationMethod
         
