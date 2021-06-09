@@ -85,7 +85,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
         context.write(data, promise: promise)
     }
     
-    func writeBufferedData(context: ChannelHandlerContext) {
+    private func writeBufferedData(context: ChannelHandlerContext) {
         while self.bufferedWrites.count > 0 {
             let (data, promise) = self.bufferedWrites.removeFirst()
             context.write(data, promise: promise)
@@ -96,7 +96,7 @@ public class SOCKSClientHandler: ChannelDuplexHandler {
 
 extension SOCKSClientHandler {
     
-    func beginHandshake(context: ChannelHandlerContext) {
+    private func beginHandshake(context: ChannelHandlerContext) {
         do {
             guard self.state.shouldBeginHandshake else {
                 return
@@ -108,7 +108,7 @@ extension SOCKSClientHandler {
         }
     }
     
-    func handleAction(_ action: ClientAction, context: ChannelHandlerContext) throws {
+    private func handleAction(_ action: ClientAction, context: ChannelHandlerContext) throws {
         switch action {
         case .waitForMoreData:
             break // do nothing, we've already buffered the data
@@ -123,7 +123,7 @@ extension SOCKSClientHandler {
         }
     }
     
-    func handleActionSendClientGreeting(context: ChannelHandlerContext) throws {
+    private func handleActionSendClientGreeting(context: ChannelHandlerContext) throws {
         let greeting = ClientGreeting(methods: [.noneRequired]) // no authentication currently supported
         let capacity = 1 + 1 + 1 // [version, #methods, methods...]
         var buffer = context.channel.allocator.buffer(capacity: capacity)
@@ -132,7 +132,7 @@ extension SOCKSClientHandler {
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
-    func handleActionProxyEstablished(context: ChannelHandlerContext) {
+    private func handleActionProxyEstablished(context: ChannelHandlerContext) {
         // for some reason we have extra bytes
         // so let's send them down the pipe
         // (Safe to bang, self.buffered will always exist at this point)
@@ -147,7 +147,7 @@ extension SOCKSClientHandler {
         self.writeBufferedData(context: context)
     }
     
-    func handleActionSendRequest(context: ChannelHandlerContext) throws {
+    private func handleActionSendRequest(context: ChannelHandlerContext) throws {
         let request = ClientRequest(command: .connect, addressType: self.targetAddress)
         try self.state.sendClientRequest(request)
         
