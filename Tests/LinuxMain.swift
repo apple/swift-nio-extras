@@ -25,8 +25,12 @@ import XCTest
 #if os(Linux) || os(FreeBSD)
    @testable import NIOExtrasTests
    @testable import NIOHTTPCompressionTests
+   @testable import NIOSOCKSTests
 
    XCTMain([
+         testCase(ClientGreetingTests.allTests),
+         testCase(ClientRequestTests.allTests),
+         testCase(ClientStateMachineTests.allTests),
          testCase(DebugInboundEventsHandlerTest.allTests),
          testCase(DebugOutboundEventsHandlerTest.allTests),
          testCase(FixedLengthFrameDecoderTest.allTests),
@@ -34,14 +38,18 @@ import XCTest
          testCase(HTTPRequestDecompressorTest.allTests),
          testCase(HTTPResponseCompressorTest.allTests),
          testCase(HTTPResponseDecompressorTest.allTests),
+         testCase(HelperTests.allTests),
          testCase(JSONRPCFramingContentLengthHeaderDecoderTests.allTests),
          testCase(JSONRPCFramingContentLengthHeaderEncoderTests.allTests),
          testCase(LengthFieldBasedFrameDecoderTest.allTests),
          testCase(LengthFieldPrependerTest.allTests),
          testCase(LineBasedFrameDecoderTest.allTests),
+         testCase(MethodSelectionTests.allTests),
          testCase(PCAPRingBufferTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
+         testCase(ServerResponseTests.allTests),
+         testCase(SocksClientHandlerTests.allTests),
          testCase(WritePCAPHandlerTest.allTests),
     ])
 #endif
