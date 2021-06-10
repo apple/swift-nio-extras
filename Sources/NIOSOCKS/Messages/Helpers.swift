@@ -31,7 +31,7 @@ extension ByteBuffer {
     }
     
     mutating func readAndValidateProtocolVersion() throws -> UInt8? {
-        try self.parseUnwindingIfNeeded { buffer -> UInt8? in
+        return try self.parseUnwindingIfNeeded { buffer -> UInt8? in
             guard let version = buffer.readInteger(as: UInt8.self) else {
                 return nil
             }
@@ -43,7 +43,7 @@ extension ByteBuffer {
     }
     
     mutating func readAndValidateReserved() throws -> UInt8? {
-        try self.parseUnwindingIfNeeded { buffer -> UInt8? in
+        return try self.parseUnwindingIfNeeded { buffer -> UInt8? in
             guard let reserved = buffer.readInteger(as: UInt8.self) else {
                 return nil
             }
