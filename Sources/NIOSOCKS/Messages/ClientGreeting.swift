@@ -25,19 +25,14 @@ extension ByteBuffer {
         return try self.parseUnwindingIfNeeded { buffer in
             guard
                 try buffer.readAndValidateProtocolVersion() != nil,
-                let numMethods = buffer.readInteger(as: UInt8.self)
+                let numMethods = buffer.readInteger(as: UInt8.self),
+                buffer.readableBytes >= numMethods
             else {
                 return nil
             }
             
-            var methods: [AuthenticationMethod] = []
-            methods.reserveCapacity(Int(numMethods))
-            for _ in 0..<numMethods {
-                guard let method = buffer.readInteger(as: UInt8.self) else {
-                    return nil
-                }
-                methods.append(.init(value: method))
-            }
+            // safe to bang as we've already checked the buffer size
+            let methods = buffer.readBytes(length: Int(numMethods))!.map { AuthenticationMethod(value: $0) }
             return .init(methods: methods)
         }
     }

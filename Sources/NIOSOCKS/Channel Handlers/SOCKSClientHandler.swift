@@ -66,10 +66,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
         
         var inboundBuffer = self.unwrapInboundIn(data)
         
-        if self.buffered == nil {
-            self.buffered = context.channel.allocator.buffer(capacity: inboundBuffer.readableBytes)
-        }
-        self.buffered!.writeBuffer(&inboundBuffer)
+        self.buffered.setOrWriteBuffer(&inboundBuffer)
         do {
             let action = try self.state.receiveBuffer(&self.buffered!)
             try self.handleAction(action, context: context)
