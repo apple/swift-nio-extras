@@ -29,7 +29,6 @@ enum ClientAction: Hashable {
     case sendGreeting
     case sendRequest
     case proxyEstablished
-    case sendData(ByteBuffer)
 }
 
 struct ClientStateMachine {

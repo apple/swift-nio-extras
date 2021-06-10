@@ -68,6 +68,8 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
         
         self.buffered.setOrWriteBuffer(&inboundBuffer)
         do {
+            // Safe to bang, `setOrWrite` above means there will
+            // always be a value.
             let action = try self.state.receiveBuffer(&self.buffered!)
             try self.handleAction(action, context: context)
         } catch {
@@ -118,8 +120,6 @@ extension SOCKSClientHandler {
             try self.handleActionSendRequest(context: context)
         case .proxyEstablished:
             self.handleProxyEstablished(context: context)
-        case .sendData(let data):
-            context.writeAndFlush(self.wrapOutboundOut(data), promise: nil)
         }
     }
     
@@ -136,7 +136,6 @@ extension SOCKSClientHandler {
         // for some reason we have extra bytes
         // so let's send them down the pipe
         // (Safe to bang, self.buffered will always exist at this point)
-        assert(self.buffered != nil)
         if self.buffered!.readableBytes > 0 {
             let data = self.wrapInboundOut(self.buffered!)
             context.fireChannelRead(data)
