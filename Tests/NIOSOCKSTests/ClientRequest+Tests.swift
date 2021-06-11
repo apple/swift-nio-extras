@@ -59,12 +59,12 @@ extension ClientRequestTests {
         var ipv4 = ByteBuffer()
         XCTAssertEqual(ipv4.writeAddressType(.address(try! .init(ipAddress: "192.168.1.1", port: 80))), 7)
         XCTAssertEqual(ipv4.readBytes(length: 5)!, [1, 192, 168, 1, 1])
-        XCTAssertEqual(ipv4.readInteger(as: UInt16.self)!, 0x0050)
+        XCTAssertEqual(ipv4.readInteger(as: UInt16.self)!, 80)
         
         var ipv6 = ByteBuffer()
         XCTAssertEqual(ipv6.writeAddressType(.address(try! .init(ipAddress: "0001:0002:0003:0004:0005:0006:0007:0008", port: 80))), 19)
         XCTAssertEqual(ipv6.readBytes(length: 17)!, [4, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8])
-        XCTAssertEqual(ipv6.readInteger(as: UInt16.self)!, 0x0050)
+        XCTAssertEqual(ipv6.readInteger(as: UInt16.self)!, 80)
     }
     
 }
