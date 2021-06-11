@@ -31,6 +31,7 @@ extension SocksClientHandlerTests {
                 ("testInvalidAuthenticationMethod", testInvalidAuthenticationMethod),
                 ("testProxyConnectionFailed", testProxyConnectionFailed),
                 ("testDelayedConnection", testDelayedConnection),
+                ("testDelayedHandlerAdded", testDelayedHandlerAdded),
            ]
    }
 }
