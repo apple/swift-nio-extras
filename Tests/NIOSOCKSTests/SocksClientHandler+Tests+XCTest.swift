@@ -30,6 +30,7 @@ extension SocksClientHandlerTests {
                 ("testTypicalWorkflowDripfeed", testTypicalWorkflowDripfeed),
                 ("testInvalidAuthenticationMethod", testInvalidAuthenticationMethod),
                 ("testProxyConnectionFailed", testProxyConnectionFailed),
+                ("testDelayedConnection", testDelayedConnection),
            ]
    }
 }
