@@ -161,7 +161,6 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testDelayedConnection() {
-        
         // we shouldn't start the handshake until the client
         // has connected
         self.assertOutputBuffer([])
@@ -170,7 +169,23 @@ class SocksClientHandlerTests: XCTestCase {
         
         // now the handshake should have started
         self.assertOutputBuffer([0x05, 0x01, 0x00])
+    }
+    
+    func testDelayedHandlerAdded() {
         
+        // reset the channel that was set up automatically
+        XCTAssertNoThrow(try self.channel.close().wait())
+        self.channel = EmbeddedChannel()
+        self.handler = SOCKSClientHandler(targetAddress: .domain("127.0.0.1", port: 1234))
+        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait())
+        XCTAssertTrue(self.channel.isActive)
+        
+        // there shouldn't be anything outbound
+        self.assertOutputBuffer([])
+        
+        // add the handler, there should be outbound data immediately
+        XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
     }
 
 }
