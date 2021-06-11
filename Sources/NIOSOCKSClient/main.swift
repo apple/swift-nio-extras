@@ -24,7 +24,7 @@ class EchoHandler: ChannelInboundHandler {
     
 }
 
-let targetIPAddress = "192.168.1.2"
+let targetIPAddress = "127.0.0.1"
 let targetPort = 12345
 let targetAddress = SOCKSAddress.address(try SocketAddress(ipAddress: targetIPAddress, port: targetPort))
 

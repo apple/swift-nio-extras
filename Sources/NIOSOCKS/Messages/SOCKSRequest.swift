@@ -175,12 +175,12 @@ extension ByteBuffer {
         switch type {
         case .address(.v4(let address)):
             return self.writeInteger(SOCKSAddress.ipv4IdentifierByte)
-                + self.writeInteger(address.address.sin_addr.s_addr)
-                + self.writeInteger(address.address.sin_port)
+                + self.writeIPv4Address(address.address)
+                + self.writeInteger(UInt16(bigEndian: address.address.sin_port))
         case .address(.v6(let address)):
             return self.writeInteger(SOCKSAddress.ipv6IdentifierByte)
                 + self.writeIPv6Address(address.address)
-                + self.writeInteger(address.address.sin6_port)
+                + self.writeInteger(UInt16(bigEndian: address.address.sin6_port))
         case .address(.unixDomainSocket):
             // enforced in the channel initalisers.
             fatalError("UNIX domain sockets are not supported")
@@ -194,6 +194,12 @@ extension ByteBuffer {
     
     @discardableResult mutating func writeIPv6Address(_ addr: sockaddr_in6) -> Int {
         return withUnsafeBytes(of: addr.sin6_addr) { pointer in
+            return self.writeBytes(pointer)
+        }
+    }
+    
+    @discardableResult mutating func writeIPv4Address(_ addr: sockaddr_in) -> Int {
+        return withUnsafeBytes(of: addr.sin_addr) { pointer in
             return self.writeBytes(pointer)
         }
     }

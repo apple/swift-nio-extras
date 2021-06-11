@@ -25,6 +25,9 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertNil(self.channel)
         self.handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
         self.channel = EmbeddedChannel(handler: self.handler)
+    }
+    
+    func connect() {
         try! self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
     }
 
@@ -51,6 +54,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflow() {
+        self.connect()
         
         // the client should start the handshake instantly
         self.assertOutputBuffer([0x05, 0x01, 0x00])
@@ -59,7 +63,7 @@ class SocksClientHandlerTests: XCTestCase {
         self.writeInbound([0x05, 0x00])
         
         // client sends the request
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // server replies yay or nay
         self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
@@ -71,6 +75,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflowDripfeed() {
+        self.connect()
         
         // the client should start the handshake instantly
         self.assertOutputBuffer([0x05, 0x01, 0x00])
@@ -80,7 +85,7 @@ class SocksClientHandlerTests: XCTestCase {
         self.writeInbound([0x05])
         self.assertOutputBuffer([])
         self.writeInbound([0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // drip feed server response
         self.writeInbound([0x05, 0x00, 0x00, 0x01])
@@ -97,6 +102,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testInvalidAuthenticationMethod() {
+        self.connect()
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -124,6 +130,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testProxyConnectionFailed() {
+        self.connect()
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -142,7 +149,7 @@ class SocksClientHandlerTests: XCTestCase {
         // start handshake, send request
         self.assertOutputBuffer([0x05, 0x01, 0x00])
         self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // server replies with an error
         let promise = self.channel.eventLoop.makePromise(of: Void.self)
@@ -151,6 +158,34 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
         }
+    }
+    
+    func testDelayedConnection() {
+        // we shouldn't start the handshake until the client
+        // has connected
+        self.assertOutputBuffer([])
+        
+        self.connect()
+        
+        // now the handshake should have started
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+    }
+    
+    func testDelayedHandlerAdded() {
+        
+        // reset the channel that was set up automatically
+        XCTAssertNoThrow(try self.channel.close().wait())
+        self.channel = EmbeddedChannel()
+        self.handler = SOCKSClientHandler(targetAddress: .domain("127.0.0.1", port: 1234))
+        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait())
+        XCTAssertTrue(self.channel.isActive)
+        
+        // there shouldn't be anything outbound
+        self.assertOutputBuffer([])
+        
+        // add the handler, there should be outbound data immediately
+        XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
     }
 
 }

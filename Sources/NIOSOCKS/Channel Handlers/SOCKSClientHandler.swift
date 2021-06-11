@@ -99,7 +99,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
 extension SOCKSClientHandler {
     
     private func beginHandshake(context: ChannelHandlerContext) {
-        guard self.state.shouldBeginHandshake else {
+        guard context.channel.isActive, self.state.shouldBeginHandshake else {
             return
         }
         do {
