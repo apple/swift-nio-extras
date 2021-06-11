@@ -25,6 +25,9 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertNil(self.channel)
         self.handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
         self.channel = EmbeddedChannel(handler: self.handler)
+    }
+    
+    func connect() {
         try! self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
     }
 
@@ -51,6 +54,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflow() {
+        self.connect()
         
         // the client should start the handshake instantly
         self.assertOutputBuffer([0x05, 0x01, 0x00])
@@ -71,6 +75,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflowDripfeed() {
+        self.connect()
         
         // the client should start the handshake instantly
         self.assertOutputBuffer([0x05, 0x01, 0x00])
@@ -97,6 +102,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testInvalidAuthenticationMethod() {
+        self.connect()
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -124,6 +130,7 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testProxyConnectionFailed() {
+        self.connect()
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -151,6 +158,19 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
         }
+    }
+    
+    func testDelayedConnection() {
+        
+        // we shouldn't start the handshake until the client
+        // has connected
+        self.assertOutputBuffer([])
+        
+        self.connect()
+        
+        // now the handshake should have started
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        
     }
 
 }
