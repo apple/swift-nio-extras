@@ -63,7 +63,7 @@ class SocksClientHandlerTests: XCTestCase {
         self.writeInbound([0x05, 0x00])
         
         // client sends the request
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // server replies yay or nay
         self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
@@ -85,7 +85,7 @@ class SocksClientHandlerTests: XCTestCase {
         self.writeInbound([0x05])
         self.assertOutputBuffer([])
         self.writeInbound([0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // drip feed server response
         self.writeInbound([0x05, 0x00, 0x00, 0x01])
@@ -149,7 +149,7 @@ class SocksClientHandlerTests: XCTestCase {
         // start handshake, send request
         self.assertOutputBuffer([0x05, 0x01, 0x00])
         self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 1, 1, 168, 192, 0x50, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
         // server replies with an error
         let promise = self.channel.eventLoop.makePromise(of: Void.self)
