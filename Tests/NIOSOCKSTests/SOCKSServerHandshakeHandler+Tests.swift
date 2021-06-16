@@ -74,19 +74,19 @@ class SOCKSServerHandlerTests: XCTestCase {
             if var buffer = try self.channel.readOutbound(as: ByteBuffer.self) {
                 XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
             } else if bytes.count > 0 {
-                XCTFail("Expected bytes but found none")
+                XCTFail("Expected bytes but found none", line: line)
             }
         } catch {
-            XCTFail("\(error)")
+            XCTFail("\(error)", line: line)
         }
     }
     
     func writeOutbound(_ message: ServerMessage, line: UInt = #line) {
-        XCTAssertNoThrow(try self.channel.writeOutbound(message))
+        XCTAssertNoThrow(try self.channel.writeOutbound(message), line: line)
     }
     
     func writeInbound(_ bytes: [UInt8], line: UInt = #line) {
-        XCTAssertNoThrow(try self.channel.writeInbound(ByteBuffer(bytes: bytes)))
+        XCTAssertNoThrow(try self.channel.writeInbound(ByteBuffer(bytes: bytes)), line: line)
     }
     
     func assertInbound(_ bytes: [UInt8], line: UInt = #line) {
@@ -106,17 +106,17 @@ class SOCKSServerHandlerTests: XCTestCase {
             if let actual = try self.channel.readInbound(as: ClientMessage.self) {
                 XCTAssertEqual(message, actual, line: line)
             } else {
-                XCTFail("No message")
+                XCTFail("No message", line: line)
             }
         } catch {
-            XCTFail("\(error)")
+            XCTFail("\(error)", line: line)
         }
     }
     
     func testTypicalWorkflow() {
         let expectedGreeting = ClientGreeting(methods: [.init(value: 0xAA)])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
-        let expectedData = ByteBuffer(string: "1234")
+        let expectedData = ByteBuffer(bytes: [0x01, 0x02, 0x03, 0x04])
         let testHandler = PromiseTestHandler(
             expectedGreeting: expectedGreeting,
             expectedRequest: expectedRequest,
@@ -127,7 +127,6 @@ class SOCKSServerHandlerTests: XCTestCase {
         // wait for the greeting
         XCTAssertFalse(testHandler.hadGreeting)
         self.writeInbound([0x05, 0x01, 0xAA])
-        self.assertInbound(.greeting(.init(methods: [.init(value: 0xAA)])))
         XCTAssertTrue(testHandler.hadGreeting)
         
         // write the auth selection
@@ -135,8 +134,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0xAA])
         
         XCTAssertFalse(testHandler.hadData)
-        self.writeInbound([0x01])
-        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x01])))
+        self.writeInbound([0x01, 0x02, 0x03, 0x04])
         XCTAssertTrue(testHandler.hadData)
         
         // finish authentication - nothing should be written
@@ -150,10 +148,6 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertTrue(testHandler.hadRequest)
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
-        
-        // now send some data
-        self.writeOutbound(.authenticationData(ByteBuffer(bytes: [0x01, 0x02, 0x03, 0x04])))
-        self.assertOutputBuffer([0x01, 0x02, 0x03, 0x04])
     }
     
     // tests dripfeeding to ensure we buffer data correctly
