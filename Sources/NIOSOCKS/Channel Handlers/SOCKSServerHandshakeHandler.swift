@@ -35,13 +35,13 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         
+        var message = self.unwrapInboundIn(data)
+        self.inboundBuffer.setOrWriteBuffer(&message)
+        
         if self.stateMachine.proxyEstablished {
-            context.fireChannelRead(data)
             return
         }
         
-        var message = self.unwrapInboundIn(data)
-        self.inboundBuffer.setOrWriteBuffer(&message)
         do {
             // safe to bang inbound buffer, it's always written above
             guard let message = try self.stateMachine.receiveBuffer(&self.inboundBuffer!) else {
@@ -78,8 +78,8 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
                 try self.handleWriteResponse(response, context: context, promise: promise)
             case .authenticationData(let data):
                 try self.handleWriteData(data, context: context, promise: promise)
-            case .authenticationComplete:
-                try self.handleAuthenticationComplete(context: context, promise: promise)
+            case .authenticationComplete(let data):
+                try self.handleAuthenticationComplete(data: data, context: context, promise: promise)
             }
         } catch {
             context.fireErrorCaught(error)
@@ -103,7 +103,7 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         context.write(self.wrapOutboundOut(buffer), promise: promise)
     }
     
-    private func handleWriteData(_ data :ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleWriteData(_ data: ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
         do {
             try self.stateMachine.sendData()
             context.write(self.wrapOutboundOut(data), promise: promise)
@@ -112,9 +112,9 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         }
     }
     
-    private func handleAuthenticationComplete(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleAuthenticationComplete(data: ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
         try stateMachine.authenticationComplete()
-        promise?.succeed(())
+        context.write(self.wrapOutboundOut(data), promise: promise)
     }
     
 }

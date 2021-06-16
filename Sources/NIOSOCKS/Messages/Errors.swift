@@ -19,12 +19,16 @@ public enum SOCKSError {
     
     /// The SOCKS client was in a different state to that required.
     public struct InvalidClientState: Error, Hashable {
-        
+        public init() {
+            
+        }
     }
     
     /// The SOCKS server was in a different state to that required.
     public struct InvalidServerState: Error, Hashable {
-        
+        public init() {
+            
+        }
     }
     
     /// The protocol version was something other than *5*. Note that

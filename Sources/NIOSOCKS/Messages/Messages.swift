@@ -40,9 +40,9 @@ public enum ServerMessage: Hashable {
     /// Used when authenticating to send server challenges to the client.
     case authenticationData(ByteBuffer)
     
-    /// This is a faux message to update the server's state machine. It should be sent
-    /// once the server is satisified that the client is fully-authenticated.
-    case authenticationComplete
+    /// Informs the client that they have been successfully authenticated and
+    /// can now send the request.
+    case authenticationComplete(ByteBuffer)
 }
 
 extension ByteBuffer {

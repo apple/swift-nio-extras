@@ -139,8 +139,8 @@ class SOCKSServerHandlerTests: XCTestCase {
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
-        self.writeOutbound(.authenticationComplete)
-        self.assertOutputBuffer([])
+        self.writeOutbound(.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF])))
+        self.assertOutputBuffer([0xFF, 0xFF])
         
         // write the request
         XCTAssertFalse(testHandler.hadRequest)
@@ -178,8 +178,8 @@ class SOCKSServerHandlerTests: XCTestCase {
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationComplete))
-        self.assertOutputBuffer([])
+        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF]))))
+        self.assertOutputBuffer([0xFF, 0xFF])
         
         // write the request
         XCTAssertFalse(testHandler.hadRequest)
@@ -202,7 +202,7 @@ class SOCKSServerHandlerTests: XCTestCase {
     // write something that will be be invalid for the state machine's
     // current state, causing an error to be thrown
     func testOutboundErrorsAreHandled() {
-        XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationComplete).wait()) { e in
+        XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF]))).wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidServerState)
         }
     }
