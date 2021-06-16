@@ -79,7 +79,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        if self.state.proxyEstablished {
+        if self.state.proxyEstablished && self.bufferedWrites.count == 0 {
             context.write(data, promise: promise)
         } else {
             self.bufferedWrites.append((data, promise))
