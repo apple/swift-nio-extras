@@ -75,10 +75,14 @@ class SOCKSServerHandlerTests: XCTestCase {
     }
     
     func assertOutputBuffer(_ bytes: [UInt8], line: UInt = #line) {
-        if var buffer = try! self.channel.readOutbound(as: ByteBuffer.self) {
-            XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
-        } else if bytes.count > 0 {
-            XCTFail("Expected bytes but found none")
+        do {
+            if var buffer = try self.channel.readOutbound(as: ByteBuffer.self) {
+                XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
+            } else if bytes.count > 0 {
+                XCTFail("Expected bytes but found none")
+            }
+        } catch {
+            XCTFail("\(error)")
         }
     }
     
@@ -91,10 +95,14 @@ class SOCKSServerHandlerTests: XCTestCase {
     }
     
     func assertInbound(_ bytes: [UInt8], line: UInt = #line) {
-        if var buffer = try! self.channel.readInbound(as: ByteBuffer.self) {
-            XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
-        } else {
-            XCTAssertTrue(bytes.count == 0)
+        do {
+            if var buffer = try self.channel.readInbound(as: ByteBuffer.self) {
+                XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
+            } else {
+                XCTAssertTrue(bytes.count == 0)
+            }
+        } catch {
+            XCTFail("\(error))
         }
     }
     
