@@ -14,7 +14,7 @@
 
 import NIO
 
-enum ClientState: Hashable {
+public enum ClientState: Hashable {
     case inactive
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)

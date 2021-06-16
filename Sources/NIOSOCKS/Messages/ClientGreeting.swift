@@ -14,10 +14,20 @@
 
 import NIO
 
+/// Clients begin the SOCKS handshake process
+/// by providing an array of suggested authentication
+/// methods.
 public struct ClientGreeting: Hashable {
+    
+    /// The protocol version.
     public let version: UInt8 = 5
+    
+    /// The client-supported authentication methods.
+    /// The SOCKS server will select one to use.
     public var methods: [AuthenticationMethod]
     
+    /// Creates a new `ClientGreeting`
+    /// - parameter methods: The client-supported authentication methods.
     public init(methods: [AuthenticationMethod]) {
         self.methods = methods
     }

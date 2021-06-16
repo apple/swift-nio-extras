@@ -14,18 +14,23 @@
 
 import NIO
 
+/// Wrapper for SOCKS protcol error.
 public enum SOCKSError {
     
+    /// The SOCKS client was in a different state to that required.
     public struct InvalidClientState: Error, Hashable {
-        var expected: ClientState
-        var actual: ClientState
+        public var expected: ClientState
+        public var actual: ClientState
     }
     
+    /// The SOCKS server was in a different state to that required.
     public struct InvalidServerState: Error, Hashable {
-        var expected: [ServerState]
-        var actual: ServerState
+        public var expected: [ServerState]
+        public var actual: ServerState
     }
     
+    /// The protocol version was something other than *5*. Note that
+    /// we currently only supported SOCKv5.
     public struct InvalidProtocolVersion: Error, Hashable {
         public var actual: UInt8
         public init(actual: UInt8) {
@@ -33,6 +38,8 @@ public enum SOCKSError {
         }
     }
 
+    /// Reserved bytes should always be the `NULL` byte *0x00*. Something
+    /// else was encountered.
     public struct InvalidReservedByte: Error, Hashable {
         public var actual: UInt8
         public init(actual: UInt8) {
@@ -40,6 +47,7 @@ public enum SOCKSError {
         }
     }
 
+    /// SOCKSv5 only supports IPv4 (*0x01*), IPv6 (*0x04*), or FQDN(*0x03*).
     public struct InvalidAddressType: Error, Hashable {
         public var actual: UInt8
         public init(actual: UInt8) {
@@ -47,6 +55,7 @@ public enum SOCKSError {
         }
     }
 
+    /// The server selected an authentication method not supported by the client.
     public struct InvalidAuthenticationSelection: Error, Hashable {
         public var selection: AuthenticationMethod
         public init(selection: AuthenticationMethod) {
@@ -54,12 +63,14 @@ public enum SOCKSError {
         }
     }
 
+    /// The client and server were unable to agree on an authentication method.
     public struct NoValidAuthenticationMethod: Error, Hashable {
         public init() {
             
         }
     }
 
+    ///  The SOCKS server failed to connect to the target host.
     public struct ConnectionFailed: Error, Hashable {
         public var reply: SOCKSServerReply
         public init(reply: SOCKSServerReply) {
@@ -67,19 +78,10 @@ public enum SOCKSError {
         }
     }
     
+    /// The client or server receieved data when it did not expect to.
     public struct UnexpectedRead: Error, Hashable {
         public init() {
             
-        }
-    }
-    
-    public struct UnexpectedAuthenticationMethod: Error, Hashable {
-        public var expected: [AuthenticationMethod]
-        public var actual: AuthenticationMethod
-        
-        public init(expected: [AuthenticationMethod], actual: AuthenticationMethod) {
-            self.expected = expected
-            self.actual = actual
         }
     }
     

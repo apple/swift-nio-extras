@@ -14,36 +14,11 @@
 
 import NIO
 
-public enum ClientMessage: Hashable {
-    case greeting(ClientGreeting)
-    case request(SOCKSRequest)
-    case data(ByteBuffer)
-}
-
-public enum ServerMessage: Hashable {
-    case selectedAuthenticationMethod(SelectedAuthenticationMethod)
-    case response(SOCKSResponse)
-    case data(ByteBuffer)
-    case authenticationComplete
-}
-
-extension ByteBuffer {
-    
-    @discardableResult mutating func writeServerMessage(_ message: ServerMessage) -> Int {
-        switch message {
-        case .selectedAuthenticationMethod(let method):
-            return self.writeMethodSelection(method)
-        case .response(let response):
-            return self.writeServerResponse(response)
-        case .data(var buffer):
-            return self.writeBuffer(&buffer)
-        case .authenticationComplete:
-            return 0
-        }
-    }
-    
-}
-
+/// Add this handshake handler to the front of your channel, closest to the network.
+/// The handler will receive bytes from the network and run them through a state machine
+/// and parser to enforce SOCKSv5 protocol correctness. Inbound bytes will by parsed into
+/// `ClientMessage` for downstream consumption. Send `ServerMessage` to this
+/// handler.
 public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler {
     
     public typealias InboundIn = ByteBuffer
