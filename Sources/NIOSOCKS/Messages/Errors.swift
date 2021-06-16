@@ -19,24 +19,12 @@ public enum SOCKSError {
     
     /// The SOCKS client was in a different state to that required.
     public struct InvalidClientState: Error, Hashable {
-        public var expected: ClientState
-        public var actual: ClientState
         
-        public init(expected: ClientState, actual: ClientState) {
-            self.expected = expected
-            self.actual = actual
-        }
     }
     
     /// The SOCKS server was in a different state to that required.
     public struct InvalidServerState: Error, Hashable {
-        public var expected: ServerState
-        public var actual: ServerState
         
-        public init(expected: ServerState, actual: ServerState) {
-            self.expected = expected
-            self.actual = actual
-        }
     }
     
     /// The protocol version was something other than *5*. Note that

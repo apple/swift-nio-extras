@@ -14,7 +14,7 @@
 
 import NIO
 
-public enum ServerState: Hashable {
+enum ServerState: Hashable {
     case inactive
     case waitingForClientGreeting
     case waitingToSendAuthenticationMethod
@@ -50,7 +50,7 @@ struct ServerStateMachine: Hashable {
     
     fileprivate func guardState(_ expected: ServerState) throws {
         guard expected == self.state else {
-            throw SOCKSError.InvalidServerState(expected: expected, actual: self.state)
+            throw SOCKSError.InvalidServerState()
         }
     }
 }

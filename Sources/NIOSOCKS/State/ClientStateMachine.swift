@@ -14,7 +14,7 @@
 
 import NIO
 
-public enum ClientState: Hashable {
+private enum ClientState: Hashable {
     case inactive
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
@@ -128,7 +128,7 @@ extension ClientStateMachine {
     
     mutating func connectionEstablished() throws -> ClientAction {
         guard self.state == .inactive else {
-            throw SOCKSError.InvalidClientState(expected: .inactive, actual: self.state)
+            throw SOCKSError.InvalidClientState()
         }
         self.state = .waitingForClientGreeting
         return .sendGreeting
@@ -136,14 +136,14 @@ extension ClientStateMachine {
 
     mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
         guard self.state == .waitingForClientGreeting else {
-            throw SOCKSError.InvalidClientState(expected: .waitingForClientGreeting, actual: self.state)
+            throw SOCKSError.InvalidClientState()
         }
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
     mutating func sendClientRequest(_ request: SOCKSRequest) throws {
         guard self.state == .waitingForClientRequest else {
-            throw SOCKSError.InvalidClientState(expected: .waitingForClientRequest, actual: self.state)
+            throw SOCKSError.InvalidClientState()
         }
         self.state = .waitingForServerResponse(request)
     }
