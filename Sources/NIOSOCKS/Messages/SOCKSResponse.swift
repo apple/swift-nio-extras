@@ -18,7 +18,7 @@ import NIO
 
 /// The SOCKS Server's response to the client's request
 /// indicating if the request succeeded or failed.
-struct SOCKSResponse: Hashable {
+public struct SOCKSResponse: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -54,6 +54,13 @@ extension ByteBuffer {
             }
             return .init(reply: reply, boundAddress: boundAddress)
         }
+    }
+    
+    @discardableResult mutating func writeServerResponse(_ response: SOCKSResponse) -> Int {
+        return self.writeInteger(response.version) +
+            self.writeInteger(response.reply.value) +
+            self.writeInteger(0, as: UInt8.self) +
+            self.writeAddressType(response.boundAddress)
     }
     
 }

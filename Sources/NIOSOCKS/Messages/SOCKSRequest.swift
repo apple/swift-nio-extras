@@ -18,7 +18,7 @@ import NIO
 
 /// Instructs the SOCKS proxy server of the target host,
 /// and how to connect.
-struct SOCKSRequest: Hashable {
+public struct SOCKSRequest: Hashable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -47,6 +47,20 @@ extension ByteBuffer {
         written += self.writeInteger(UInt8(0))
         written += self.writeAddressType(request.addressType)
         return written
+    }
+    
+    @discardableResult mutating func readClientRequest() throws -> SOCKSRequest? {
+        return try self.parseUnwindingIfNeeded { buffer -> SOCKSRequest? in
+            guard
+                try buffer.readAndValidateProtocolVersion() != nil,
+                let command = buffer.readInteger(as: UInt8.self),
+                try buffer.readAndValidateReserved() != nil,
+                let address = try buffer.readAddressType()
+            else {
+                return nil
+            }
+            return .init(command: .init(value: command), addressType: address)
+        }
     }
     
 }
