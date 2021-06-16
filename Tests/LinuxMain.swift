@@ -48,7 +48,9 @@ import XCTest
          testCase(PCAPRingBufferTest.allTests),
          testCase(QuiescingHelperTest.allTests),
          testCase(RequestResponseHandlerTest.allTests),
+         testCase(SOCKSServerHandlerTests.allTests),
          testCase(ServerResponseTests.allTests),
+         testCase(ServerStateMachineTests.allTests),
          testCase(SocksClientHandlerTests.allTests),
          testCase(WritePCAPHandlerTest.allTests),
     ])
