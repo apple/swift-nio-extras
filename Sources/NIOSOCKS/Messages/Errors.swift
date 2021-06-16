@@ -16,9 +16,14 @@ import NIO
 
 public enum SOCKSError {
     
-    public struct InvalidState: Error, Hashable {
+    public struct InvalidClientState: Error, Hashable {
         var expected: ClientState
         var actual: ClientState
+    }
+    
+    public struct InvalidServerState: Error, Hashable {
+        var expected: [ServerState]
+        var actual: ServerState
     }
     
     public struct InvalidProtocolVersion: Error, Hashable {

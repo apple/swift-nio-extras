@@ -128,7 +128,7 @@ extension ClientStateMachine {
     
     mutating func connectionEstablished() throws -> ClientAction {
         guard self.state == .inactive else {
-            throw SOCKSError.InvalidState(expected: .inactive, actual: self.state)
+            throw SOCKSError.InvalidClientState(expected: .inactive, actual: self.state)
         }
         self.state = .waitingForClientGreeting
         return .sendGreeting
@@ -136,14 +136,14 @@ extension ClientStateMachine {
 
     mutating func sendClientGreeting(_ greeting: ClientGreeting) throws {
         guard self.state == .waitingForClientGreeting else {
-            throw SOCKSError.InvalidState(expected: .waitingForClientGreeting, actual: self.state)
+            throw SOCKSError.InvalidClientState(expected: .waitingForClientGreeting, actual: self.state)
         }
         self.state = .waitingForAuthenticationMethod(greeting)
     }
     
     mutating func sendClientRequest(_ request: SOCKSRequest) throws {
         guard self.state == .waitingForClientRequest else {
-            throw SOCKSError.InvalidState(expected: .waitingForClientRequest, actual: self.state)
+            throw SOCKSError.InvalidClientState(expected: .waitingForClientRequest, actual: self.state)
         }
         self.state = .waitingForServerResponse(request)
     }

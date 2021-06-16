@@ -14,9 +14,13 @@
 
 import NIO
 
-struct ClientGreeting: Hashable {
-    let version: UInt8 = 5
-    var methods: [AuthenticationMethod]
+public struct ClientGreeting: Hashable {
+    public let version: UInt8 = 5
+    public var methods: [AuthenticationMethod]
+    
+    public init(methods: [AuthenticationMethod]) {
+        self.methods = methods
+    }
 }
 
 extension ByteBuffer {
