@@ -94,6 +94,29 @@ class SocksClientHandlerTests: XCTestCase {
         self.assertOutputBuffer([1, 2, 3, 4, 5])
     }
     
+    func testBufferingWithMark() {
+        self.connect()
+        
+        let writePromise1 = self.channel.eventLoop.makePromise(of: Void.self)
+        let writePromise2 = self.channel.eventLoop.makePromise(of: Void.self)
+        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: writePromise1)
+        self.channel.flush()
+        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: writePromise2)
+        
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.writeInbound([0x05, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        XCTAssertNoThrow(try writePromise1.futureResult.wait())
+        self.assertOutputBuffer([1, 2, 3])
+        
+        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        XCTAssertNoThrow(try writePromise2.futureResult.wait())
+        self.assertOutputBuffer([4, 5, 6])
+        self.assertOutputBuffer([7, 8, 9])
+    }
+    
     func testTypicalWorkflowDripfeed() {
         self.connect()
         

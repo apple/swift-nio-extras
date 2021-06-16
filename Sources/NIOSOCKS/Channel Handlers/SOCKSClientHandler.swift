@@ -28,9 +28,9 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     private let targetAddress: SOCKSAddress
     
     private var state: ClientStateMachine
-    private var buffered: ByteBuffer?
+    private var inboundBuffer: ByteBuffer?
     
-    private var bufferedWrites: CircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init()
+    private var bufferedWrites: MarkedCircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init(initialCapacity: 8)
     
     /// Creates a new `SOCKSClientHandler` that connects to a server
     /// and instructs the server to connect to `targetAddress`.
@@ -66,11 +66,11 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
         
         var inboundBuffer = self.unwrapInboundIn(data)
         
-        self.buffered.setOrWriteBuffer(&inboundBuffer)
+        self.inboundBuffer.setOrWriteBuffer(&inboundBuffer)
         do {
             // Safe to bang, `setOrWrite` above means there will
             // always be a value.
-            let action = try self.state.receiveBuffer(&self.buffered!)
+            let action = try self.state.receiveBuffer(&self.inboundBuffer!)
             try self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
@@ -79,22 +79,25 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        guard self.state.proxyEstablished else {
-            self.bufferedWrites.append((data, promise))
-            return
-        }
-        self.writeBufferedData(context: context)
-        context.write(data, promise: promise)
+        let buffer = self.unwrapOutboundIn(data)
+        self.bufferedWrites.append((data, promise))
     }
     
     private func writeBufferedData(context: ChannelHandlerContext) {
-        while self.bufferedWrites.count > 0 {
+        guard self.state.proxyEstablished else {
+            return
+        }
+        while self.bufferedWrites.hasMark {
             let (data, promise) = self.bufferedWrites.removeFirst()
             context.write(data, promise: promise)
         }
-        context.flush()
+        context.flush() // safe to flush otherwise we wouldn't have the mark
     }
     
+    public func flush(context: ChannelHandlerContext) {
+        self.bufferedWrites.mark()
+        self.writeBufferedData(context: context)
+    }
 }
 
 extension SOCKSClientHandler {
@@ -137,8 +140,8 @@ extension SOCKSClientHandler {
         // for some reason we have extra bytes
         // so let's send them down the pipe
         // (Safe to bang, self.buffered will always exist at this point)
-        if self.buffered!.readableBytes > 0 {
-            let data = self.wrapInboundOut(self.buffered!)
+        if self.inboundBuffer!.readableBytes > 0 {
+            let data = self.wrapInboundOut(self.inboundBuffer!)
             context.fireChannelRead(data)
         }
         
