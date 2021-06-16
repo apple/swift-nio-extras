@@ -19,7 +19,7 @@ import NIO
 /// and parser to enforce SOCKSv5 protocol correctness. Inbound bytes will by parsed into
 /// `ClientMessage` for downstream consumption. Send `ServerMessage` to this
 /// handler.
-public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler {
+public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableChannelHandler {
     
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ClientMessage
@@ -59,6 +59,13 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler {
         } catch {
             context.fireErrorCaught(error)
         }
+    }
+    
+    public func handlerRemoved(context: ChannelHandlerContext) {
+        guard let buffer = self.inboundBuffer else {
+            return
+        }
+        context.fireChannelRead(.init(buffer))
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {

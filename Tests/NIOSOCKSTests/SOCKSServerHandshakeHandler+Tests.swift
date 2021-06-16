@@ -91,8 +91,11 @@ class SOCKSServerHandlerTests: XCTestCase {
     }
     
     func assertInbound(_ bytes: [UInt8], line: UInt = #line) {
-        var buffer = try! self.channel.readInbound(as: ByteBuffer.self)
-        XCTAssertEqual(buffer!.readBytes(length: buffer!.readableBytes), bytes, line: line)
+        if var buffer = try! self.channel.readInbound(as: ByteBuffer.self) {
+            XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
+        } else {
+            XCTAssertTrue(bytes.count == 0)
+        }
     }
     
     func testTypicalWorkflow() {
@@ -197,5 +200,12 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationComplete).wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidServerState)
         }
+    }
+    
+    func testFlushOnHandlerRemoved() {
+        self.writeInbound([0x05, 0x01])
+        self.assertInbound([])
+        XCTAssertNoThrow(try self.channel.pipeline.removeHandler(self.handler).wait())
+        self.assertInbound([0x05, 0x01])
     }
 }
