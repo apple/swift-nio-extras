@@ -104,7 +104,12 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
     private func handleWriteData(_ data :ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
-        context.write(self.wrapOutboundOut(data), promise: promise)
+        do {
+            try self.stateMachine.sendData()
+            context.write(self.wrapOutboundOut(data), promise: promise)
+        } catch {
+            promise?.fail(error)
+        }
     }
     
     private func handleAuthenticationComplete(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {

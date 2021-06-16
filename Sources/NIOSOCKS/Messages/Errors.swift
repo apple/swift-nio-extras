@@ -30,10 +30,10 @@ public enum SOCKSError {
     
     /// The SOCKS server was in a different state to that required.
     public struct InvalidServerState: Error, Hashable {
-        public var expected: [ServerState]
+        public var expected: ServerState
         public var actual: ServerState
         
-        public init(expected: [ServerState], actual: ServerState) {
+        public init(expected: ServerState, actual: ServerState) {
             self.expected = expected
             self.actual = actual
         }

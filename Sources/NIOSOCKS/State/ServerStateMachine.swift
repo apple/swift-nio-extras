@@ -49,11 +49,7 @@ struct ServerStateMachine: Hashable {
     }
     
     fileprivate func guardState(_ expected: ServerState) throws {
-        try self.guardState([expected])
-    }
-    
-    fileprivate func guardState(_ expected: [ServerState]) throws {
-        guard expected.contains(self.state) else {
+        guard expected == self.state else {
             throw SOCKSError.InvalidServerState(expected: expected, actual: self.state)
         }
     }
@@ -132,7 +128,7 @@ extension ServerStateMachine {
     }
     
     mutating func sendData() throws {
-        try self.guardState([.authenticating, .active])
+        try self.guardState(.authenticating)
     }
     
     mutating func authenticationComplete() throws {
