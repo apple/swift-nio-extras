@@ -20,26 +20,21 @@ class PromiseTestHandler: ChannelInboundHandler {
     typealias InboundIn = ClientMessage
     
     let expectedGreeting: ClientGreeting
-    let greetingPromise: EventLoopPromise<Void>
     let expectedRequest: SOCKSRequest
-    let requestPromise: EventLoopPromise<Void>
     let expectedData: ByteBuffer
-    let dataPromise: EventLoopPromise<Void>
+    
+    var hadGreeting: Bool = false
+    var hadRequest: Bool = false
+    var hadData: Bool = false
     
     public init(
         expectedGreeting: ClientGreeting,
-        greetingPromise: EventLoopPromise<Void>,
         expectedRequest: SOCKSRequest,
-        requestPromise: EventLoopPromise<Void>,
-        expectedData: ByteBuffer,
-        dataPromise: EventLoopPromise<Void>
+        expectedData: ByteBuffer
     ) {
         self.expectedGreeting = expectedGreeting
-        self.greetingPromise = greetingPromise
         self.expectedRequest = expectedRequest
-        self.requestPromise = requestPromise
         self.expectedData = expectedData
-        self.dataPromise = dataPromise
     }
     
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -47,13 +42,13 @@ class PromiseTestHandler: ChannelInboundHandler {
         switch message {
         case .greeting(let greeting):
             XCTAssertEqual(greeting, expectedGreeting)
-            greetingPromise.succeed(())
+            hadGreeting = true
         case .request(let request):
             XCTAssertEqual(request, expectedRequest)
-            requestPromise.succeed(())
+            hadRequest = true
         case .authenticationData(let data):
             XCTAssertEqual(data, expectedData)
-            requestPromise.succeed(())
+            hadData = true
         }
     }
 }
@@ -119,30 +114,30 @@ class SOCKSServerHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflow() {
-        let greetingPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        let requestPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        let dataPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        
-        let expectedGreeting = ClientGreeting(methods: [.noneRequired])
+        let expectedGreeting = ClientGreeting(methods: [.init(value: 0xAA)])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
         let testHandler = PromiseTestHandler(
             expectedGreeting: expectedGreeting,
-            greetingPromise: greetingPromise,
             expectedRequest: expectedRequest,
-            requestPromise: requestPromise,
-            expectedData: expectedData,
-            dataPromise: dataPromise
+            expectedData: expectedData
         )
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(testHandler).wait())
         
         // wait for the greeting
-        self.writeInbound([0x05, 0x01, 0x00])
-        XCTAssertNoThrow(try greetingPromise.futureResult.wait())
+        XCTAssertFalse(testHandler.hadGreeting)
+        self.writeInbound([0x05, 0x01, 0xAA])
+        self.assertInbound(.greeting(.init(methods: [.init(value: 0xAA)])))
+        XCTAssertTrue(testHandler.hadGreeting)
         
         // write the auth selection
-        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
-        self.assertOutputBuffer([0x05, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .init(value: 0xAA))))
+        self.assertOutputBuffer([0x05, 0xAA])
+        
+        XCTAssertFalse(testHandler.hadData)
+        self.writeInbound([0x01])
+        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x01])))
+        XCTAssertTrue(testHandler.hadData)
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
@@ -150,8 +145,9 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         
         // write the request
+        XCTAssertFalse(testHandler.hadRequest)
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
-        XCTAssertNoThrow(try requestPromise.futureResult.wait())
+        XCTAssertTrue(testHandler.hadRequest)
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         
@@ -162,31 +158,25 @@ class SOCKSServerHandlerTests: XCTestCase {
     
     // tests dripfeeding to ensure we buffer data correctly
     func testTypicalWorkflowDripfeed() {
-        let greetingPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        let requestPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        let dataPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        
         let expectedGreeting = ClientGreeting(methods: [.noneRequired])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
         let testHandler = PromiseTestHandler(
             expectedGreeting: expectedGreeting,
-            greetingPromise: greetingPromise,
             expectedRequest: expectedRequest,
-            requestPromise: requestPromise,
-            expectedData: expectedData,
-            dataPromise: dataPromise
+            expectedData: expectedData
         )
         XCTAssertNoThrow(try self.channel.pipeline.addHandler(testHandler).wait())
         
         // wait for the greeting
+        XCTAssertFalse(testHandler.hadGreeting)
         self.writeInbound([0x05])
         self.assertOutputBuffer([])
         self.writeInbound([0x01])
         self.assertOutputBuffer([])
         self.writeInbound([0x00])
         self.assertOutputBuffer([])
-        XCTAssertNoThrow(try greetingPromise.futureResult.wait())
+        XCTAssertTrue(testHandler.hadGreeting)
         
         // write the auth selection
         XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .noneRequired))))
@@ -198,12 +188,13 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         
         // write the request
+        XCTAssertFalse(testHandler.hadRequest)
         self.writeInbound([0x05, 0x01])
         self.assertOutputBuffer([])
         self.writeInbound([0x00, 0x01])
         self.assertOutputBuffer([])
         self.writeInbound([127, 0, 0, 1, 0, 80])
-        XCTAssertNoThrow(try requestPromise.futureResult.wait())
+        XCTAssertTrue(testHandler.hadRequest)
     }
     
     // write nonsense bytes that should be caught inbound
@@ -243,29 +234,5 @@ class SOCKSServerHandlerTests: XCTestCase {
         // auth complete, try to write data without
         // removing the handler, it should fail
         XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"))))
-    }
-    
-    // tests going through the auth flow with the server sending
-    // challenges and the client responding
-    func testAuth() {
-        self.writeInbound([0x05, 0x01, 0xAA])
-        self.assertInbound(.greeting(.init(methods: [.init(value: 0xAA)])))
-
-        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .init(value: 0xAA))))
-        self.assertOutputBuffer([0x05, 0xAA]) // some random made-up method
-        
-        self.writeInbound([0x01])
-        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x01])))
-        
-        self.writeOutbound(.authenticationData(ByteBuffer(bytes: [0x02])))
-        self.assertOutputBuffer([0x02])
-        
-        self.writeInbound([0x03])
-        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x03])))
-        
-        XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
-        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
-        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
-        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
     }
 }
