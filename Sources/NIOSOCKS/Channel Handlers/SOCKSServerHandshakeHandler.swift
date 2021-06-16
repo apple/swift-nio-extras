@@ -76,10 +76,8 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
                 try self.handleWriteSelectedAuthenticationMethod(method, context: context, promise: promise)
             case .response(let response):
                 try self.handleWriteResponse(response, context: context, promise: promise)
-            case .authenticationData(let data):
-                try self.handleWriteData(data, context: context, promise: promise)
-            case .authenticationComplete(let data):
-                try self.handleAuthenticationComplete(data: data, context: context, promise: promise)
+            case .authenticationData(let data, let complete):
+                try self.handleWriteAuthenticationData(data, complete: complete, context: context, promise: promise)
             }
         } catch {
             context.fireErrorCaught(error)
@@ -103,18 +101,16 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         context.write(self.wrapOutboundOut(buffer), promise: promise)
     }
     
-    private func handleWriteData(_ data: ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleWriteAuthenticationData(_ data: ByteBuffer, complete: Bool, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
         do {
             try self.stateMachine.sendData()
+            if complete {
+                try self.stateMachine.authenticationComplete()
+            }
             context.write(self.wrapOutboundOut(data), promise: promise)
         } catch {
             promise?.fail(error)
         }
-    }
-    
-    private func handleAuthenticationComplete(data: ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
-        try stateMachine.authenticationComplete()
-        context.write(self.wrapOutboundOut(data), promise: promise)
     }
     
 }

@@ -38,11 +38,7 @@ public enum ServerMessage: Hashable {
     case response(SOCKSResponse)
     
     /// Used when authenticating to send server challenges to the client.
-    case authenticationData(ByteBuffer)
-    
-    /// Informs the client that they have been successfully authenticated and
-    /// can now send the request.
-    case authenticationComplete(ByteBuffer)
+    case authenticationData(ByteBuffer, complete: Bool)
 }
 
 extension ByteBuffer {
@@ -53,10 +49,8 @@ extension ByteBuffer {
             return self.writeMethodSelection(method)
         case .response(let response):
             return self.writeServerResponse(response)
-        case .authenticationData(var buffer):
+        case .authenticationData(var buffer, _):
             return self.writeBuffer(&buffer)
-        case .authenticationComplete:
-            return 0
         }
     }
     

@@ -139,7 +139,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
-        self.writeOutbound(.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF])))
+        self.writeOutbound(.authenticationData(ByteBuffer(bytes: [0xFF, 0xFF]), complete: true))
         self.assertOutputBuffer([0xFF, 0xFF])
         
         // write the request
@@ -178,7 +178,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF]))))
+        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0xFF, 0xFF]), complete: true)))
         self.assertOutputBuffer([0xFF, 0xFF])
         
         // write the request
@@ -202,7 +202,7 @@ class SOCKSServerHandlerTests: XCTestCase {
     // write something that will be be invalid for the state machine's
     // current state, causing an error to be thrown
     func testOutboundErrorsAreHandled() {
-        XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationComplete(ByteBuffer(bytes: [0xFF, 0xFF]))).wait()) { e in
+        XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationData(ByteBuffer(bytes: [0xFF, 0xFF]), complete: true)).wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidServerState)
         }
     }
@@ -227,6 +227,6 @@ class SOCKSServerHandlerTests: XCTestCase {
         
         // auth complete, try to write data without
         // removing the handler, it should fail
-        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"))))
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"), complete: false)))
     }
 }
