@@ -47,12 +47,6 @@ struct ServerStateMachine: Hashable {
     init() {
         self.state = .inactive
     }
-    
-    fileprivate func guardState(_ expected: ServerState) throws {
-        guard expected == self.state else {
-            throw SOCKSError.InvalidServerState()
-        }
-    }
 }
 
 // MARK: - Inbound
@@ -109,17 +103,51 @@ extension ServerStateMachine {
 extension ServerStateMachine {
     
     mutating func connectionEstablished() throws {
-        try self.guardState(.inactive)
+        switch self.state {
+        case .inactive:
+            ()
+        case .authenticating,
+             .waitingForClientGreeting,
+             .waitingToSendAuthenticationMethod,
+             .waitingForClientRequest,
+             .waitingToSendResponse,
+             .active,
+             .error:
+             throw SOCKSError.InvalidServerState()
+        }
         self.state = .waitingForClientGreeting
     }
     
     mutating func sendAuthenticationMethod(_ method: SelectedAuthenticationMethod) throws {
-        try self.guardState(.waitingToSendAuthenticationMethod)
+        switch self.state {
+        case .waitingToSendAuthenticationMethod:
+            ()
+        case .inactive,
+             .waitingForClientGreeting,
+             .authenticating,
+             .waitingForClientRequest,
+             .waitingToSendResponse,
+             .active,
+             .error:
+             throw SOCKSError.InvalidServerState()
+        }
         self.state = .authenticating
     }
     
     mutating func sendServerResponse(_ response: SOCKSResponse) throws {
-        try self.guardState(.waitingToSendResponse)
+        switch self.state {
+        case .waitingToSendResponse:
+            ()
+        case .inactive,
+             .waitingForClientGreeting,
+             .waitingToSendAuthenticationMethod,
+             .waitingForClientRequest,
+             .authenticating,
+             .active,
+             .error:
+             throw SOCKSError.InvalidServerState()
+        }
+        
         if response.reply == .succeeded {
             self.state = .active
         } else {
@@ -128,11 +156,34 @@ extension ServerStateMachine {
     }
     
     mutating func sendData() throws {
-        try self.guardState(.authenticating)
+        switch self.state {
+        case .authenticating:
+            ()
+        case .inactive,
+             .waitingForClientGreeting,
+             .waitingToSendAuthenticationMethod,
+             .waitingForClientRequest,
+             .waitingToSendResponse,
+             .active,
+             .error:
+             throw SOCKSError.InvalidServerState()
+        }
     }
     
     mutating func authenticationComplete() throws {
-        try self.guardState(.authenticating)
+        switch self.state {
+        case .authenticating:
+            ()
+        case .inactive,
+             .waitingForClientGreeting,
+             .waitingToSendAuthenticationMethod,
+             .waitingForClientRequest,
+             .waitingToSendResponse,
+             .active,
+             .error:
+             throw SOCKSError.InvalidServerState()
+        }
+        
         self.state = .waitingForClientRequest
     }
 }
