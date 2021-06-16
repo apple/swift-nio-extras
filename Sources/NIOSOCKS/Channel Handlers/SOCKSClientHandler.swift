@@ -92,6 +92,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             let (data, promise) = self.bufferedWrites.removeFirst()
             context.write(data, promise: promise)
         }
+        context.flush()
     }
     
 }
