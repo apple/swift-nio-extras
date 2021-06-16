@@ -97,7 +97,7 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler {
     }
     
     func handleWriteData(_ data :ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
-        
+        context.write(self.wrapOutboundOut(data), promise: promise)
     }
     
     func handleAuthenticationComplete(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {

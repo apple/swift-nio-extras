@@ -82,8 +82,12 @@ class SOCKSServerHandlerTests: XCTestCase {
         }
     }
     
+    func writeOutbound(_ message: ServerMessage, line: UInt = #line) {
+        XCTAssertNoThrow(try self.channel.writeOutbound(message))
+    }
+    
     func writeInbound(_ bytes: [UInt8], line: UInt = #line) {
-        try! self.channel.writeInbound(ByteBuffer(bytes: bytes))
+        XCTAssertNoThrow(try self.channel.writeInbound(ByteBuffer(bytes: bytes)))
     }
     
     func assertInbound(_ bytes: [UInt8], line: UInt = #line) {
@@ -114,17 +118,23 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertNoThrow(try greetingPromise.futureResult.wait())
         
         // write the auth selection
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .noneRequired))))
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
         self.assertOutputBuffer([0x05, 0x00])
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationComplete))
+        self.writeOutbound(.authenticationComplete)
         self.assertOutputBuffer([])
         
         // write the request
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         XCTAssertNoThrow(try requestPromise.futureResult.wait())
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        
+        // now send some data
+        self.writeOutbound(.data(ByteBuffer(bytes: [0x01, 0x02, 0x03, 0x04])))
+        self.assertOutputBuffer([0x01, 0x02, 0x03, 0x04])
     }
     
     // tests dripfeeding to ensure we buffer data correctly
