@@ -76,7 +76,7 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
                 try self.handleWriteSelectedAuthenticationMethod(method, context: context, promise: promise)
             case .response(let response):
                 try self.handleWriteResponse(response, context: context, promise: promise)
-            case .data(let data):
+            case .authenticationData(let data):
                 try self.handleWriteData(data, context: context, promise: promise)
             case .authenticationComplete:
                 try self.handleAuthenticationComplete(context: context, promise: promise)

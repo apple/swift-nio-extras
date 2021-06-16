@@ -104,7 +104,7 @@ extension ServerStateMachine {
         guard let buffer = buffer.readSlice(length: buffer.readableBytes) else {
             return nil
         }
-        return .data(buffer)
+        return .authenticationData(buffer)
     }
     
 }

@@ -23,11 +23,8 @@ public enum ClientMessage: Hashable {
     /// Instructs the server of the target host, and the type of connection.
     case request(SOCKSRequest)
     
-    /// Data that is sent once the handshake is complete. Handling this case
-    /// should be rare, as you should remove the server handler after the handshake
-    /// process is complete. It can also be used when authenticating in response
-    /// to server challenges.
-    case data(ByteBuffer)
+    /// Used to respond to server authentication challenges
+    case authenticationData(ByteBuffer)
 }
 
 /// Sent by the server and received by the client.
@@ -40,8 +37,8 @@ public enum ServerMessage: Hashable {
     /// host succeeded or failed.
     case response(SOCKSResponse)
     
-    /// Typically used when authenticating to send server challenges to the client.
-    case data(ByteBuffer)
+    /// Used when authenticating to send server challenges to the client.
+    case authenticationData(ByteBuffer)
     
     /// This is a faux message to update the server's state machine. It should be sent
     /// once the server is satisified that the client is fully-authenticated.
@@ -56,7 +53,7 @@ extension ByteBuffer {
             return self.writeMethodSelection(method)
         case .response(let response):
             return self.writeServerResponse(response)
-        case .data(var buffer):
+        case .authenticationData(var buffer):
             return self.writeBuffer(&buffer)
         case .authenticationComplete:
             return 0

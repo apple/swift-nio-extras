@@ -58,9 +58,9 @@ extension ByteBuffer {
     
     @discardableResult mutating func writeServerResponse(_ response: SOCKSResponse) -> Int {
         return self.writeInteger(response.version) +
-        self.writeInteger(response.reply.value) +
-        self.writeInteger(0, as: UInt8.self) +
-        self.writeAddressType(response.boundAddress)
+            self.writeInteger(response.reply.value) +
+            self.writeInteger(0, as: UInt8.self) +
+            self.writeAddressType(response.boundAddress)
     }
     
 }

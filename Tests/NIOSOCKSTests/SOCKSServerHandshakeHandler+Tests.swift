@@ -51,7 +51,7 @@ class PromiseTestHandler: ChannelInboundHandler {
         case .request(let request):
             XCTAssertEqual(request, expectedRequest)
             requestPromise.succeed(())
-        case .data(let data):
+        case .authenticationData(let data):
             XCTAssertEqual(data, expectedData)
             requestPromise.succeed(())
         }
@@ -102,7 +102,7 @@ class SOCKSServerHandlerTests: XCTestCase {
                 XCTAssertTrue(bytes.count == 0)
             }
         } catch {
-            XCTFail("\(error))
+            XCTFail("\(error)")
         }
     }
     
@@ -144,7 +144,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         
         // now send some data
-        self.writeOutbound(.data(ByteBuffer(bytes: [0x01, 0x02, 0x03, 0x04])))
+        self.writeOutbound(.authenticationData(ByteBuffer(bytes: [0x01, 0x02, 0x03, 0x04])))
         self.assertOutputBuffer([0x01, 0x02, 0x03, 0x04])
     }
     
