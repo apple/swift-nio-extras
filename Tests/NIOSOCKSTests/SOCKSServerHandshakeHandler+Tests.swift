@@ -106,6 +106,18 @@ class SOCKSServerHandlerTests: XCTestCase {
         }
     }
     
+    func assertInbound(_ message: ClientMessage, line: UInt = #line) {
+        do {
+            if let actual = try self.channel.readInbound(as: ClientMessage.self) {
+                XCTAssertEqual(message, actual, line: line)
+            } else {
+                XCTFail("No message")
+            }
+        } catch {
+            XCTFail("\(error)")
+        }
+    }
+    
     func testTypicalWorkflow() {
         let greetingPromise = self.channel.eventLoop.makePromise(of: Void.self)
         let requestPromise = self.channel.eventLoop.makePromise(of: Void.self)
@@ -215,5 +227,45 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertInbound([])
         XCTAssertNoThrow(try self.channel.pipeline.removeHandler(self.handler).wait())
         self.assertInbound([0x05, 0x01])
+    }
+    
+    func testForceHandlerRemovalAfterAuth() {
+        
+        // go through auth
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        
+        // auth complete, try to write data without
+        // removing the handler, it should fail
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"))))
+    }
+    
+    // tests going through the auth flow with the server sending
+    // challenges and the client responding
+    func testAuth() {
+        self.writeInbound([0x05, 0x01, 0xAA])
+        self.assertInbound(.greeting(.init(methods: [.init(value: 0xAA)])))
+
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .init(value: 0xAA))))
+        self.assertOutputBuffer([0x05, 0xAA]) // some random made-up method
+        
+        self.writeInbound([0x01])
+        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x01])))
+        
+        self.writeOutbound(.authenticationData(ByteBuffer(bytes: [0x02])))
+        self.assertOutputBuffer([0x02])
+        
+        self.writeInbound([0x03])
+        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x03])))
+        
+        XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
     }
 }
