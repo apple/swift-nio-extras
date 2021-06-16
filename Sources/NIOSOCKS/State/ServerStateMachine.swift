@@ -48,11 +48,11 @@ struct ServerStateMachine: Hashable {
         self.state = .inactive
     }
     
-    func guardState(_ expected: ServerState) throws {
+    fileprivate func guardState(_ expected: ServerState) throws {
         try self.guardState([expected])
     }
     
-    func guardState(_ expected: [ServerState]) throws {
+    fileprivate func guardState(_ expected: [ServerState]) throws {
         guard expected.contains(self.state) else {
             throw SOCKSError.InvalidServerState(expected: expected, actual: self.state)
         }
@@ -80,7 +80,7 @@ extension ServerStateMachine {
         }
     }
     
-    mutating func handleClientGreeting(from buffer: inout ByteBuffer) throws -> ClientMessage? {
+    fileprivate  mutating func handleClientGreeting(from buffer: inout ByteBuffer) throws -> ClientMessage? {
         return try buffer.parseUnwindingIfNeeded { buffer -> ClientMessage? in
             guard let greeting = try buffer.readClientGreeting() else {
                 return nil
@@ -90,7 +90,7 @@ extension ServerStateMachine {
         }
     }
     
-    mutating func handleClientRequest(from buffer: inout ByteBuffer) throws -> ClientMessage? {
+    fileprivate mutating func handleClientRequest(from buffer: inout ByteBuffer) throws -> ClientMessage? {
         return try buffer.parseUnwindingIfNeeded { buffer -> ClientMessage? in
             guard let request = try buffer.readClientRequest() else {
                 return nil
@@ -100,7 +100,7 @@ extension ServerStateMachine {
         }
     }
     
-    mutating func handleAuthenticationData(from buffer: inout ByteBuffer) -> ClientMessage? {
+    fileprivate mutating func handleAuthenticationData(from buffer: inout ByteBuffer) -> ClientMessage? {
         guard let buffer = buffer.readSlice(length: buffer.readableBytes) else {
             return nil
         }

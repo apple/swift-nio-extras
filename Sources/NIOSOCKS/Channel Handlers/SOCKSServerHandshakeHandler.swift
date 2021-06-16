@@ -87,27 +87,27 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         }
     }
     
-    func handleWriteSelectedAuthenticationMethod(
+    private func handleWriteSelectedAuthenticationMethod(
         _ method: SelectedAuthenticationMethod, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+        try stateMachine.sendAuthenticationMethod(method)
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeMethodSelection(method)
-        try stateMachine.sendAuthenticationMethod(method)
         context.write(self.wrapOutboundOut(buffer), promise: promise)
     }
     
-    func handleWriteResponse(
+    private func handleWriteResponse(
         _ response: SOCKSResponse, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+        try stateMachine.sendServerResponse(response)
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeServerResponse(response)
-        try stateMachine.sendServerResponse(response)
         context.write(self.wrapOutboundOut(buffer), promise: promise)
     }
     
-    func handleWriteData(_ data :ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleWriteData(_ data :ByteBuffer, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
         context.write(self.wrapOutboundOut(data), promise: promise)
     }
     
-    func handleAuthenticationComplete(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleAuthenticationComplete(context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
         try stateMachine.authenticationComplete()
         promise?.succeed(())
     }
