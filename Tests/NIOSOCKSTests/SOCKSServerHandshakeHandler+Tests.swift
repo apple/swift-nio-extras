@@ -16,7 +16,7 @@ import NIO
 @testable import NIOSOCKS
 import XCTest
 
-class TestHandler: ChannelInboundHandler {
+class PromiseTestHandler: ChannelInboundHandler {
     typealias InboundIn = ClientMessage
     
     let expectedGreeting: ClientGreeting
@@ -99,7 +99,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         let expectedGreeting = ClientGreeting(methods: [.noneRequired])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
-        let testHandler = TestHandler(
+        let testHandler = PromiseTestHandler(
             expectedGreeting: expectedGreeting,
             greetingPromise: greetingPromise,
             expectedRequest: expectedRequest,
@@ -127,6 +127,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertNoThrow(try requestPromise.futureResult.wait())
     }
     
+    // tests dripfeeding to ensure we buffer data correctly
     func testTypicalWorkflowDripfeed() {
         let greetingPromise = self.channel.eventLoop.makePromise(of: Void.self)
         let requestPromise = self.channel.eventLoop.makePromise(of: Void.self)
@@ -135,7 +136,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         let expectedGreeting = ClientGreeting(methods: [.noneRequired])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
-        let testHandler = TestHandler(
+        let testHandler = PromiseTestHandler(
             expectedGreeting: expectedGreeting,
             greetingPromise: greetingPromise,
             expectedRequest: expectedRequest,
@@ -170,5 +171,21 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         self.writeInbound([127, 0, 0, 1, 0, 80])
         XCTAssertNoThrow(try requestPromise.futureResult.wait())
+    }
+    
+    // write nonsense bytes that should be caught inbound
+    func testInboundErrorsAreHandled() {
+        let buffer = ByteBuffer(bytes: [0xFF, 0xFF, 0xFF])
+        XCTAssertThrowsError(try self.channel.writeInbound(buffer)) { e in
+            XCTAssertTrue(e is SOCKSError.InvalidProtocolVersion)
+        }
+    }
+    
+    // write something that will be be invalid for the state machine's
+    // current state, causing an error to be thrown
+    func testOutboundErrorsAreHandled() {
+        XCTAssertThrowsError(try self.channel.writeAndFlush(ServerMessage.authenticationComplete).wait()) { e in
+            XCTAssertTrue(e is SOCKSError.InvalidServerState)
+        }
     }
 }
