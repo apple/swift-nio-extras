@@ -28,6 +28,8 @@ extension SOCKSServerHandlerTests {
       return [
                 ("testTypicalWorkflow", testTypicalWorkflow),
                 ("testTypicalWorkflowDripfeed", testTypicalWorkflowDripfeed),
+                ("testInboundErrorsAreHandled", testInboundErrorsAreHandled),
+                ("testOutboundErrorsAreHandled", testOutboundErrorsAreHandled),
            ]
    }
 }
