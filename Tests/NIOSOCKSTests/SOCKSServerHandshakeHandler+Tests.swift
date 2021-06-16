@@ -170,6 +170,5 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         self.writeInbound([127, 0, 0, 1, 0, 80])
         XCTAssertNoThrow(try requestPromise.futureResult.wait())
-        self.assertOutputBuffer(<#T##bytes: [UInt8]##[UInt8]#>)
     }
 }
