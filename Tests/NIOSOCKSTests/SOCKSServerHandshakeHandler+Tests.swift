@@ -238,8 +238,9 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
         self.assertOutputBuffer([0x05, 0x00])
         
-        // if we try and write the request then it should fail *if* auth hasn't
-        // successfully completed
+        // if we try and write the request then the data would be read
+        // as authentication data, and so the server wouldn't reply
+        // with a response
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
@@ -259,10 +260,29 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.writeOutbound(.authenticationData(ByteBuffer(), complete: true))
         self.assertOutputBuffer([])
         
-        // if we try and write the request then it should fail *if* auth hasn't
-        // successfully completed
+        // if we try and write the request then the data would be read
+        // as authentication data, and so the server wouldn't reply
+        // with a response
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+    }
+    
+    func testEagerClientRequestBeforeAuthenticationComplete() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x01])
+        self.assertInbound(.greeting(.init(methods: [.gssapi])))
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .gssapi)))
+        self.assertOutputBuffer([0x05, 0x01])
+        
+        // at this point authentication isn't complete
+        // so if the client sends a request then the
+        // server will read those as authentication bytes
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])))
+        
     }
 }
