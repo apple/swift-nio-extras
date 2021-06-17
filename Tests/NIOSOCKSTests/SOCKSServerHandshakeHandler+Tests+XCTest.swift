@@ -36,6 +36,7 @@ extension SOCKSServerHandlerTests {
                 ("testAutoAuthenticationCompleteWithManualCompletion", testAutoAuthenticationCompleteWithManualCompletion),
                 ("testEagerClientRequestBeforeAuthenticationComplete", testEagerClientRequestBeforeAuthenticationComplete),
                 ("testManualAuthenticationFailureExtraBytes", testManualAuthenticationFailureExtraBytes),
+                ("testManualAuthenticationFailureInvalidCompletion", testManualAuthenticationFailureInvalidCompletion),
            ]
    }
 }
