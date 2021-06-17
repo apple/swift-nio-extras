@@ -32,6 +32,8 @@ extension SOCKSServerHandlerTests {
                 ("testOutboundErrorsAreHandled", testOutboundErrorsAreHandled),
                 ("testFlushOnHandlerRemoved", testFlushOnHandlerRemoved),
                 ("testForceHandlerRemovalAfterAuth", testForceHandlerRemovalAfterAuth),
+                ("testAutoAuthentictionComplete", testAutoAuthentictionComplete),
+                ("testAutoAuthentictionCompleteWithManuallyCompletion", testAutoAuthentictionCompleteWithManuallyCompletion),
            ]
    }
 }
