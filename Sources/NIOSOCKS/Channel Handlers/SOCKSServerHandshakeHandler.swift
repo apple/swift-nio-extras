@@ -114,7 +114,7 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
             if !self.stateMachine.isAuthenticated {
                 try self.stateMachine.authenticationComplete()
             }
-            promise?.succeed(())
+            context.write(data, promise: promise)
             return
         }
         
