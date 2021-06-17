@@ -69,16 +69,20 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let message = self.unwrapOutboundIn(data)
+        let outboundBuffer: ByteBuffer
+        
         do {
-            let message = self.unwrapOutboundIn(data)
             switch message {
             case .selectedAuthenticationMethod(let method):
-                try self.handleWriteSelectedAuthenticationMethod(method, context: context, promise: promise)
+                outboundBuffer = try self.handleWriteSelectedAuthenticationMethod(method, context: context)
             case .response(let response):
-                try self.handleWriteResponse(response, context: context, promise: promise)
+                outboundBuffer = try self.handleWriteResponse(response, context: context)
             case .authenticationData(let data, let complete):
-                try self.handleWriteAuthenticationData(data, complete: complete, context: context, promise: promise)
+                outboundBuffer = try self.handleWriteAuthenticationData(data, complete: complete, context: context)
             }
+            context.write(self.wrapOutboundOut(outboundBuffer), promise: promise)
+            
         } catch {
             context.fireErrorCaught(error)
             promise?.fail(error)
@@ -86,24 +90,25 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
     private func handleWriteSelectedAuthenticationMethod(
-        _ method: SelectedAuthenticationMethod, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+        _ method: SelectedAuthenticationMethod, context: ChannelHandlerContext) throws -> ByteBuffer {
         try stateMachine.sendAuthenticationMethod(method)
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeMethodSelection(method)
-        context.write(self.wrapOutboundOut(buffer), promise: promise)
+        return buffer
     }
     
     private func handleWriteResponse(
-        _ response: SOCKSResponse, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+        _ response: SOCKSResponse, context: ChannelHandlerContext) throws -> ByteBuffer {
         try stateMachine.sendServerResponse(response)
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeServerResponse(response)
-        context.write(self.wrapOutboundOut(buffer), promise: promise)
+        return buffer
     }
     
-    private func handleWriteAuthenticationData(_ data: ByteBuffer, complete: Bool, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
+    private func handleWriteAuthenticationData(
+        _ data: ByteBuffer, complete: Bool, context: ChannelHandlerContext) throws -> ByteBuffer {
         try self.stateMachine.sendAuthenticationData(data, complete: complete)
-        context.write(self.wrapOutboundOut(data), promise: promise)
+        return data
     }
     
 }

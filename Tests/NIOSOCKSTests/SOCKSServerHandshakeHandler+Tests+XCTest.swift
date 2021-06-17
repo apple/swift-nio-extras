@@ -34,6 +34,7 @@ extension SOCKSServerHandlerTests {
                 ("testForceHandlerRemovalAfterAuth", testForceHandlerRemovalAfterAuth),
                 ("testAutoAuthentictionComplete", testAutoAuthentictionComplete),
                 ("testAutoAuthentictionCompleteWithManuallyCompletion", testAutoAuthentictionCompleteWithManuallyCompletion),
+                ("testEagerClientRequestBeforeAuthenticationComplete", testEagerClientRequestBeforeAuthenticationComplete),
            ]
    }
 }
