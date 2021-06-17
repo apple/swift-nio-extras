@@ -230,7 +230,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"), complete: false)))
     }
     
-    func testAutoAuthentictionComplete() {
+    func testAutoAuthenticationComplete() {
         
         // server selects none-required, this should mean we can continue without
         // having to manually inform the state machine
@@ -246,7 +246,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
     }
     
-    func testAutoAuthentictionCompleteWithManuallyCompletion() {
+    func testAutoAuthenticationCompleteWithManualCompletion() {
         
         // server selects none-required, this should mean we can continue without
         // having to manually inform the state machine. However, informing the state
@@ -283,6 +283,34 @@ class SOCKSServerHandlerTests: XCTestCase {
         // server will read those as authentication bytes
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])))
+    }
+    
+    func testManualAuthenticationFailureExtraBytes() {
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
         
+        // invalid authentication completion
+        // we've selection `noneRequired`, so no
+        // bytes should be written
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0x00]), complete: true)))
+    }
+    
+    func testManualAuthenticationFailureInvalidCompletion() {
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // invalid authentication completion
+        // authentication should have already completed
+        // as we selected `noneRequired`, so sending
+        // `complete = false` should be an error
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: []), complete: false)))
     }
 }

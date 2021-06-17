@@ -69,10 +69,9 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let message = self.unwrapOutboundIn(data)
-        let outboundBuffer: ByteBuffer
-        
         do {
+            let message = self.unwrapOutboundIn(data)
+            let outboundBuffer: ByteBuffer
             switch message {
             case .selectedAuthenticationMethod(let method):
                 outboundBuffer = try self.handleWriteSelectedAuthenticationMethod(method, context: context)
