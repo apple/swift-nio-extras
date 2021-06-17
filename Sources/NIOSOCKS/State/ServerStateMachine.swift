@@ -28,6 +28,7 @@ enum ServerState: Hashable {
 struct ServerStateMachine: Hashable {
     
     private var state: ServerState
+    private var authenticationMethod: AuthenticationMethod?
     
     var proxyEstablished: Bool {
         switch self.state {
@@ -118,7 +119,7 @@ extension ServerStateMachine {
         self.state = .waitingForClientGreeting
     }
     
-    mutating func sendAuthenticationMethod(_ method: SelectedAuthenticationMethod) throws {
+    mutating func sendAuthenticationMethod(_ selected: SelectedAuthenticationMethod) throws {
         switch self.state {
         case .waitingToSendAuthenticationMethod:
             ()
@@ -131,7 +132,13 @@ extension ServerStateMachine {
              .error:
              throw SOCKSError.InvalidServerState()
         }
-        self.state = .authenticating
+        
+        self.authenticationMethod = selected.method
+        if selected.method == .noneRequired {
+            self.state = .waitingForClientRequest
+        } else {
+            self.state = .authenticating
+        }
     }
     
     mutating func sendServerResponse(_ response: SOCKSResponse) throws {
@@ -155,35 +162,25 @@ extension ServerStateMachine {
         }
     }
     
-    mutating func sendData() throws {
+    mutating func sendAuthenticationData(_ data: ByteBuffer, complete: Bool) throws {
         switch self.state {
         case .authenticating:
-            ()
+            break
+        case .waitingForClientRequest:
+            guard self.authenticationMethod == .noneRequired, complete, data.readableBytes == 0 else {
+                throw SOCKSError.InvalidServerState()
+            }
         case .inactive,
              .waitingForClientGreeting,
              .waitingToSendAuthenticationMethod,
-             .waitingForClientRequest,
-             .waitingToSendResponse,
-             .active,
-             .error:
-             throw SOCKSError.InvalidServerState()
-        }
-    }
-    
-    mutating func authenticationComplete() throws {
-        switch self.state {
-        case .authenticating:
-            ()
-        case .inactive,
-             .waitingForClientGreeting,
-             .waitingToSendAuthenticationMethod,
-             .waitingForClientRequest,
              .waitingToSendResponse,
              .active,
              .error:
              throw SOCKSError.InvalidServerState()
         }
         
-        self.state = .waitingForClientRequest
+        if complete {
+            self.state = .waitingForClientRequest
+        }
     }
 }

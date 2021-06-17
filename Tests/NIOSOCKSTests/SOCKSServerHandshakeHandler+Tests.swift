@@ -152,7 +152,7 @@ class SOCKSServerHandlerTests: XCTestCase {
     
     // tests dripfeeding to ensure we buffer data correctly
     func testTypicalWorkflowDripfeed() {
-        let expectedGreeting = ClientGreeting(methods: [.noneRequired])
+        let expectedGreeting = ClientGreeting(methods: [.gssapi])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
         let testHandler = PromiseTestHandler(
@@ -168,16 +168,15 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         self.writeInbound([0x01])
         self.assertOutputBuffer([])
-        self.writeInbound([0x00])
+        self.writeInbound([0x01])
         self.assertOutputBuffer([])
         XCTAssertTrue(testHandler.hadGreeting)
         
         // write the auth selection
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .noneRequired))))
-        self.assertOutputBuffer([0x05, 0x00])
+        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .gssapi))))
+        self.assertOutputBuffer([0x05, 0x01])
         
-        // finish authentication - nothing should be written
-        // as this is informing the state machine only
+        // finish authentication with some bytes
         XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0xFF, 0xFF]), complete: true)))
         self.assertOutputBuffer([0xFF, 0xFF])
         
@@ -217,10 +216,11 @@ class SOCKSServerHandlerTests: XCTestCase {
     func testForceHandlerRemovalAfterAuth() {
         
         // go through auth
-        self.writeInbound([0x05, 0x01, 0x00])
-        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
-        self.assertOutputBuffer([0x05, 0x00])
-        XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
+        self.writeInbound([0x05, 0x01, 0x01])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .gssapi)))
+        self.assertOutputBuffer([0x05, 0x01])
+        self.writeOutbound(.authenticationData(ByteBuffer(), complete: true))
+        self.assertOutputBuffer([])
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
@@ -228,5 +228,89 @@ class SOCKSServerHandlerTests: XCTestCase {
         // auth complete, try to write data without
         // removing the handler, it should fail
         XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"), complete: false)))
+    }
+    
+    func testAutoAuthenticationComplete() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // if we try and write the request then the data would be read
+        // as authentication data, and so the server wouldn't reply
+        // with a response
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+    }
+    
+    func testAutoAuthenticationCompleteWithManualCompletion() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // complete authentication, but nothing should be written
+        // to the network
+        self.writeOutbound(.authenticationData(ByteBuffer(), complete: true))
+        self.assertOutputBuffer([])
+        
+        // if we try and write the request then the data would be read
+        // as authentication data, and so the server wouldn't reply
+        // with a response
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+    }
+    
+    func testEagerClientRequestBeforeAuthenticationComplete() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x01])
+        self.assertInbound(.greeting(.init(methods: [.gssapi])))
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .gssapi)))
+        self.assertOutputBuffer([0x05, 0x01])
+        
+        // at this point authentication isn't complete
+        // so if the client sends a request then the
+        // server will read those as authentication bytes
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.assertInbound(.authenticationData(ByteBuffer(bytes: [0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])))
+    }
+    
+    func testManualAuthenticationFailureExtraBytes() {
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // invalid authentication completion
+        // we've selected `noneRequired`, so no
+        // bytes should be written
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0x00]), complete: true)))
+    }
+    
+    func testManualAuthenticationFailureInvalidCompletion() {
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // invalid authentication completion
+        // authentication should have already completed
+        // as we selected `noneRequired`, so sending
+        // `complete = false` should be an error
+        XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: []), complete: false)))
     }
 }
