@@ -176,8 +176,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .gssapi))))
         self.assertOutputBuffer([0x05, 0x01])
         
-        // finish authentication - nothing should be written
-        // as this is informing the state machine only
+        // finish authentication with some bytes
         XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0xFF, 0xFF]), complete: true)))
         self.assertOutputBuffer([0xFF, 0xFF])
         
@@ -220,7 +219,8 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.writeInbound([0x05, 0x01, 0x01])
         self.writeOutbound(.selectedAuthenticationMethod(.init(method: .gssapi)))
         self.assertOutputBuffer([0x05, 0x01])
-        XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
+        self.writeOutbound(.authenticationData(ByteBuffer(), complete: true))
+        self.assertOutputBuffer([])
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])

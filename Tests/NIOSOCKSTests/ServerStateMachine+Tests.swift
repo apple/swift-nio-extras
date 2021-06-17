@@ -34,9 +34,6 @@ public class ServerStateMachineTests: XCTestCase {
         XCTAssertNoThrow(try stateMachine.sendAuthenticationMethod(.init(method: .noneRequired)))
         XCTAssertFalse(stateMachine.proxyEstablished)
         
-        // authentication is now finished, as we didn't send any
-        XCTAssertNoThrow(try stateMachine.authenticationComplete())
-        
         // send the client request
         var request = ByteBuffer(bytes: [0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         XCTAssertNoThrow(try stateMachine.receiveBuffer(&request))
@@ -61,7 +58,6 @@ public class ServerStateMachineTests: XCTestCase {
         XCTAssertNoThrow(try stateMachine.connectionEstablished())
         XCTAssertNoThrow(try stateMachine.receiveBuffer(&greeting))
         XCTAssertNoThrow(try stateMachine.sendAuthenticationMethod(.init(method: .noneRequired)))
-        XCTAssertNoThrow(try stateMachine.authenticationComplete())
         
         // write some invalid bytes from the client
         // the state machine should throw
