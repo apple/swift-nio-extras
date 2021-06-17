@@ -294,7 +294,7 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0x00])
         
         // invalid authentication completion
-        // we've selection `noneRequired`, so no
+        // we've selected `noneRequired`, so no
         // bytes should be written
         XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(bytes: [0x00]), complete: true)))
     }
