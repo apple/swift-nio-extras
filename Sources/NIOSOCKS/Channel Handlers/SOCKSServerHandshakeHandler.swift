@@ -91,6 +91,12 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeMethodSelection(method)
         context.write(self.wrapOutboundOut(buffer), promise: promise)
+        
+        // fast path to check if authentication can be marked as complete
+        // only applies when there is no authentication
+        if method.method == .noneRequired {
+            try self.handleWriteAuthenticationData(context.channel.allocator.buffer(capacity: 0), complete: true, context: context, promise: nil)
+        }
     }
     
     private func handleWriteResponse(
@@ -102,15 +108,21 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
     private func handleWriteAuthenticationData(_ data: ByteBuffer, complete: Bool, context: ChannelHandlerContext, promise: EventLoopPromise<Void>?) throws {
-        do {
-            try self.stateMachine.sendData()
-            if complete {
+        
+        // fast path to check if we can automatically mark authentication as complete
+        if data.readableBytes == 0 && complete {
+            if !self.stateMachine.isAuthenticated {
                 try self.stateMachine.authenticationComplete()
             }
-            context.write(self.wrapOutboundOut(data), promise: promise)
-        } catch {
-            promise?.fail(error)
+            promise?.succeed(())
+            return
         }
+        
+        try self.stateMachine.sendData()
+        if complete {
+            try self.stateMachine.authenticationComplete()
+        }
+        context.write(self.wrapOutboundOut(data), promise: promise)
     }
     
 }

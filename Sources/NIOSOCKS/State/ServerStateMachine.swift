@@ -44,6 +44,15 @@ struct ServerStateMachine: Hashable {
         }
     }
     
+    var isAuthenticated: Bool {
+        switch self.state {
+        case .inactive, .waitingForClientGreeting, .waitingToSendAuthenticationMethod, .authenticating, .error:
+            return false
+        case .waitingForClientRequest, .waitingToSendResponse, .active:
+            return true
+        }
+    }
+    
     init() {
         self.state = .inactive
     }

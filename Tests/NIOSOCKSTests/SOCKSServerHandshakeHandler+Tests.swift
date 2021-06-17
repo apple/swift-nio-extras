@@ -152,7 +152,7 @@ class SOCKSServerHandlerTests: XCTestCase {
     
     // tests dripfeeding to ensure we buffer data correctly
     func testTypicalWorkflowDripfeed() {
-        let expectedGreeting = ClientGreeting(methods: [.noneRequired])
+        let expectedGreeting = ClientGreeting(methods: [.gssapi])
         let expectedRequest = SOCKSRequest(command: .connect, addressType: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))
         let expectedData = ByteBuffer(string: "1234")
         let testHandler = PromiseTestHandler(
@@ -168,13 +168,13 @@ class SOCKSServerHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
         self.writeInbound([0x01])
         self.assertOutputBuffer([])
-        self.writeInbound([0x00])
+        self.writeInbound([0x01])
         self.assertOutputBuffer([])
         XCTAssertTrue(testHandler.hadGreeting)
         
         // write the auth selection
-        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .noneRequired))))
-        self.assertOutputBuffer([0x05, 0x00])
+        XCTAssertNoThrow(try self.channel.writeOutbound(ServerMessage.selectedAuthenticationMethod(.init(method: .gssapi))))
+        self.assertOutputBuffer([0x05, 0x01])
         
         // finish authentication - nothing should be written
         // as this is informing the state machine only
@@ -217,9 +217,9 @@ class SOCKSServerHandlerTests: XCTestCase {
     func testForceHandlerRemovalAfterAuth() {
         
         // go through auth
-        self.writeInbound([0x05, 0x01, 0x00])
-        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
-        self.assertOutputBuffer([0x05, 0x00])
+        self.writeInbound([0x05, 0x01, 0x01])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .gssapi)))
+        self.assertOutputBuffer([0x05, 0x01])
         XCTAssertNoThrow(try self.handler.stateMachine.authenticationComplete())
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
@@ -228,5 +228,41 @@ class SOCKSServerHandlerTests: XCTestCase {
         // auth complete, try to write data without
         // removing the handler, it should fail
         XCTAssertThrowsError(try self.channel.writeOutbound(ServerMessage.authenticationData(ByteBuffer(string: "hello, world!"), complete: false)))
+    }
+    
+    func testAutoAuthentictionComplete() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // if we try and write the request then it should fail *if* auth hasn't
+        // successfully completed
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+    }
+    
+    func testAutoAuthentictionCompleteWithManuallyCompletion() {
+        
+        // server selects none-required, this should mean we can continue without
+        // having to manually inform the state machine. However, informing the state
+        // machine manually shouldn't break anything.
+        self.writeInbound([0x05, 0x01, 0x00])
+        self.writeOutbound(.selectedAuthenticationMethod(.init(method: .noneRequired)))
+        self.assertOutputBuffer([0x05, 0x00])
+        
+        // complete authentication, but nothing should be written
+        // to the network
+        self.writeOutbound(.authenticationData(ByteBuffer(), complete: true))
+        self.assertOutputBuffer([])
+        
+        // if we try and write the request then it should fail *if* auth hasn't
+        // successfully completed
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
+        self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
     }
 }
