@@ -54,6 +54,10 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testTypicalWorkflow() {
+        
+        let clientHandler = MockSOCKSClientHandler()
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(clientHandler))
+        
         self.connect()
         
         // the client should start the handshake instantly
@@ -65,8 +69,10 @@ class SocksClientHandlerTests: XCTestCase {
         // client sends the request
         self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
-        // server replies yay or nay
+        // server replies yay
+        XCTAssertFalse(clientHandler.hadSOCKSEstablishedProxyUserEvent)
         self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        XCTAssertTrue(clientHandler.hadSOCKSEstablishedProxyUserEvent)
         
         // any inbound data should now go straight through
         self.writeInbound([1, 2, 3, 4, 5])
@@ -231,4 +237,22 @@ class SocksClientHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0x01, 0x00])
     }
 
+}
+
+class MockSOCKSClientHandler: ChannelInboundHandler {
+    typealias InboundIn = NIOAny
+    
+    var hadSOCKSEstablishedProxyUserEvent: Bool = false
+    
+    init() {}
+    
+    func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        switch event {
+        case is SOCKSProxyEstablishedEvent:
+            self.hadSOCKSEstablishedProxyUserEvent = true
+        default:
+            break
+        }
+        context.fireUserInboundEventTriggered(event)
+    }
 }

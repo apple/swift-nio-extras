@@ -27,6 +27,8 @@ class PromiseTestHandler: ChannelInboundHandler {
     var hadRequest: Bool = false
     var hadData: Bool = false
     
+    var hadSOCKSEstablishedProxyUserEvent: Bool = false
+    
     public init(
         expectedGreeting: ClientGreeting,
         expectedRequest: SOCKSRequest,
@@ -50,6 +52,16 @@ class PromiseTestHandler: ChannelInboundHandler {
             XCTAssertEqual(data, expectedData)
             hadData = true
         }
+    }
+    
+    func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+        switch event {
+        case is SOCKSProxyEstablishedEvent:
+            self.hadSOCKSEstablishedProxyUserEvent = true
+        default:
+            break
+        }
+        context.fireUserInboundEventTriggered(event)
     }
 }
 
@@ -146,7 +158,9 @@ class SOCKSServerHandlerTests: XCTestCase {
         XCTAssertFalse(testHandler.hadRequest)
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
         XCTAssertTrue(testHandler.hadRequest)
+        XCTAssertFalse(testHandler.hadSOCKSEstablishedProxyUserEvent)
         self.writeOutbound(.response(.init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "127.0.0.1", port: 80)))))
+        XCTAssertTrue(testHandler.hadSOCKSEstablishedProxyUserEvent)
         self.assertOutputBuffer([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80])
     }
     

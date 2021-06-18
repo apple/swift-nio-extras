@@ -74,7 +74,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             try self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
-            context.close(mode: .all, promise: nil)
+            context.close(promise: nil)
         }
     }
     
@@ -151,6 +151,7 @@ extension SOCKSClientHandler {
         // If we have any buffered writes then now
         // we can send them.
         self.writeBufferedData(context: context)
+        context.fireUserInboundEventTriggered(SOCKSProxyEstablishedEvent())
     }
     
     private func handleActionSendRequest(context: ChannelHandlerContext) throws {
@@ -165,4 +166,23 @@ extension SOCKSClientHandler {
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
+}
+
+extension SOCKSClientHandler: RemovableChannelHandler {
+    
+    public func removeHandler(context: ChannelHandlerContext, removalToken: ChannelHandlerContext.RemovalToken) {
+        guard self.state.proxyEstablished else {
+            preconditionFailure("The SOCKSClientHandler can only be removed once a connection has been established")
+        }
+        context.leavePipeline(removalToken: removalToken)
+    }
+    
+}
+
+/// A `Channel` user event that is sent when a SOCKS connection has been established
+///
+/// After this event has been received it is save to remove the `SOCKSClientHandler` from the channel pipeline.
+public struct SOCKSProxyEstablishedEvent {
+    public init() {
+    }
 }

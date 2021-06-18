@@ -99,6 +99,9 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     private func handleWriteResponse(
         _ response: SOCKSResponse, context: ChannelHandlerContext) throws -> ByteBuffer {
         try stateMachine.sendServerResponse(response)
+        if case .succeeded = response.reply {
+            context.fireUserInboundEventTriggered(SOCKSProxyEstablishedEvent())
+        }
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeServerResponse(response)
         return buffer
