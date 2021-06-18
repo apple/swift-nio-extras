@@ -16,9 +16,11 @@ import NIO
 
 /// Connects to a SOCKS server to establish a proxied connection
 /// to a host. This handler should be inserted at the beginning of a
-/// channel's pipeline. Note that SOCKS only supports fully-qualified
-/// domain names and IPv4 or IPv6 sockets, and not UNIX sockets.
-public final class SOCKSClientHandler: ChannelDuplexHandler {
+/// channel's pipeline. It will remove itself once the SOCKS proxy
+/// connection has been established. Note that SOCKS only supports
+/// fully-qualified domain names and IPv4 or IPv6 sockets, and
+/// not UNIX sockets.
+public final class SOCKSClientHandler: ChannelDuplexHandler, RemovableChannelHandler {
     
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
@@ -31,11 +33,20 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     private var inboundBuffer: ByteBuffer?
     
     private var bufferedWrites: MarkedCircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init(initialCapacity: 8)
+    private let connectionEstablishedPromise: EventLoopPromise<Void>?
     
     /// Creates a new `SOCKSClientHandler` that connects to a server
     /// and instructs the server to connect to `targetAddress`.
     /// - parameter targetAddress: The desired end point - note that only IPv4, IPv6, and FQDNs are supported.
-    public init(targetAddress: SOCKSAddress) {
+    public convenience init(targetAddress: SOCKSAddress) {
+        self.init(targetAddress: targetAddress, connectionEstablishedPromise: nil)
+    }
+    
+    /// Creates a new `SOCKSClientHandler` that connects to a server
+    /// and instructs the server to connect to `targetAddress`.
+    /// - parameter targetAddress: The desired end point - note that only IPv4, IPv6, and FQDNs are supported.
+    /// - parameter connectionEstablishedPromise: An optional promise that is succeeded once the SOCKS connection is established.
+    public init(targetAddress: SOCKSAddress, connectionEstablishedPromise: EventLoopPromise<Void>?) {
         
         switch targetAddress {
         case .address(.unixDomainSocket):
@@ -46,6 +57,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
         
         self.state = ClientStateMachine()
         self.targetAddress = targetAddress
+        self.connectionEstablishedPromise = connectionEstablishedPromise
     }
     
     public func channelActive(context: ChannelHandlerContext) {
@@ -73,8 +85,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             let action = try self.state.receiveBuffer(&self.inboundBuffer!)
             try self.handleAction(action, context: context)
         } catch {
-            context.fireErrorCaught(error)
-            context.close(mode: .all, promise: nil)
+            self.handleError(error, context: context)
         }
     }
     
@@ -95,6 +106,11 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             context.write(data, promise: promise)
         }
         context.flush() // safe to flush otherwise we wouldn't have the mark
+        
+        while !self.bufferedWrites.isEmpty {
+            let (data, promise) = self.bufferedWrites.removeFirst()
+            context.write(data, promise: promise)
+        }
     }
     
     public func flush(context: ChannelHandlerContext) {
@@ -112,8 +128,7 @@ extension SOCKSClientHandler {
         do {
             try self.handleAction(self.state.connectionEstablished(), context: context)
         } catch {
-            context.fireErrorCaught(error)
-            context.close(promise: nil)
+            self.handleError(error, context: context)
         }
     }
     
@@ -148,9 +163,11 @@ extension SOCKSClientHandler {
             context.fireChannelRead(data)
         }
         
-        // If we have any buffered writes then now
-        // we can send them.
+        // If we have any buffered writes then now we can send them.
         self.writeBufferedData(context: context)
+        
+        // Remove ourselfes from the channel pipeline and fulfill the establishPromise
+        context.channel.pipeline.removeHandler(self).cascade(to: self.connectionEstablishedPromise)
     }
     
     private func handleActionSendRequest(context: ChannelHandlerContext) throws {
@@ -163,6 +180,12 @@ extension SOCKSClientHandler {
         var buffer = context.channel.allocator.buffer(capacity: capacity)
         buffer.writeClientRequest(request)
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
+    }
+    
+    private func handleError(_ error: Error, context: ChannelHandlerContext) {
+        self.connectionEstablishedPromise?.fail(error)
+        context.fireErrorCaught(error)
+        context.close(promise: nil)
     }
     
 }

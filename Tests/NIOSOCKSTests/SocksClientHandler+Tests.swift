@@ -40,7 +40,7 @@ class SocksClientHandlerTests: XCTestCase {
         if var buffer = try! self.channel.readOutbound(as: ByteBuffer.self) {
             XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
         } else if bytes.count > 0 {
-            XCTFail("Expected bytes but found none")
+            XCTFail("Expected bytes but found none", line: line)
         }
     }
     
@@ -65,8 +65,13 @@ class SocksClientHandlerTests: XCTestCase {
         // client sends the request
         self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         
-        // server replies yay or nay
+        // server replies yay
         self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // once the connection is established, the handler removes itself
+        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+            XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
+        }
         
         // any inbound data should now go straight through
         self.writeInbound([1, 2, 3, 4, 5])
@@ -145,6 +150,13 @@ class SocksClientHandlerTests: XCTestCase {
     }
     
     func testInvalidAuthenticationMethod() {
+        // for this test we can't use the created channel and handler by setUp
+        self.channel = EmbeddedChannel()
+        let socksEstablishPromise = channel.eventLoop.makePromise(of: Void.self)
+        self.handler = SOCKSClientHandler(
+            targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)),
+            connectionEstablishedPromise: socksEstablishPromise)
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.handler))
         self.connect()
         
         class ErrorHandler: ChannelInboundHandler {
@@ -164,10 +176,17 @@ class SocksClientHandlerTests: XCTestCase {
         self.assertOutputBuffer([0x05, 0x01, 0x00])
         
         // server requests an auth method we don't support
-        let promise = self.channel.eventLoop.makePromise(of: Void.self)
-        try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
+        let errorHandlerPromise = self.channel.eventLoop.makePromise(of: Void.self)
+        try! self.channel.pipeline.addHandler(ErrorHandler(promise: errorHandlerPromise), position: .last).wait()
         self.writeInbound([0x05, 0x01])
-        XCTAssertThrowsError(try promise.futureResult.wait()) { e in
+        
+        // ensure that the error is fired into the channel handler pipeline
+        XCTAssertThrowsError(try errorHandlerPromise.futureResult.wait()) { e in
+            XCTAssertTrue(e is SOCKSError.InvalidAuthenticationSelection)
+        }
+        
+        // ensure that the establish proxy promise is failed
+        XCTAssertThrowsError(try socksEstablishPromise.futureResult.wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidAuthenticationSelection)
         }
     }
@@ -229,6 +248,45 @@ class SocksClientHandlerTests: XCTestCase {
         // add the handler, there should be outbound data immediately
         XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
         self.assertOutputBuffer([0x05, 0x01, 0x00])
+    }
+    
+    func testPromiseIsSucceededOnceConnectionIsEstablished() {
+        // for this test we can't use the created channel and handler by setUp
+        self.channel = EmbeddedChannel()
+        let promise = channel.eventLoop.makePromise(of: Void.self)
+        self.handler = SOCKSClientHandler(
+            targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)),
+            connectionEstablishedPromise: promise)
+        
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.handler))
+        self.connect()
+        
+        // the client should start the handshake instantly
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        
+        // server selects an authentication method
+        self.writeInbound([0x05, 0x00])
+        
+        // client sends the request
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // server replies yay
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // once the connection is established, the handler removes itself
+        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+            XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
+        }
+        
+        XCTAssertNoThrow(try promise.futureResult.wait())
+        
+        // any inbound data should now go straight through
+        self.writeInbound([1, 2, 3, 4, 5])
+        self.assertInbound([1, 2, 3, 4, 5])
+
+        // any outbound data should also go straight through
+        XCTAssertNoThrow(try self.channel.writeOutbound(ByteBuffer(bytes: [1, 2, 3, 4, 5])))
+        self.assertOutputBuffer([1, 2, 3, 4, 5])
     }
 
 }
