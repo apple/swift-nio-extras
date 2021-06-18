@@ -65,6 +65,11 @@ extension ClientRequestTests {
         XCTAssertEqual(ipv6.writeAddressType(.address(try! .init(ipAddress: "0001:0002:0003:0004:0005:0006:0007:0008", port: 80))), 19)
         XCTAssertEqual(ipv6.readBytes(length: 17)!, [4, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8])
         XCTAssertEqual(ipv6.readInteger(as: UInt16.self)!, 80)
+        
+        var domain = ByteBuffer()
+        XCTAssertEqual(domain.writeAddressType(.domain("127.0.0.1", port: 80)), 13)
+        XCTAssertEqual(domain.readBytes(length: 11)!, [3, 9, 49, 50, 55, 46, 48, 46, 48, 46, 49])
+        XCTAssertEqual(domain.readInteger(as: UInt16.self)!, 80)
     }
     
 }
