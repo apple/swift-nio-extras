@@ -202,7 +202,7 @@ extension ByteBuffer {
             return self.writeInteger(SOCKSAddress.domainIdentifierByte)
                 + self.writeInteger(UInt8(domain.utf8.count))
                 + self.writeString(domain)
-                + self.writeInteger(port)
+                + self.writeInteger(UInt16(port))
         }
     }
     
