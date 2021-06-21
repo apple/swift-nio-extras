@@ -166,7 +166,7 @@ extension SOCKSClientHandler {
         // If we have any buffered writes then now we can send them.
         self.writeBufferedData(context: context)
         
-        // Remove ourselfes from the channel pipeline and fulfill the establishPromise
+        // Remove ourselves from the channel pipeline and fulfill the establishPromise
         context.channel.pipeline.removeHandler(self).cascade(to: self.connectionEstablishedPromise)
     }
     
