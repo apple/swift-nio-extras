@@ -264,10 +264,11 @@ class SocksClientHandlerTests: XCTestCase {
             self.channel.pipeline.removeHandler(self.handler).cascade(to: removalPromise)
         }
         
-        try! self.channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait()
+        XCTAssertNoThrow(try self.channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait())
         
         self.connect()
         
+        // these writes should be buffered to be send out once the connection is established.
         self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
         self.channel.flush()
         self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
@@ -293,6 +294,7 @@ class SocksClientHandlerTests: XCTestCase {
     func testHandlerRemovalBeforeConnectionIsEstablished() {
         self.connect()
         
+        // these writes should be buffered to be send out once the connection is established.
         self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
         self.channel.flush()
         self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
