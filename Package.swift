@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.2
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the SwiftNIO open source project
@@ -16,22 +16,81 @@
 import PackageDescription
 
 var targets: [PackageDescription.Target] = [
-    .target(name: "NIOExtras", dependencies: ["NIO"]),
-    .target(name: "NIOHTTPCompression", dependencies: ["NIO", "NIOHTTP1", "CNIOExtrasZlib"]),
-    .target(name: "HTTPServerWithQuiescingDemo", dependencies: ["NIOExtras", "NIOHTTP1"]),
-    .target(name: "NIOWritePCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
-    .target(name: "NIOWritePartialPCAPDemo", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
-    .target(name: "NIOExtrasPerformanceTester", dependencies: ["NIO", "NIOExtras", "NIOHTTP1"]),
-    .target(name: "NIOSOCKS", dependencies: ["NIO"]),
-    .target(name: "NIOSOCKSClient", dependencies: ["NIO", "NIOSOCKS"]),
-    .target(name: "CNIOExtrasZlib",
-            dependencies: [],
-            linkerSettings: [
-                .linkedLibrary("z")
-            ]),
-    .testTarget(name: "NIOExtrasTests", dependencies: ["NIOExtras", "NIO", "NIOTestUtils", "NIOConcurrencyHelpers"]),
-    .testTarget(name: "NIOHTTPCompressionTests", dependencies: ["NIOHTTPCompression"]),
-    .testTarget(name: "NIOSOCKSTests", dependencies: ["NIO", "NIOSOCKS"])
+    .target(
+        name: "NIOExtras",
+        dependencies: [
+            .product(name: "NIO", package: "swift-nio")
+        ]),
+    .target(
+        name: "NIOHTTPCompression",
+        dependencies: [
+            "CNIOExtrasZlib",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "HTTPServerWithQuiescingDemo",
+        dependencies: [
+            "NIOExtras",
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOWritePCAPDemo",
+        dependencies: [
+            "NIOExtras",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOWritePartialPCAPDemo",
+        dependencies: [
+            "NIOExtras",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOExtrasPerformanceTester",
+        dependencies: [
+            "NIOExtras",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOSOCKS",
+        dependencies: [
+            .product(name: "NIO", package: "swift-nio")
+        ]),
+    .target(
+        name: "NIOSOCKSClient",
+        dependencies: [
+            .product(name: "NIO", package: "swift-nio"),
+            "NIOSOCKS"
+        ]),
+    .target(
+        name: "CNIOExtrasZlib",
+        dependencies: [],
+        linkerSettings: [
+            .linkedLibrary("z")
+        ]),
+    .testTarget(
+        name: "NIOExtrasTests",
+        dependencies: [
+            "NIOExtras",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "NIOTestUtils", package: "swift-nio"),
+            .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
+        ]),
+    .testTarget(
+        name: "NIOHTTPCompressionTests",
+        dependencies: [
+            "NIOHTTPCompression"
+        ]),
+    .testTarget(
+        name: "NIOSOCKSTests",
+        dependencies: [
+            "NIOSOCKS",
+            .product(name: "NIO", package: "swift-nio"),
+        ])
 ]
 
 let package = Package(
