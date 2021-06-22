@@ -236,7 +236,94 @@ class SocksClientHandlerTests: XCTestCase {
         XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
         self.assertOutputBuffer([0x05, 0x01, 0x00])
     }
-
+    
+    func testHandlerRemovalAfterEstablishEvent() {
+        class SOCKSEventHandler: ChannelInboundHandler {
+            typealias InboundIn = NIOAny
+            
+            var establishedPromise: EventLoopPromise<Void>
+            
+            init(establishedPromise: EventLoopPromise<Void>) {
+                self.establishedPromise = establishedPromise
+            }
+            
+            func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
+                switch event {
+                case is SOCKSProxyEstablishedEvent:
+                    self.establishedPromise.succeed(())
+                default:
+                    break
+                }
+                context.fireUserInboundEventTriggered(event)
+            }
+        }
+        
+        let establishPromise = self.channel.eventLoop.makePromise(of: Void.self)
+        let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
+        establishPromise.futureResult.whenSuccess { _ in
+            self.channel.pipeline.removeHandler(self.handler).cascade(to: removalPromise)
+        }
+        
+        try! self.channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait()
+        
+        self.connect()
+        
+        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
+        self.channel.flush()
+        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
+        
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.writeInbound([0x05, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        self.assertOutputBuffer([1, 2, 3])
+        
+        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        
+        self.assertOutputBuffer([4, 5, 6])
+        self.assertOutputBuffer([7, 8, 9])
+        
+        XCTAssertNoThrow(try removalPromise.futureResult.wait())
+        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+            XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
+        }
+    }
+    
+    func testHandlerRemovalBeforeConnectionIsEstablished() {
+        self.connect()
+        
+        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
+        self.channel.flush()
+        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
+        
+        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.writeInbound([0x05, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // we try to remove the handler before the connection is established.
+        let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
+        self.channel.pipeline.removeHandler(self.handler, promise: removalPromise)
+        
+        // establishes the connection
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        
+        // write six more bytes - those should be passed through right away
+        self.writeInbound([1, 2, 3, 4, 5, 6])
+        self.assertInbound([1, 2, 3, 4, 5, 6])
+        
+        self.assertOutputBuffer([1, 2, 3])
+        
+        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        
+        self.assertOutputBuffer([4, 5, 6])
+        self.assertOutputBuffer([7, 8, 9])
+        
+        XCTAssertNoThrow(try removalPromise.futureResult.wait())
+        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+            XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
+        }
+    }
 }
 
 class MockSOCKSClientHandler: ChannelInboundHandler {
