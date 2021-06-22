@@ -34,6 +34,8 @@ extension SocksClientHandlerTests {
                 ("testProxyConnectionFailed", testProxyConnectionFailed),
                 ("testDelayedConnection", testDelayedConnection),
                 ("testDelayedHandlerAdded", testDelayedHandlerAdded),
+                ("testHandlerRemovalAfterEstablishEvent", testHandlerRemovalAfterEstablishEvent),
+                ("testHandlerRemovalBeforeConnectionIsEstablished", testHandlerRemovalBeforeConnectionIsEstablished),
            ]
    }
 }
