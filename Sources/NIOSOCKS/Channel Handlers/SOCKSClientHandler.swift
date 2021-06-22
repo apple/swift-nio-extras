@@ -28,6 +28,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     private let targetAddress: SOCKSAddress
     
     private var state: ClientStateMachine
+    private var removalToken: ChannelHandlerContext.RemovalToken?
     private var inboundBuffer: ByteBuffer?
     
     private var bufferedWrites: MarkedCircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init(initialCapacity: 8)
@@ -74,7 +75,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             try self.handleAction(action, context: context)
         } catch {
             context.fireErrorCaught(error)
-            context.close(mode: .all, promise: nil)
+            context.close(promise: nil)
         }
     }
     
@@ -95,6 +96,11 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
             context.write(data, promise: promise)
         }
         context.flush() // safe to flush otherwise we wouldn't have the mark
+        
+        while !self.bufferedWrites.isEmpty {
+            let (data, promise) = self.bufferedWrites.removeFirst()
+            context.write(data, promise: promise)
+        }
     }
     
     public func flush(context: ChannelHandlerContext) {
@@ -140,17 +146,13 @@ extension SOCKSClientHandler {
     }
     
     private func handleProxyEstablished(context: ChannelHandlerContext) {
-        // for some reason we have extra bytes
-        // so let's send them down the pipe
-        // (Safe to bang, self.buffered will always exist at this point)
-        if self.inboundBuffer!.readableBytes > 0 {
-            let data = self.wrapInboundOut(self.inboundBuffer!)
-            context.fireChannelRead(data)
-        }
+        context.fireUserInboundEventTriggered(SOCKSProxyEstablishedEvent())
         
-        // If we have any buffered writes then now
-        // we can send them.
-        self.writeBufferedData(context: context)
+        self.emptyInboundAndOutboundBuffer(context: context)
+        
+        if let removalToken = self.removalToken {
+            context.leavePipeline(removalToken: removalToken)
+        }
     }
     
     private func handleActionSendRequest(context: ChannelHandlerContext) throws {
@@ -165,4 +167,42 @@ extension SOCKSClientHandler {
         context.writeAndFlush(self.wrapOutboundOut(buffer), promise: nil)
     }
     
+    private func emptyInboundAndOutboundBuffer(context: ChannelHandlerContext) {
+        if let inboundBuffer = self.inboundBuffer, inboundBuffer.readableBytes > 0 {
+            // after the SOCKS handshake message we already received further bytes.
+            // so let's send them down the pipe
+            self.inboundBuffer = nil
+            context.fireChannelRead(self.wrapInboundOut(inboundBuffer))
+        }
+        
+        // If we have any buffered writes, we must send them before we are removed from the pipeline
+        self.writeBufferedData(context: context)
+    }
+}
+
+extension SOCKSClientHandler: RemovableChannelHandler {
+    
+    public func removeHandler(context: ChannelHandlerContext, removalToken: ChannelHandlerContext.RemovalToken) {
+        guard self.state.proxyEstablished else {
+            self.removalToken = removalToken
+            return
+        }
+        
+        // We must clear the buffers here before we are removed, since the
+        // handler removal may be triggered as a side effect of the
+        // `SOCKSProxyEstablishedEvent`. In this case we may end up here,
+        // before the buffer empty method in `handleProxyEstablished` is
+        // invoked.
+        self.emptyInboundAndOutboundBuffer(context: context)
+        context.leavePipeline(removalToken: removalToken)
+    }
+    
+}
+
+/// A `Channel` user event that is sent when a SOCKS connection has been established
+///
+/// After this event has been received it is save to remove the `SOCKSClientHandler` from the channel pipeline.
+public struct SOCKSProxyEstablishedEvent {
+    public init() {
+    }
 }
