@@ -16,16 +16,16 @@ import NIO
 
 /// ChannelOutboundHandler that prints all outbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See DebugInboundEventsHandler for inbound events.
-public class DebugOutboundEventsHandler: ChannelOutboundHandler {
+public class DebugOutboundEventsHandler<T>: ChannelOutboundHandler {
     
-    public typealias OutboundIn = Any
-    public typealias OutboundOut = Any
+    public typealias OutboundIn = T
+    public typealias OutboundOut = T
     
     public enum Event {
         case register
         case bind(address: SocketAddress)
         case connect(address: SocketAddress)
-        case write(data: NIOAny)
+        case write(data: T)
         case flush
         case read
         case close(mode: CloseMode)
@@ -54,7 +54,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
     }
     
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        logger(.write(data: data), context)
+        logger(.write(data: self.unwrapOutboundIn(data)), context)
         context.write(data, promise: promise)
     }
     
