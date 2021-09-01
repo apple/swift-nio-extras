@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev build-esse
 # switch off gem docs building
 RUN echo "gem: --no-document" > ~/.gemrc
 # jazzy no longer works on xenial as ruby is too old.
-RUN if [ "${ubuntu_version}" != "xenial" ] ; then  gem install jazzy; fi
+RUN if [ "${ubuntu_version}" != "xenial" ] ; then gem install jazzy -v 0.13.7 ; fi
 
 # tools
 RUN mkdir -p $HOME/.tools
