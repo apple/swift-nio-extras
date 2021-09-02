@@ -100,6 +100,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
             message = "Triggering user outbound event: { \(event) }"
         }
         print(message + " in \(context.name)")
+        fflush(stdout)
     }
     
 }

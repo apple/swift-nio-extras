@@ -107,6 +107,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
             message = "Channel caught error: \(error)"
         }
         print(message + " in \(context.name)")
+        fflush(stdout)
     }
     
 }
