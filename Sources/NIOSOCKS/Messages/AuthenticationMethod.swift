@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-
 /// The SOCKS authentication method to use, defined in RFC 1928.
 public struct AuthenticationMethod: Hashable {
     

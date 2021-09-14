@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-
 /// Wrapper for SOCKS protcol error.
 public enum SOCKSError {
     

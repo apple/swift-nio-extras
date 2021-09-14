@@ -12,7 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+import Darwin
+#else
+import Glibc
+#endif
+
+import NIOCore
 
 // MARK: - ClientRequest
 
