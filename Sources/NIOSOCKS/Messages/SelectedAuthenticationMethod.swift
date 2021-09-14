@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 
 /// Used by the SOCKS server to inform the client which
 /// authentication method it would like to use out of those

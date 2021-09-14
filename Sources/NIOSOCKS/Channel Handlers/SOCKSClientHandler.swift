@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import NIOCore
 
 /// Connects to a SOCKS server to establish a proxied connection
 /// to a host. This handler should be inserted at the beginning of a

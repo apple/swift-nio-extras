@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2019 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2019-2021 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,7 @@
 
 import CNIOExtrasZlib
 import NIOHTTP1
-import NIO
+import NIOCore
 
 public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias InboundIn = HTTPServerRequestPart
