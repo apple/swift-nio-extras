@@ -197,7 +197,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
     ///     - settings: The settings for the `NIOWritePCAPHandler`.
     ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
-    ///                 written to disk or elsewhere. See `NIOSynchronizedFileSink` for a convenient way to write to
+    ///                 written to disk or elsewhere. See `SynchronizedFileSink` for a convenient way to write to
     ///                 disk.
     public init(mode: Mode,
                 fakeLocalAddress: SocketAddress? = nil,
