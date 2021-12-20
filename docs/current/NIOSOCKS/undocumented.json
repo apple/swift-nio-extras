@@ -1,0 +1,152 @@
+{
+  "warnings": [
+    {
+      "file": "/code/Sources/NIOSOCKS/Channel Handlers/SOCKSClientHandler.swift",
+      "line": 206,
+      "symbol": "SOCKSProxyEstablishedEvent.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Channel Handlers/SOCKSServerHandshakeHandler.swift",
+      "line": 32,
+      "symbol": "SOCKSServerHandshakeHandler.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/AuthenticationMethod.swift",
+      "line": 33,
+      "symbol": "AuthenticationMethod.init(value:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 20,
+      "symbol": "SOCKSError.InvalidClientState.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 27,
+      "symbol": "SOCKSError.InvalidServerState.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 35,
+      "symbol": "SOCKSError.InvalidProtocolVersion.actual",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 36,
+      "symbol": "SOCKSError.InvalidProtocolVersion.init(actual:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 44,
+      "symbol": "SOCKSError.InvalidReservedByte.actual",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 45,
+      "symbol": "SOCKSError.InvalidReservedByte.init(actual:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 52,
+      "symbol": "SOCKSError.InvalidAddressType.actual",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 53,
+      "symbol": "SOCKSError.InvalidAddressType.init(actual:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 60,
+      "symbol": "SOCKSError.InvalidAuthenticationSelection.selection",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 61,
+      "symbol": "SOCKSError.InvalidAuthenticationSelection.init(selection:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 68,
+      "symbol": "SOCKSError.NoValidAuthenticationMethod.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 75,
+      "symbol": "SOCKSError.ConnectionFailed.reply",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 76,
+      "symbol": "SOCKSError.ConnectionFailed.init(reply:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/Errors.swift",
+      "line": 83,
+      "symbol": "SOCKSError.UnexpectedRead.init()",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/SOCKSRequest.swift",
+      "line": 91,
+      "symbol": "SOCKSCommand.value",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/SOCKSRequest.swift",
+      "line": 93,
+      "symbol": "SOCKSCommand.init(value:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/SOCKSRequest.swift",
+      "line": 103,
+      "symbol": "SOCKSAddress.address(_:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/NIOSOCKS/Messages/SOCKSRequest.swift",
+      "line": 105,
+      "symbol": "SOCKSAddress.domain(_:port:)",
+      "symbol_kind": "source.lang.swift.decl.enumelement",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/code"
+}

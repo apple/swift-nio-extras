@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>NIOHTTPRequestCompressor Class Reference</title>
+    <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
+    <meta charset="utf-8">
+    <script src="../js/jquery.min.js" defer></script>
+    <script src="../js/jazzy.js" defer></script>
+    
+    <script src="../js/lunr.min.js" defer></script>
+    <script src="../js/typeahead.jquery.js" defer></script>
+    <script src="../js/jazzy.search.js" defer></script>
+  </head>
+  <body>
+
+    <a name="//apple_ref/swift/Class/NIOHTTPRequestCompressor" class="dashAnchor"></a>
+
+    <a title="NIOHTTPRequestCompressor Class Reference"></a>
+
+    <header class="header">
+      <p class="header-col header-col--primary">
+        <a class="header-link" href="../index.html">
+          NIOHTTPCompression 1.10.2 Docs
+        </a>
+         (63% documented)
+      </p>
+    
+      <div class="header-col--secondary">
+        <form role="search" action="../search.json">
+          <input type="text" placeholder="Search documentation" data-typeahead>
+        </form>
+      </div>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="https://github.com/apple/swift-nio-extras">
+            <img class="header-icon" src="../img/gh.png" alt="GitHub"/>
+            View on GitHub
+          </a>
+        </p>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="dash-feed://https%3A%2F%2Fapple.github.io%2Fswift-nio-extras%2Fdocs%2F1.10.2%2FNIOHTTPCompression%2Fdocsets%2FNIOHTTPCompression.xml">
+            <img class="header-icon" src="../img/dash.png" alt="Dash"/>
+            Install in Dash
+          </a>
+        </p>
+    </header>
+
+    <p class="breadcrumbs">
+      <a class="breadcrumb" href="../index.html">NIOHTTPCompression Reference</a>
+      <img class="carat" src="../img/carat.png" alt=""/>
+      NIOHTTPRequestCompressor Class Reference
+    </p>
+
+    <div class="content-wrapper">
+      <nav class="navigation">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Classes.html">Classes</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/HTTPResponseCompressor.html">HTTPResponseCompressor</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/HTTPResponseCompressor/CompressionError.html">– CompressionError</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/NIOHTTPRequestCompressor.html">NIOHTTPRequestCompressor</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/NIOHTTPRequestDecompressor.html">NIOHTTPRequestDecompressor</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/NIOHTTPResponseDecompressor.html">NIOHTTPResponseDecompressor</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Enums.html">Enumerations</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOCompression.html">NIOCompression</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOCompression/Algorithm.html">– Algorithm</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOCompression/Error.html">– Error</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOHTTPDecompression.html">NIOHTTPDecompression</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOHTTPDecompression/DecompressionLimit.html">– DecompressionLimit</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Enums/NIOHTTPDecompression/DecompressionError.html">– DecompressionError</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+
+        <section class="section">
+          <div class="section-content top-matter">
+            <h1>NIOHTTPRequestCompressor</h1>
+              <div class="declaration">
+                <div class="language">
+                  
+                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kd">class</span> <span class="kt">NIOHTTPRequestCompressor</span> <span class="p">:</span> <span class="kt">ChannelOutboundHandler</span><span class="p">,</span> <span class="kt">RemovableChannelHandler</span></code></pre>
+
+                </div>
+              </div>
+            <p>NIOHTTPResponseCompressor is an outbound channel handler that handles automatic streaming compression of
+HTTP requests.</p>
+
+<p>This compressor supports gzip and deflate. It works best if many writes are made between flushes.</p>
+
+<p>Note that this compressor performs the compression on the event loop thread. This means that compressing
+some resources, particularly those that do not benefit from compression or that could have been compressed
+ahead-of-time instead of dynamically, could be a waste of CPU time and latency for relatively minimal
+benefit. This channel handler should be present in the pipeline only for dynamically-generated and
+highly-compressible content, which will see the biggest benefits from streaming compression.</p>
+
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-content">
+            <div class="task-group">
+              <ul class="item-container">
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7NIOCore22ChannelOutboundHandlerP0C2InQa"></a>
+                    <a name="//apple_ref/swift/Alias/OutboundIn" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7NIOCore22ChannelOutboundHandlerP0C2InQa">OutboundIn</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">OutboundIn</span> <span class="o">=</span> <span class="kt">HTTPClientRequestPart</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7NIOCore23_EmittingChannelHandlerP11OutboundOutQa"></a>
+                    <a name="//apple_ref/swift/Alias/OutboundOut" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7NIOCore23_EmittingChannelHandlerP11OutboundOutQa">OutboundOut</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">typealias</span> <span class="kt">OutboundOut</span> <span class="o">=</span> <span class="kt">HTTPClientRequestPart</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:18NIOHTTPCompression24NIOHTTPRequestCompressorC8encodingAcA14NIOCompressionO9AlgorithmV_tcfc"></a>
+                    <a name="//apple_ref/swift/Method/init(encoding:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:18NIOHTTPCompression24NIOHTTPRequestCompressorC8encodingAcA14NIOCompressionO9AlgorithmV_tcfc">init(encoding:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Initialize a NIOHTTPRequestCompressor</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="nf">init</span><span class="p">(</span><span class="nv">encoding</span><span class="p">:</span> <span class="kt"><a href="../Enums/NIOCompression.html">NIOCompression</a></span><span class="o">.</span><span class="kt">Algorithm</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>encoding</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Compression algorithm to use</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7NIOCore14ChannelHandlerP12handlerAdded7contextyAA0bC7ContextC_tF"></a>
+                    <a name="//apple_ref/swift/Method/handlerAdded(context:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7NIOCore14ChannelHandlerP12handlerAdded7contextyAA0bC7ContextC_tF">handlerAdded(context:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">handlerAdded</span><span class="p">(</span><span class="nv">context</span><span class="p">:</span> <span class="kt">ChannelHandlerContext</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7NIOCore14ChannelHandlerP14handlerRemoved7contextyAA0bC7ContextC_tF"></a>
+                    <a name="//apple_ref/swift/Method/handlerRemoved(context:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7NIOCore14ChannelHandlerP14handlerRemoved7contextyAA0bC7ContextC_tF">handlerRemoved(context:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">handlerRemoved</span><span class="p">(</span><span class="nv">context</span><span class="p">:</span> <span class="kt">ChannelHandlerContext</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:18NIOHTTPCompression24NIOHTTPRequestCompressorC5write7context4data7promisey7NIOCore21ChannelHandlerContextC_AH6NIOAnyVAH16EventLoopPromiseVyytGSgtF"></a>
+                    <a name="//apple_ref/swift/Method/write(context:data:promise:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:18NIOHTTPCompression24NIOHTTPRequestCompressorC5write7context4data7promisey7NIOCore21ChannelHandlerContextC_AH6NIOAnyVAH16EventLoopPromiseVyytGSgtF">write(context:<wbr>data:<wbr>promise:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Write to channel</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">write</span><span class="p">(</span><span class="nv">context</span><span class="p">:</span> <span class="kt">ChannelHandlerContext</span><span class="p">,</span> <span class="nv">data</span><span class="p">:</span> <span class="kt">NIOAny</span><span class="p">,</span> <span class="nv">promise</span><span class="p">:</span> <span class="kt">EventLoopPromise</span><span class="o">&lt;</span><span class="kt">Void</span><span class="o">&gt;</span><span class="p">?)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>context</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Channel handle context which this handler belongs to</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>data</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>Data being sent through the channel</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>promise</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>The eventloop promise that should be notified when the operation completes</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:7NIOCore23_ChannelOutboundHandlerP5flush7contextyAA0bD7ContextC_tF"></a>
+                    <a name="//apple_ref/swift/Method/flush(context:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:7NIOCore23_ChannelOutboundHandlerP5flush7contextyAA0bD7ContextC_tF">flush(context:<wbr>)</a>
+                    </code>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">flush</span><span class="p">(</span><span class="nv">context</span><span class="p">:</span> <span class="kt">ChannelHandlerContext</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </article>
+    </div>
+    <section class="footer">
+      <p>&copy; 2021 <a class="link" href="https://github.com/apple/swift-nio-extras" target="_blank" rel="external noopener">swift-nio team</a>. All rights reserved. (Last updated: 2021-12-20)</p>
+      <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external noopener">jazzy ♪♫ v0.14.1</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external noopener">Realm</a> project.</p>
+    </section>
+  </body>
+</html>
