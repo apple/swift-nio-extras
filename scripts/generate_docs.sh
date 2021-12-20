@@ -18,7 +18,7 @@ set -e
 my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 root_path="$my_path/.."
 version=$(git describe --abbrev=0 --tags || echo "0.0.0")
-modules=(NIOExtras NIOHTTPCompression)
+modules=(NIOExtras NIOHTTPCompression NIOSOCKS)
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   # build code if required
@@ -26,7 +26,8 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     swift build
   fi
   # setup source-kitten if required
-  source_kitten_source_path="$root_path/.SourceKitten"
+  mkdir -p "$root_path/.build/sourcekitten"
+  source_kitten_source_path="$root_path/.build/sourcekitten/source"
   if [[ ! -d "$source_kitten_source_path" ]]; then
     git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
   fi
@@ -36,10 +37,9 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     cd "$source_kitten_source_path" && swift build && cd "$root_path"
   fi
   # generate
-  mkdir -p "$root_path/.build/sourcekitten"
   for module in "${modules[@]}"; do
     if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-      "$source_kitten_path/sourcekitten" doc --module-name $module > "$root_path/.build/sourcekitten/$module.json"
+      "$source_kitten_path/sourcekitten" doc --spm --module-name $module > "$root_path/.build/sourcekitten/$module.json"
     fi
   done
 fi
