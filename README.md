@@ -1,5 +1,6 @@
 # NIOExtras
 
+
 NIOExtras is a good place for code that is related to NIO but not core. It can also be used to incubate APIs for tasks that are possible with core-NIO but are cumbersome today.
 
 What makes a good contribution to NIOExtras?
@@ -25,7 +26,7 @@ To depend on `swift-nio-extras`, put the following in the `dependencies` of your
 
 ### Support for older Swift versions
 
-Earlier versions of SwiftNIO (2.29.x and lower) and SwiftNIOExtras (1.9.x and lower) supported Swift 5.0 and 5.1. 
+Earlier versions of SwiftNIO (2.29.x and lower) and SwiftNIOExtras (1.9.x and lower) supported Swift 5.0 and 5.1.
 
 On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-extras-0.1) branch, you can find the `swift-nio-extras` version for the SwiftNIO 1 family. It requires Swift 4.1 or better.
 
