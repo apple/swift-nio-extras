@@ -13,14 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 // MARK:  Setup
-var warning: String = ""
-assert({
-    print("============================================================")
-    print("= YOU ARE RUNNING NIOExtrasPerformanceTester IN DEBUG MODE =")
-    print("============================================================")
-    warning = " <<< DEBUG MODE >>>"
-    return true
-    }())
+let warning: String = {
+    var warning: String = ""
+    assert({
+        print("============================================================")
+        print("= YOU ARE RUNNING NIOExtrasPerformanceTester IN DEBUG MODE =")
+        print("============================================================")
+        warning = " <<< DEBUG MODE >>>"
+        return true
+        }())
+    return warning
+}()
 
 // MARK:  Tests
 // Test PCAP to file.
