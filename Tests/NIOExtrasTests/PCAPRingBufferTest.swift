@@ -16,7 +16,7 @@ import XCTest
 
 import NIOCore
 import NIOEmbedded
-@testable import NIOExtras
+import NIOExtras
 
 class PCAPRingBufferTest: XCTestCase {
     private func dataForTests() -> [ByteBuffer] {
