@@ -26,6 +26,7 @@ import XCTest
 #if os(Linux) || os(FreeBSD) || os(Android)
    @testable import NIOExtrasTests
    @testable import NIOHTTPCompressionTests
+   @testable import NIONFS3Tests
    @testable import NIOSOCKSTests
 
 @available(*, deprecated, message: "not actually deprecated. Just deprecated to allow deprecated tests (which test deprecated functionality) without warnings")
@@ -52,6 +53,9 @@ class LinuxMainRunner {
              testCase(LengthFieldPrependerTest.allTests),
              testCase(LineBasedFrameDecoderTest.allTests),
              testCase(MethodSelectionTests.allTests),
+             testCase(NFS3FileSystemTests.allTests),
+             testCase(NFS3ReplyEncoderTest.allTests),
+             testCase(NFS3RoundtripTests.allTests),
              testCase(PCAPRingBufferTest.allTests),
              testCase(QuiescingHelperTest.allTests),
              testCase(RequestResponseHandlerTest.allTests),
