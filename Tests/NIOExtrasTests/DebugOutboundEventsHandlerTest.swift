@@ -20,8 +20,8 @@ import NIOExtras
 class DebugOutboundEventsHandlerTest: XCTestCase {
 
     private var channel: EmbeddedChannel!
-    private var lastEvent: DebugOutboundEventsHandler.Event!
-    private var handlerUnderTest: DebugOutboundEventsHandler!
+    private var lastEvent: DebugOutboundEventsHandler<ByteBuffer>.Event!
+    private var handlerUnderTest: DebugOutboundEventsHandler<ByteBuffer>!
     
     override func setUp() {
         super.setUp()
@@ -57,9 +57,12 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
     }
     
     func testWrite() {
-        let data = NIOAny(" 1 2 3 ")
-        channel.write(data, promise: nil)
-        XCTAssertEqual(lastEvent, .write(data: data))
+        let messageString = "message"
+        var expectedBuffer = ByteBufferAllocator().buffer(capacity: messageString.count)
+        expectedBuffer.setString(messageString, at: 0)
+        let nioAny = NIOAny(expectedBuffer)
+        channel.write(nioAny, promise: nil)
+        XCTAssertEqual(lastEvent, .write(data: expectedBuffer))
     }
     
     func testFlush() {

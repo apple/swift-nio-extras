@@ -21,17 +21,17 @@ import NIOCore
 
 /// ChannelInboundHandler that prints all inbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See DebugOutboundEventsHandler for outbound events.
-public class DebugInboundEventsHandler: ChannelInboundHandler {
+public class DebugInboundEventsHandler<T>: ChannelInboundHandler {
     
-    public typealias InboundIn = Any
-    public typealias InboudOut = Any
+    public typealias InboundIn = T
+    public typealias InboudOut = T
     
     public enum Event {
         case registered
         case unregistered
         case active
         case inactive
-        case read(data: NIOAny)
+        case read(data: T)
         case readComplete
         case writabilityChanged(isWritable: Bool)
         case userInboundEventTriggered(event: Any)
@@ -65,7 +65,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
     }
     
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        logger(.read(data: data), context)
+        logger(.read(data: self.unwrapInboundIn(data)), context)
         context.fireChannelRead(data)
     }
     
