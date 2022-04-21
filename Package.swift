@@ -30,7 +30,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
         ]),
-    .target(
+    .executableTarget(
         name: "HTTPServerWithQuiescingDemo",
         dependencies: [
             "NIOExtras",
@@ -38,7 +38,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
         ]),
-    .target(
+    .executableTarget(
         name: "NIOWritePCAPDemo",
         dependencies: [
             "NIOExtras",
@@ -46,7 +46,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
         ]),
-    .target(
+    .executableTarget(
         name: "NIOWritePartialPCAPDemo",
         dependencies: [
             "NIOExtras",
@@ -54,7 +54,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
         ]),
-    .target(
+    .executableTarget(
         name: "NIOExtrasPerformanceTester",
         dependencies: [
             "NIOExtras",
@@ -69,7 +69,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
         ]),
-    .target(
+    .executableTarget(
         name: "NIOSOCKSClient",
         dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),
