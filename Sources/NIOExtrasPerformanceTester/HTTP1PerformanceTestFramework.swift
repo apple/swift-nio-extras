@@ -211,7 +211,7 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension HTTP1ThreadedPerformanceTest: @unchecked Sendable {
 
 }

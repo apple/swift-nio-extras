@@ -52,7 +52,7 @@ final class RollingPCAPPerformanceTest: Benchmark {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension RollingPCAPPerformanceTest: @unchecked Sendable {
 
 }

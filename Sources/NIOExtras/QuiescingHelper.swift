@@ -28,7 +28,7 @@ private final class ChannelCollector {
         case shuttingDown
         case shutdownCompleted
     }
-    private let lock = Lock()
+
     private var openChannels: [ObjectIdentifier: Channel] = [:]
     private let serverChannel: Channel
     private var fullyShutdownPromise: EventLoopPromise<Void>? = nil
@@ -52,36 +52,30 @@ private final class ChannelCollector {
     func channelAdded(_ channel: Channel) throws {
         self.eventLoop.assertInEventLoop()
 
-        try self.lock.withLock {
-            guard self.lifecycleState != .shutdownCompleted else {
-                channel.close(promise: nil)
-                throw ShutdownError.alreadyShutdown
-            }
-
-            self.openChannels[ObjectIdentifier(channel)] = channel
+        guard self.lifecycleState != .shutdownCompleted else {
+            channel.close(promise: nil)
+            throw ShutdownError.alreadyShutdown
         }
+
+        self.openChannels[ObjectIdentifier(channel)] = channel
     }
 
     private func shutdownCompleted() {
         self.eventLoop.assertInEventLoop()
-        self.lock.withLock {
-            assert(self.lifecycleState == .shuttingDown)
+        assert(self.lifecycleState == .shuttingDown)
 
-            self.lifecycleState = .shutdownCompleted
-            self.fullyShutdownPromise?.succeed(())
-        }
+        self.lifecycleState = .shutdownCompleted
+        self.fullyShutdownPromise?.succeed(())
     }
 
     private func channelRemoved0(_ channel: Channel) {
         self.eventLoop.assertInEventLoop()
-        self.lock.withLock {
-            precondition(self.openChannels.keys.contains(ObjectIdentifier(channel)),
-                         "channel \(channel) not in ChannelCollector \(self.openChannels)")
+        precondition(self.openChannels.keys.contains(ObjectIdentifier(channel)),
+                     "channel \(channel) not in ChannelCollector \(self.openChannels)")
 
-            self.openChannels.removeValue(forKey: ObjectIdentifier(channel))
-            if self.lifecycleState != .upAndRunning && self.openChannels.isEmpty {
-                shutdownCompleted()
-            }
+        self.openChannels.removeValue(forKey: ObjectIdentifier(channel))
+        if self.lifecycleState != .upAndRunning && self.openChannels.isEmpty {
+            shutdownCompleted()
         }
     }
 
@@ -103,30 +97,28 @@ private final class ChannelCollector {
 
     private func initiateShutdown0(promise: EventLoopPromise<Void>?) {
         self.eventLoop.assertInEventLoop()
-        self.lock.withLock {
-            precondition(self.lifecycleState == .upAndRunning)
+        precondition(self.lifecycleState == .upAndRunning)
 
-            self.lifecycleState = .shuttingDown
+        self.lifecycleState = .shuttingDown
 
-            if let promise = promise {
-                if let alreadyExistingPromise = self.fullyShutdownPromise {
-                    alreadyExistingPromise.futureResult.cascade(to: promise)
-                } else {
-                    self.fullyShutdownPromise = promise
-                }
+        if let promise = promise {
+            if let alreadyExistingPromise = self.fullyShutdownPromise {
+                alreadyExistingPromise.futureResult.cascade(to: promise)
+            } else {
+                self.fullyShutdownPromise = promise
             }
+        }
 
-            self.serverChannel.close().cascadeFailure(to: self.fullyShutdownPromise)
+        self.serverChannel.close().cascadeFailure(to: self.fullyShutdownPromise)
 
-            for channel in self.openChannels.values {
-                channel.eventLoop.execute {
-                    channel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
-                }
+        for channel in self.openChannels.values {
+            channel.eventLoop.execute {
+                channel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
             }
+        }
 
-            if self.openChannels.isEmpty {
-                shutdownCompleted()
-            }
+        if self.openChannels.isEmpty {
+            shutdownCompleted()
         }
     }
 
@@ -153,7 +145,7 @@ private final class ChannelCollector {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension ChannelCollector: @unchecked Sendable {
 
 }
@@ -267,8 +259,6 @@ public final class ServerQuiescingHelper {
     }
 }
 
-#if swift(>=5.5)
-extension ServerQuiescingHelper: Sendable {
+extension ServerQuiescingHelper: NIOSendable {
 
 }
-#endif

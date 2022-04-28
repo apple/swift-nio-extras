@@ -66,7 +66,7 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension HTTP1ThreadedPCapPerformanceTest.SinkHolder: @unchecked Sendable {
 
 }

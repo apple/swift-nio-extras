@@ -107,7 +107,7 @@ public class NIOPCAPRingBuffer {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension NIOPCAPRingBuffer: @unchecked Sendable {
 
 }

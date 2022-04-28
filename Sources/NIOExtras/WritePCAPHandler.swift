@@ -597,7 +597,6 @@ extension NIOWritePCAPHandler {
     /// _must_ call `syncClose` on the `SynchronizedFileSink` to shut it and all the associated resources down. Failing
     /// to do so triggers undefined behaviour.
     public final class SynchronizedFileSink {
-        private let lock = Lock()
         private let fileHandle: NIOFileHandle
         private let workQueue: DispatchQueue
         private let writesGroup = DispatchGroup()
@@ -692,10 +691,6 @@ extension NIOWritePCAPHandler {
         
         public func write(buffer: ByteBuffer) {
             self.workQueue.async(group: self.writesGroup) {
-                self.lock.lock()
-                defer {
-                    self.lock.unlock()
-                }
                 guard case .running = self.state else {
                     return
                 }
@@ -722,7 +717,7 @@ extension NIOWritePCAPHandler {
     }
 }
 
-#if swift(>=5.5)
+#if swift(>=5.5) && canImport(_Concurrency)
 extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {
 
 }
