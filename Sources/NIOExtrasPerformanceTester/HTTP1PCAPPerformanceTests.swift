@@ -15,21 +15,27 @@
 import NIOCore
 import NIOExtras
 import Foundation
+import NIOConcurrencyHelpers
 
 class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
-    private class SinkHolder {
+    private class SinkHolder: @unchecked Sendable {
+        private let lock = Lock()
         var fileSink: NIOWritePCAPHandler.SynchronizedFileSink!
 
         func setUp() throws {
             let outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
-            self.fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: outputFile) { error in
-                print("ERROR: \(error)")
-                exit(1)
+            try self.lock.withLock {
+                self.fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: outputFile) { error in
+                    print("ERROR: \(error)")
+                    exit(1)
+                }
             }
         }
 
         func tearDown() {
-            try! self.fileSink.syncClose()
+            self.lock.withLock {
+                try! self.fileSink.syncClose()
+            }
         }
     }
 

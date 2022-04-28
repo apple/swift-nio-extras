@@ -15,6 +15,7 @@
 import NIOCore
 import NIOPosix
 import NIOHTTP1
+import NIOConcurrencyHelpers
 
 // MARK: Handlers
 final class SimpleHTTPServer: ChannelInboundHandler {
@@ -120,13 +121,17 @@ final class RepeatedRequests: ChannelInboundHandler {
 }
 
 // MARK: ThreadedPerfTest
-class HTTP1ThreadedPerformanceTest: Benchmark {
+class HTTP1ThreadedPerformanceTest: Benchmark, @unchecked Sendable {
+    private let lock = Lock()
     let numberOfRepeats: Int
     let numberOfClients: Int
     let requestsPerClient: Int
     let extraInitialiser: (Channel) -> EventLoopFuture<Void>
 
     let head: HTTPRequestHead
+
+    var group: MultiThreadedEventLoopGroup!
+    var serverChannel: Channel!
 
     init(numberOfRepeats: Int,
          numberOfClients: Int,
@@ -142,23 +147,24 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
         self.head = head
     }
 
-    var group: MultiThreadedEventLoopGroup!
-    var serverChannel: Channel!
-
     func setUp() throws {
-        self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.serverChannel = try ServerBootstrap(group: self.group)
-            .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-            .childChannelInitializer { channel in
-                channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true).flatMap {
-                    channel.pipeline.addHandler(SimpleHTTPServer())
-                }
-            }.bind(host: "127.0.0.1", port: 0).wait()
+        try self.lock.withLock {
+            self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            self.serverChannel = try ServerBootstrap(group: self.group)
+                .serverChannelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
+                .childChannelInitializer { channel in
+                    channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true).flatMap {
+                        channel.pipeline.addHandler(SimpleHTTPServer())
+                    }
+                }.bind(host: "127.0.0.1", port: 0).wait()
+        }
     }
 
     func tearDown() {
-        try! self.serverChannel.close().wait()
-        try! self.group.syncShutdownGracefully()
+        self.lock.withLock {
+            try! self.serverChannel.close().wait()
+            try! self.group.syncShutdownGracefully()
+        }
     }
 
     func run() throws -> Int {
@@ -170,21 +176,23 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
             var clientChannels: [Channel] = []
             clientChannels.reserveCapacity(self.numberOfClients)
             for _ in 0 ..< self.numberOfClients {
-                let clientChannel = try! ClientBootstrap(group: self.group)
-                    .channelInitializer { channel in
-                        channel.pipeline.addHTTPClientHandlers().flatMap {
-                            let repeatedRequestsHandler = RepeatedRequests(numberOfRequests: self.requestsPerClient,
-                                                                           eventLoop: channel.eventLoop,
-                                                                           head: self.head)
-                            requestHandlers.append(repeatedRequestsHandler)
-                            return channel.pipeline.addHandler(repeatedRequestsHandler)
-                        }.flatMap {
-                            self.extraInitialiser(channel)
+                self.lock.withLock {
+                    let clientChannel = try! ClientBootstrap(group: self.group)
+                        .channelInitializer { channel in
+                            channel.pipeline.addHTTPClientHandlers().flatMap {
+                                let repeatedRequestsHandler = RepeatedRequests(numberOfRequests: self.requestsPerClient,
+                                                                               eventLoop: channel.eventLoop,
+                                                                               head: self.head)
+                                requestHandlers.append(repeatedRequestsHandler)
+                                return channel.pipeline.addHandler(repeatedRequestsHandler)
+                            }.flatMap {
+                                self.extraInitialiser(channel)
+                            }
                         }
-                    }
-                    .connect(to: self.serverChannel.localAddress!)
-                    .wait()
-                clientChannels.append(clientChannel)
+                        .connect(to: self.serverChannel.localAddress!)
+                        .wait()
+                    clientChannels.append(clientChannel)
+                }
             }
 
             var writeFutures: [EventLoopFuture<Void>] = []

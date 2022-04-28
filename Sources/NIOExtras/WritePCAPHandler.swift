@@ -20,6 +20,7 @@ import Glibc
 import Dispatch
 
 import NIOCore
+import NIOConcurrencyHelpers
 
 let sysWrite = write
 
@@ -595,7 +596,8 @@ extension NIOWritePCAPHandler {
     /// A `SynchronizedFileSink` is thread-safe so can be used from any thread/`EventLoop`. After use, you
     /// _must_ call `syncClose` on the `SynchronizedFileSink` to shut it and all the associated resources down. Failing
     /// to do so triggers undefined behaviour.
-    public class SynchronizedFileSink {
+    public final class SynchronizedFileSink: @unchecked Sendable {
+        private let lock = Lock()
         private let fileHandle: NIOFileHandle
         private let workQueue: DispatchQueue
         private let writesGroup = DispatchGroup()
@@ -690,6 +692,10 @@ extension NIOWritePCAPHandler {
         
         public func write(buffer: ByteBuffer) {
             self.workQueue.async(group: self.writesGroup) {
+                self.lock.lock()
+                defer {
+                    self.lock.unlock()
+                }
                 guard case .running = self.state else {
                     return
                 }
