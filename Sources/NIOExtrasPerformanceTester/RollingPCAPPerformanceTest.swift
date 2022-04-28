@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@preconcurrency import NIOCore
+import NIOCore
 import NIOEmbedded
 import NIOExtras
 
@@ -53,7 +53,7 @@ final class RollingPCAPPerformanceTest: Benchmark {
 }
 
 #if swift(>=5.5)
-extension RollingPCAPPerformanceTest: Sendable {
+extension RollingPCAPPerformanceTest: @unchecked Sendable {
 
 }
 #endif
