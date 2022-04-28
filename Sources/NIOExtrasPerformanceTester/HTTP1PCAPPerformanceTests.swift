@@ -18,7 +18,7 @@ import Foundation
 import NIOConcurrencyHelpers
 
 class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
-    private class SinkHolder: @unchecked Sendable {
+    class SinkHolder {
         private let lock = Lock()
         var fileSink: NIOWritePCAPHandler.SynchronizedFileSink!
 
@@ -65,3 +65,9 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
         return try super.run()
     }
 }
+
+#if swift(>=5.5)
+extension HTTP1ThreadedPCapPerformanceTest.SinkHolder: @unchecked Sendable {
+
+}
+#endif

@@ -22,7 +22,7 @@ private enum ShutdownError: Error {
 /// Collects a number of channels that are open at the moment. To prevent races, `ChannelCollector` uses the
 /// `EventLoop` of the server `Channel` that it gets passed to synchronise. It is important to call the
 /// `channelAdded` method in the same event loop tick as the `Channel` is actually created.
-private final class ChannelCollector: @unchecked Sendable {
+private final class ChannelCollector {
     enum LifecycleState {
         case upAndRunning
         case shuttingDown
@@ -153,6 +153,12 @@ private final class ChannelCollector: @unchecked Sendable {
     }
 }
 
+#if swift(>=5.5)
+extension ChannelCollector: @unchecked Sendable {
+
+}
+#endif
+
 /// A `ChannelHandler` that adds all channels that it receives through the `ChannelPipeline` to a `ChannelCollector`.
 ///
 /// - note: This is only useful to be added to a server `Channel` in `ServerBootstrap.serverChannelInitializer`.
@@ -221,7 +227,7 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
 ///     // wait for the shutdown to complete
 ///     try fullyShutdownPromise.futureResult.wait()
 ///
-public final class ServerQuiescingHelper: Sendable {
+public final class ServerQuiescingHelper {
     private let channelCollectorPromise: EventLoopPromise<ChannelCollector>
 
     /// Initialize with a given `EventLoopGroup`.
@@ -260,3 +266,9 @@ public final class ServerQuiescingHelper: Sendable {
         }
     }
 }
+
+#if swift(>=5.5)
+extension ServerQuiescingHelper: Sendable {
+
+}
+#endif

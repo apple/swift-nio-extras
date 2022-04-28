@@ -16,7 +16,7 @@
 import NIOEmbedded
 import NIOExtras
 
-final class RollingPCAPPerformanceTest: Benchmark, Sendable {
+final class RollingPCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
 
     let byteBuffer = ByteBuffer(repeating: 0x65, count: 1000)
@@ -51,3 +51,9 @@ final class RollingPCAPPerformanceTest: Benchmark, Sendable {
         return self.numberOfRepeats
     }
 }
+
+#if swift(>=5.5)
+extension RollingPCAPPerformanceTest: Sendable {
+
+}
+#endif

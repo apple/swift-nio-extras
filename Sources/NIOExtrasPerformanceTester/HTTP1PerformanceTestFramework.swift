@@ -121,7 +121,7 @@ final class RepeatedRequests: ChannelInboundHandler {
 }
 
 // MARK: ThreadedPerfTest
-class HTTP1ThreadedPerformanceTest: Benchmark, @unchecked Sendable {
+class HTTP1ThreadedPerformanceTest: Benchmark {
     private let lock = Lock()
     let numberOfRepeats: Int
     let numberOfClients: Int
@@ -210,3 +210,9 @@ class HTTP1ThreadedPerformanceTest: Benchmark, @unchecked Sendable {
         return reqs.reduce(0, +) / self.numberOfRepeats
     }
 }
+
+#if swift(>=5.5)
+extension HTTP1ThreadedPerformanceTest: @unchecked Sendable {
+
+}
+#endif

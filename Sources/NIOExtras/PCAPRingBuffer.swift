@@ -20,7 +20,7 @@ import NIOConcurrencyHelpers
 /// Use `addFragment` as the sink to a `NIOWritePCAPHandler` and call `emitPCAP`
 /// when you wish to get the recorded data.
 /// - Warning:  This class is not thread safe so should only be called from one thread.
-public class NIOPCAPRingBuffer: @unchecked Sendable {
+public class NIOPCAPRingBuffer {
     private var pcapFragments: CircularBuffer<ByteBuffer>
     private var pcapCurrentBytes: Int
     private let maximumFragments: Int
@@ -106,3 +106,9 @@ public class NIOPCAPRingBuffer: @unchecked Sendable {
         }
     }
 }
+
+#if swift(>=5.5)
+extension NIOPCAPRingBuffer: @unchecked Sendable {
+
+}
+#endif

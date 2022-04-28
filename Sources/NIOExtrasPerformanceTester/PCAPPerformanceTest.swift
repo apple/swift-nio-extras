@@ -18,7 +18,7 @@ import NIOExtras
 import Foundation
 import NIOConcurrencyHelpers
 
-final class PCAPPerformanceTest: Benchmark, Sendable {
+final class PCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
     let byteBuffer = ByteBuffer(repeating: 0x65, count: 1000)
     let outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
@@ -62,3 +62,9 @@ final class PCAPPerformanceTest: Benchmark, Sendable {
         return self.numberOfRepeats
     }
 }
+
+#if swift(>=5.5)
+extension PCAPPerformanceTest: Sendable {
+
+}
+#endif
