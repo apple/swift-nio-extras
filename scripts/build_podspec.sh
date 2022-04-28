@@ -42,7 +42,6 @@ if [[ $# -lt 2 ]]; then
 fi
 
 version=$1
-name="SwiftNIOExtras"
 
 # Current SwiftNIO Version to add as dependency in the .podspec
 nio_version=$2
@@ -60,9 +59,14 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 tmpdir=$(mktemp -d /tmp/.build_podspecsXXXXXX)
 echo "Building podspec in $tmpdir"
 
-cat > "${tmpdir}/${name}.podspec" <<- EOF
+# Right now this is only valid because the transitive dependencies of NIOExtras
+# and NIOSOCKS are the same.
+names=("NIOExtras" "NIOSOCKS")
+for name in "${names[@]}"; do
+  podname="Swift${name}"
+cat > "${tmpdir}/${podname}.podspec" <<- EOF
 Pod::Spec.new do |s|
-  s.name = '$name'
+  s.name = '$podname'
   s.version = '$version'
   s.license = { :type => 'Apache 2.0', :file => 'LICENSE.txt' }
   s.summary = 'Useful code around SwiftNIO.'
@@ -79,16 +83,26 @@ Pod::Spec.new do |s|
   s.tvos.deployment_target = '10.0'
   s.watchos.deployment_target = '6.0'
 
+  s.dependency 'CNIOAtomics', '>= $nio_version', '< $next_major_version'
+  s.dependency 'CNIODarwin', '>= $nio_version', '< $next_major_version'
+  s.dependency 'CNIOLinux', '>= $nio_version', '< $next_major_version'
+  s.dependency 'CNIOWindows', '>= $nio_version', '< $next_major_version'
   s.dependency 'SwiftNIO', '>= $nio_version', '< $next_major_version'
+  s.dependency 'SwiftNIOConcurrencyHelpers', '>= $nio_version', '< $next_major_version'
+  s.dependency 'SwiftNIOCore', '>= $nio_version', '< $next_major_version'
+  s.dependency 'SwiftNIOEmbedded', '>= $nio_version', '< $next_major_version'
+  s.dependency 'SwiftNIOPosix', '>= $nio_version', '< $next_major_version'
+  s.dependency '_NIODataStructures', '>= $nio_version', '< $next_major_version'
 
-  s.source_files = 'Sources/NIOExtras/**/*.swift'
+  s.source_files = 'Sources/$name/**/*.swift'
 end
 EOF
 
-if $upload; then
-  echo "Uploading ${tmpdir}/${name}.podspec"
-  pod trunk push --synchronous "${tmpdir}/${name}.podspec"
-else
-  echo "Generated podspec available at ${tmpdir}/${name}.podspec"
-fi
+  if $upload; then
+    echo "Uploading ${tmpdir}/${podname}.podspec"
+    pod trunk push --synchronous "${tmpdir}/${podname}.podspec"
+  else
+    echo "Generated podspec available at ${tmpdir}/${podname}.podspec"
+  fi
+done
 
