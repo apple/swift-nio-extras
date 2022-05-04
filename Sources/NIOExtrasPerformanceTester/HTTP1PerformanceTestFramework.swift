@@ -15,7 +15,6 @@
 import NIOCore
 import NIOPosix
 import NIOHTTP1
-import NIOConcurrencyHelpers
 
 // MARK: Handlers
 final class SimpleHTTPServer: ChannelInboundHandler {

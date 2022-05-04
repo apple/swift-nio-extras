@@ -15,7 +15,6 @@
 import NIOCore
 import NIOExtras
 import Foundation
-import NIOConcurrencyHelpers
 
 class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     private class SinkHolder {

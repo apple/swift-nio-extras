@@ -20,7 +20,6 @@ var targets: [PackageDescription.Target] = [
         name: "NIOExtras",
         dependencies: [
             .product(name: "NIO", package: "swift-nio"),
-            .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
         ]),
     .target(
