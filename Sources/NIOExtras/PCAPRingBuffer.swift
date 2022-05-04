@@ -76,7 +76,7 @@ public class NIOPCAPRingBuffer {
             self.popFirst()
         }
         precondition(self.pcapFragments.count < self.maximumFragments)
-        
+
         // Add the new fragment
         self.append(buffer)
 

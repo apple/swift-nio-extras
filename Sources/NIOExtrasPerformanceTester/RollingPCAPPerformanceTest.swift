@@ -16,7 +16,7 @@ import NIOCore
 import NIOEmbedded
 import NIOExtras
 
-class RollingPCAPPerformanceTest: Benchmark {
+final class RollingPCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
 
     let byteBuffer = ByteBuffer(repeating: 0x65, count: 1000)

@@ -17,19 +17,17 @@ import NIOEmbedded
 import NIOExtras
 import Foundation
 
-class PCAPPerformanceTest: Benchmark {
+final class PCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
-
     let byteBuffer = ByteBuffer(repeating: 0x65, count: 1000)
+    let outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
 
     init(numberOfRepeats: Int) {
         self.numberOfRepeats = numberOfRepeats
     }
 
-    var outputFile: String!
-
     func setUp() throws {
-        self.outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
+
     }
 
     func tearDown() {

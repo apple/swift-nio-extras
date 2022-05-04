@@ -595,7 +595,7 @@ extension NIOWritePCAPHandler {
     /// A `SynchronizedFileSink` is thread-safe so can be used from any thread/`EventLoop`. After use, you
     /// _must_ call `syncClose` on the `SynchronizedFileSink` to shut it and all the associated resources down. Failing
     /// to do so triggers undefined behaviour.
-    public class SynchronizedFileSink {
+    public final class SynchronizedFileSink {
         private let fileHandle: NIOFileHandle
         private let workQueue: DispatchQueue
         private let writesGroup = DispatchGroup()
@@ -715,3 +715,9 @@ extension NIOWritePCAPHandler {
         }
     }
 }
+
+#if swift(>=5.5) && canImport(_Concurrency)
+extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {
+
+}
+#endif

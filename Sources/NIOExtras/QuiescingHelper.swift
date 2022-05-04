@@ -27,6 +27,7 @@ private final class ChannelCollector {
         case shuttingDown
         case shutdownCompleted
     }
+
     private var openChannels: [ObjectIdentifier: Channel] = [:]
     private let serverChannel: Channel
     private var fullyShutdownPromise: EventLoopPromise<Void>? = nil
@@ -143,6 +144,12 @@ private final class ChannelCollector {
     }
 }
 
+#if swift(>=5.5) && canImport(_Concurrency)
+extension ChannelCollector: @unchecked Sendable {
+
+}
+#endif
+
 /// A `ChannelHandler` that adds all channels that it receives through the `ChannelPipeline` to a `ChannelCollector`.
 ///
 /// - note: This is only useful to be added to a server `Channel` in `ServerBootstrap.serverChannelInitializer`.
@@ -249,4 +256,8 @@ public final class ServerQuiescingHelper {
             f.cascadeFailure(to: promise)
         }
     }
+}
+
+extension ServerQuiescingHelper: NIOSendable {
+
 }

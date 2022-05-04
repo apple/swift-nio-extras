@@ -128,6 +128,9 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
 
     let head: HTTPRequestHead
 
+    var group: MultiThreadedEventLoopGroup!
+    var serverChannel: Channel!
+
     init(numberOfRepeats: Int,
          numberOfClients: Int,
          requestsPerClient: Int,
@@ -141,9 +144,6 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
         head.headers.add(name: "Host", value: "localhost")
         self.head = head
     }
-
-    var group: MultiThreadedEventLoopGroup!
-    var serverChannel: Channel!
 
     func setUp() throws {
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
