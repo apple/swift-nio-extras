@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-import NIOConcurrencyHelpers
 
 private enum ShutdownError: Error {
     case alreadyShutdown

@@ -51,9 +51,3 @@ final class RollingPCAPPerformanceTest: Benchmark {
         return self.numberOfRepeats
     }
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension RollingPCAPPerformanceTest: @unchecked Sendable {
-
-}
-#endif

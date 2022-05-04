@@ -18,24 +18,19 @@ import Foundation
 import NIOConcurrencyHelpers
 
 class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
-    class SinkHolder {
-        private let lock = Lock()
+    private class SinkHolder {
         var fileSink: NIOWritePCAPHandler.SynchronizedFileSink!
 
         func setUp() throws {
             let outputFile = NSTemporaryDirectory() + "/" + UUID().uuidString
-            try self.lock.withLock {
-                self.fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: outputFile) { error in
-                    print("ERROR: \(error)")
-                    exit(1)
-                }
+            self.fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: outputFile) { error in
+                print("ERROR: \(error)")
+                exit(1)
             }
         }
 
         func tearDown() {
-            self.lock.withLock {
-                try! self.fileSink.syncClose()
-            }
+            try! self.fileSink.syncClose()
         }
     }
 
@@ -65,9 +60,3 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
         return try super.run()
     }
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension HTTP1ThreadedPCapPerformanceTest.SinkHolder: @unchecked Sendable {
-
-}
-#endif

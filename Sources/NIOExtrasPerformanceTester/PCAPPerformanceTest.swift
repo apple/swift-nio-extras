@@ -16,7 +16,6 @@ import NIOCore
 import NIOEmbedded
 import NIOExtras
 import Foundation
-import NIOConcurrencyHelpers
 
 final class PCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
@@ -62,9 +61,3 @@ final class PCAPPerformanceTest: Benchmark {
         return self.numberOfRepeats
     }
 }
-
-#if swift(>=5.5) && canImport(_Concurrency)
-extension PCAPPerformanceTest: @unchecked Sendable {
-
-}
-#endif

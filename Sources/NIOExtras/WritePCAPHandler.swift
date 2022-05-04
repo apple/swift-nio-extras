@@ -20,7 +20,6 @@ import Glibc
 import Dispatch
 
 import NIOCore
-import NIOConcurrencyHelpers
 
 let sysWrite = write
 
