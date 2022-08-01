@@ -11,7 +11,6 @@ services:
 
   test:
     image: swift-nio-extras:20.04-5.5
-    command: /bin/bash -xcl "cat /etc/lsb-release && swift -version && swift test -Xswiftc -warnings-as-errors $${SANITIZER_ARG-}"
 
   shell:
     image: swift-nio-extras:20.04-5.5
