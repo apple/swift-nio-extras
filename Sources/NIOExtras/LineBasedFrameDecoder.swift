@@ -33,6 +33,8 @@ import NIOCore
 public class LineBasedFrameDecoder: ByteToMessageDecoder {
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
+    
+    @available(*, deprecated, message: "No longer used")
     public var cumulationBuffer: ByteBuffer?
     // keep track of the last scan offset from the buffer's reader index (if we didn't find the delimiter)
     private var lastScanOffset = 0
