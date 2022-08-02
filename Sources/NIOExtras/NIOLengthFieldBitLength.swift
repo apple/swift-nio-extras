@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// An struct to describe the length of a piece of data in bits
+/// A struct to describe the length of a piece of data in bits
 public struct NIOLengthFieldBitLength {
     internal enum Backing {
         case bits8
@@ -23,16 +23,26 @@ public struct NIOLengthFieldBitLength {
     }
     internal let bitLength: Backing
 
+    /// One byte - the same as ``eightBits``
     public static let oneByte = NIOLengthFieldBitLength(bitLength: .bits8)
+    /// Two bytes - the same as ``sixteenBits``
     public static let twoBytes = NIOLengthFieldBitLength(bitLength: .bits16)
+    /// Three bytes - the same as ``twentyFourBits``
     public static let threeBytes = NIOLengthFieldBitLength(bitLength: .bits24)
+    /// Four bytes - the same as ``thirtyTwoBits``
     public static let fourBytes = NIOLengthFieldBitLength(bitLength: .bits32)
+    /// Eight bytes - the same as ``sixtyFourBits``
     public static let eightBytes = NIOLengthFieldBitLength(bitLength: .bits64)
-    
+
+    /// Eight bits - the same as ``oneByte``
     public static let eightBits = NIOLengthFieldBitLength(bitLength: .bits8)
+    /// Sixteen bits - the same as ``twoBytes``
     public static let sixteenBits = NIOLengthFieldBitLength(bitLength: .bits16)
+    /// Twenty-four bits - the same as ``threeBytes``
     public static let twentyFourBits = NIOLengthFieldBitLength(bitLength: .bits24)
+    /// Thirty-two bits - the same as ``fourBytes``
     public static let thirtyTwoBits = NIOLengthFieldBitLength(bitLength: .bits32)
+    /// Sixty-four bits - the same as ``eightBytes``
     public static let sixtyFourBits = NIOLengthFieldBitLength(bitLength: .bits64)
     
     internal var length: Int {

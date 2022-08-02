@@ -119,7 +119,7 @@ struct PCAPRecordHeader {
 /// example when your real network traffic is TLS protected (so `tcpdump`/Wireshark can't read it directly), or if you
 /// don't have enough privileges on the running host to dump the network traffic.
 ///
-/// `NIOWritePCAPHandler` will also work with Unix Domain Sockets in which case it will still synthesize a TCP packet
+/// ``NIOWritePCAPHandler`` will also work with Unix Domain Sockets in which case it will still synthesize a TCP packet
 /// capture with local address `111.111.111.111` (port `1111`) and remote address `222.222.222.222` (port `2222`).
 public class NIOWritePCAPHandler: RemovableChannelHandler {
     public enum Mode {
@@ -127,21 +127,21 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         case server
     }
 
-    /// Settings for `NIOWritePCAPHandler`.
+    /// Settings for ``NIOWritePCAPHandler``.
     public struct Settings {
         /// When to issue data into the `.pcap` file.
         public enum EmitPCAP {
-            /// Write the data immediately when `NIOWritePCAPHandler` saw the event on the `ChannelPipeline`.
+            /// Write the data immediately when ``NIOWritePCAPHandler`` saw the event on the `ChannelPipeline`.
             ///
             /// For writes this means when the `write` event is triggered. Please note that this will write potentially
             /// unflushed data into the `.pcap` file.
             ///
-            /// If in doubt, prefer `.whenCompleted`.
+            /// If in doubt, prefer ``whenCompleted``.
             case whenIssued
 
             /// Write the data when the event completed.
             ///
-            /// For writes this means when the `write` promise is succeeded. The `whenCompleted` mode mirrors most
+            /// For writes this means when the `write` promise is succeeded. The ``whenCompleted`` mode mirrors most
             /// closely what's actually sent over the wire.
             case whenCompleted
         }
@@ -149,7 +149,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         /// When to emit the data from the `write` event into the `.pcap` file.
         public var emitPCAPWrites: EmitPCAP
 
-        /// Default settings for the `NIOWritePCAPHandler`.
+        /// Default settings for the ``NIOWritePCAPHandler``.
         public init() {
             self = .init(emitPCAPWrites: .whenCompleted)
         }
@@ -157,7 +157,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         /// Settings with customization.
         ///
         /// - parameters:
-        ///    - emitPCAPWrites: When to issue the writes into the `.pcap` file, see `EmitPCAP`.
+        ///    - emitPCAPWrites: When to issue the writes into the `.pcap` file, see ``EmitPCAP``.
         public init(emitPCAPWrites: EmitPCAP) {
             self.emitPCAPWrites = emitPCAPWrites
         }
@@ -184,20 +184,21 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     private var localAddress: SocketAddress?
     private var remoteAddress: SocketAddress?
 
+    /// Reusable header for `. pcap` file.
     public static var pcapFileHeader: ByteBuffer {
         var buffer = ByteBufferAllocator().buffer(capacity: 24)
         buffer.writePCAPHeader()
         return buffer
     }
 
-    /// Initialize a `NIOWritePCAPHandler`.
+    /// Initialize a ``NIOWritePCAPHandler``.
     ///
     /// - parameters:
     ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.
     ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
-    ///     - settings: The settings for the `NIOWritePCAPHandler`.
+    ///     - settings: The settings for the ``NIOWritePCAPHandler``.
     ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
-    ///                 written to disk or elsewhere. See `SynchronizedFileSink` for a convenient way to write to
+    ///                 written to disk or elsewhere. See ``SynchronizedFileSink`` for a convenient way to write to
     ///                 disk.
     public init(mode: Mode,
                 fakeLocalAddress: SocketAddress? = nil,
@@ -215,7 +216,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         }
     }
 
-    /// Initialize a `NIOWritePCAPHandler` with default settings.
+    /// Initialize a ``NIOWritePCAPHandler`` with default settings.
     ///
     /// - parameters:
     ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.

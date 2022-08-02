@@ -16,7 +16,7 @@ import NIOCore
 
 // MARK: NIOPCAPRingBuffer
 /// Storage for the most recent set of packets captured subject to constraints.
-/// Use `addFragment` as the sink to a `NIOWritePCAPHandler` and call `emitPCAP`
+/// Use ``addFragment(_:)`` as the sink to a ``NIOWritePCAPHandler`` and call ``emitPCAP()``
 /// when you wish to get the recorded data.
 /// - Warning:  This class is not thread safe so should only be called from one thread.
 public class NIOPCAPRingBuffer {

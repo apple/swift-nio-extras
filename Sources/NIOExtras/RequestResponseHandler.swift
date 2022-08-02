@@ -14,21 +14,25 @@
 
 import NIOCore
 
-/// `RequestResponseHandler` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
+/// ``RequestResponseHandler`` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
 /// outbound side. It will fulfill the promise with the `Response` once it's received from the `Channel`'s inbound
 /// side.
 ///
-/// `RequestResponseHandler` does support pipelining `Request`s and it will send them pipelined further down the
-/// `Channel`. Should `RequestResponseHandler` receive an error from the `Channel`, it will fail all promises meant for
+/// ``RequestResponseHandler`` does support pipelining `Request`s and it will send them pipelined further down the
+/// `Channel`. Should ``RequestResponseHandler`` receive an error from the `Channel`, it will fail all promises meant for
 /// the outstanding `Reponse`s and close the `Channel`. All requests enqueued after an error occured will be immediately
 /// failed with the first error the channel received.
 ///
-/// `RequestResponseHandler` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
+/// ``RequestResponseHandler`` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
 /// were submitted.
 public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandler {
+    /// `Response` is the type this class expects to receive inbound.
     public typealias InboundIn = Response
+    /// Don't expect to pass anything on in-bound.
     public typealias InboundOut = Never
+    /// Type this class expect to receive in an outbound direction.
     public typealias OutboundIn = (Request, EventLoopPromise<Response>)
+    /// Type this class passes out.
     public typealias OutboundOut = Request
 
     private enum State {
@@ -49,10 +53,10 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
     private var promiseBuffer: CircularBuffer<EventLoopPromise<Response>>
 
 
-    /// Create a new `RequestResponseHandler`.
+    /// Create a new ``RequestResponseHandler``.
     ///
     /// - parameters:
-    ///    - initialBufferCapacity: `RequestResponseHandler` saves the promises for all outstanding responses in a
+    ///    - initialBufferCapacity: ``RequestResponseHandler`` saves the promises for all outstanding responses in a
     ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
     ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
     public init(initialBufferCapacity: Int = 4) {
