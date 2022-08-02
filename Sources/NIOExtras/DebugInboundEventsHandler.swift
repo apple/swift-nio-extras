@@ -19,7 +19,7 @@ import Glibc
 
 import NIOCore
 
-/// `NIOCore/ChannelInboundHandler` that prints all inbound events that pass through the pipeline by default,
+/// `ChannelInboundHandler` that prints all inbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See ``DebugOutboundEventsHandler`` for outbound events.
 public class DebugInboundEventsHandler: ChannelInboundHandler {
     /// The type of the inbound data which is wrapped in `NIOAny`.
