@@ -17,13 +17,16 @@ import NIOCore
 /// Add this handshake handler to the front of your channel, closest to the network.
 /// The handler will receive bytes from the network and run them through a state machine
 /// and parser to enforce SOCKSv5 protocol correctness. Inbound bytes will by parsed into
-/// `ClientMessage` for downstream consumption. Send `ServerMessage` to this
+/// ``ClientMessage`` for downstream consumption. Send ``ServerMessage`` to this
 /// handler.
 public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableChannelHandler {
-    
+    /// Accepts `ByteBuffer` when receiving data.
     public typealias InboundIn = ByteBuffer
+    /// Passes `ClientMessage` to the next stage of the pipeline when receiving data.
     public typealias InboundOut = ClientMessage
+    /// Accepts `ServerMessage` when sending data.
     public typealias OutboundIn = ServerMessage
+    /// Passes `ByteBuffer` to the next pipeline stage when sending data.
     public typealias OutboundOut = ByteBuffer
     
     var inboundBuffer: ByteBuffer?
@@ -52,7 +55,9 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
             context.fireErrorCaught(error)
         }
     }
-    
+
+    /// Add hander to pipeline and enter state ready for connection establishment.
+    /// - Parameter context: Calling context
     public func handlerAdded(context: ChannelHandlerContext) {
         do {
             try self.stateMachine.connectionEstablished()
@@ -60,7 +65,9 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
             context.fireErrorCaught(error)
         }
     }
-    
+
+    /// Remove handler from channel pipeline.  Causes any inbound buffer to be surfaced.
+    /// - Parameter context:  Calling context.
     public func handlerRemoved(context: ChannelHandlerContext) {
         guard let buffer = self.inboundBuffer else {
             return

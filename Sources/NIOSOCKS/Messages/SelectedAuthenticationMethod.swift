@@ -25,7 +25,7 @@ public struct SelectedAuthenticationMethod: Hashable {
     /// The server's selected authentication method.
     public var method: AuthenticationMethod
     
-    /// Creates a new `MethodSelection` wrapping an `AuthenticationMethod`.
+    /// Creates a new `MethodSelection` wrapping an ``AuthenticationMethod``.
     /// - parameter method: The selected `AuthenticationMethod`.
     public init(method: AuthenticationMethod) {
         self.method = method

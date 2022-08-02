@@ -30,7 +30,7 @@ public struct SOCKSResponse: Hashable {
     /// The host address.
     public var boundAddress: SOCKSAddress
     
-    /// Creates a new `SOCKSResponse`.
+    /// Creates a new ``SOCKSResponse``.
     /// - parameter reply: The status of the connection - used to check if the request
     /// succeeded or failed.
     /// - parameter boundAddress: The host address.
