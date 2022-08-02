@@ -16,7 +16,7 @@ import CNIOExtrasZlib
 import NIOCore
 import NIOHTTP1
 
-/// NIOHTTPResponseCompressor is an outbound channel handler that handles automatic streaming compression of
+/// ``NIOHTTPRequestCompressor`` is an outbound channel handler that handles automatic streaming compression of
 /// HTTP requests.
 ///
 /// This compressor supports gzip and deflate. It works best if many writes are made between flushes.
@@ -27,7 +27,9 @@ import NIOHTTP1
 /// benefit. This channel handler should be present in the pipeline only for dynamically-generated and
 /// highly-compressible content, which will see the biggest benefits from streaming compression.
 public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableChannelHandler {
+    /// Class takes `HTTPClientRequestPart` as the type to send.
     public typealias OutboundIn = HTTPClientRequestPart
+    /// Passes `HTTPClientRequestPart` to the next stage in the pipeline when sending.
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// Handler state
@@ -53,18 +55,22 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     /// pending write promise
     var pendingWritePromise: EventLoopPromise<Void>!
     
-    /// Initialize a NIOHTTPRequestCompressor
+    /// Initialize a ``NIOHTTPRequestCompressor``
     /// - Parameter encoding: Compression algorithm to use
     public init(encoding: NIOCompression.Algorithm) {
         self.encoding = encoding
         self.state = .idle
         self.compressor = NIOCompression.Compressor()
     }
-    
+
+    /// Add handler to the pipeline.
+    /// - Parameter context: Calling context.
     public func handlerAdded(context: ChannelHandlerContext) {
         pendingWritePromise = context.eventLoop.makePromise()
     }
 
+    /// Remove handler from pipeline.
+    /// - Parameter context: Calling context.
     public func handlerRemoved(context: ChannelHandlerContext) {
         pendingWritePromise.fail(NIOCompression.Error.uncompressedWritesPending)
         compressor.shutdownIfActive()

@@ -15,8 +15,10 @@
 import CNIOExtrasZlib
 import NIOCore
 
+/// Namespace for compression code.
 public enum NIOCompression {
 
+    /// Which algorithm should be used for compression.
     public struct Algorithm: CustomStringConvertible, Equatable {
         fileprivate enum AlgorithmEnum: String {
             case gzip
@@ -26,11 +28,14 @@ public enum NIOCompression {
         
         /// return as String
         public var description: String { return algorithm.rawValue }
-        
+
+        /// `gzip` method
         public static let gzip = Algorithm(algorithm: .gzip)
+        /// `deflate` method
         public static let deflate = Algorithm(algorithm: .deflate)
     }
-        
+
+    /// Error types for ``NIOCompression``
     public struct Error: Swift.Error, CustomStringConvertible, Equatable {
         fileprivate enum ErrorEnum: String {
             case uncompressedWritesPending
@@ -40,11 +45,14 @@ public enum NIOCompression {
         
         /// return as String
         public var description: String { return error.rawValue }
-        
+
+        /// There were writes pending which were not processed before shutdown.
         public static let uncompressedWritesPending = Error(error: .uncompressedWritesPending)
+        /// Currently never used.
         public static let noDataToWrite = Error(error: .noDataToWrite)
     }
-        
+
+    /// Data compression utility.
     struct Compressor {
         private var stream = z_stream()
         var isActive = false

@@ -46,9 +46,13 @@ public enum NIOHTTPDecompression {
         }
     }
 
+    /// Error types for ``NIOHTTPCompression``
     public enum DecompressionError: Error, Equatable {
+        /// The set ``NIOHTTPDecompression/DecompressionLimit`` has been exceeded
         case limit
+        /// An error occured when inflating.  Error code is included to aid diagnosis.
         case inflationError(Int)
+        /// Decoder could not be initialised.  Error code is included to aid diagnosis.
         case initializationError(Int)
     }
 

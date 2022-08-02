@@ -46,7 +46,7 @@ private func qValueFromHeader<S: StringProtocol>(_ text: S) -> Float {
     return qValue
 }
 
-/// A HTTPResponseCompressor is a duplex channel handler that handles automatic streaming compression of
+/// A ``HTTPResponseCompressor`` is a duplex channel handler that handles automatic streaming compression of
 /// HTTP responses. It respects the client's Accept-Encoding preferences, including q-values if present,
 /// and ensures that clients are served the compression algorithm that works best for them.
 ///
@@ -58,14 +58,20 @@ private func qValueFromHeader<S: StringProtocol>(_ text: S) -> Float {
 /// benefit. This channel handler should be present in the pipeline only for dynamically-generated and
 /// highly-compressible content, which will see the biggest benefits from streaming compression.
 public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChannelHandler {
+    /// This class accepts `HTTPServerRequestPart` inbound
     public typealias InboundIn = HTTPServerRequestPart
+    /// This class emits `HTTPServerRequestPart` inbound.
     public typealias InboundOut = HTTPServerRequestPart
+    /// This class accepts `HTTPServerResponsePart` outbound,
     public typealias OutboundIn = HTTPServerResponsePart
+    /// This class emits `HTTPServerResponsePart` outbound.
     public typealias OutboundOut = HTTPServerResponsePart
 
-
+    /// Errors which can occur when compressing
     public enum CompressionError: Error {
+        // Writes were still pending when shutdown.
         case uncompressedWritesPending
+        /// Data was somehow lost without being written.
         case noDataToWrite
     }
     
@@ -79,16 +85,22 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
 
     private let initialByteBufferCapacity: Int
 
+    /// Initialise a ``HTTPResponseCompressor``
+    /// - Parameter initialByteBufferCapacity: Initial size of buffer to allocate when hander is first added.
     public init(initialByteBufferCapacity: Int = 1024) {
         self.initialByteBufferCapacity = initialByteBufferCapacity
         self.compressor = NIOCompression.Compressor()
     }
 
+    /// Setup and add to the pipeline.
+    /// - Parameter context: Calling context.
     public func handlerAdded(context: ChannelHandlerContext) {
         pendingResponse = PartialHTTPResponse(bodyBuffer: context.channel.allocator.buffer(capacity: initialByteBufferCapacity))
         pendingWritePromise = context.eventLoop.makePromise()
     }
 
+    /// Remove channel handler from the pipeline.
+    /// - Parameter context: Calling context
     public func handlerRemoved(context: ChannelHandlerContext) {
         pendingWritePromise?.fail(CompressionError.uncompressedWritesPending)
         compressor.shutdownIfActive()

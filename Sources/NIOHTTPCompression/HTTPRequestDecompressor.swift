@@ -16,10 +16,15 @@ import CNIOExtrasZlib
 import NIOHTTP1
 import NIOCore
 
+/// Channel hander to decompress incoming HTTP data.
 public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
+    /// Expect to receive `HTTPServerRequestPart` from the network
     public typealias InboundIn = HTTPServerRequestPart
+    /// Pass `HTTPServerRequestPart` to the next pipeline state in an inbound direction.
     public typealias InboundOut = HTTPServerRequestPart
+    /// Pass through `HTTPServerResponsePart` outbound.
     public typealias OutboundIn = HTTPServerResponsePart
+    /// Pass through `HTTPServerResponsePart` outbound.
     public typealias OutboundOut = HTTPServerResponsePart
 
     private struct Compression {
@@ -30,6 +35,8 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
     private var decompressor: NIOHTTPDecompression.Decompressor
     private var compression: Compression?
 
+    /// Initialise with limits.
+    /// - Parameter limit: Limit to how much inflation can occur to protect against bad cases.
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
         self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
         self.compression = nil
