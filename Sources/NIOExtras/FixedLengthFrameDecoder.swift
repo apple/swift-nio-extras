@@ -32,6 +32,7 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer
 
+    @available(*, deprecated, message: "No longer used")
     public var cumulationBuffer: ByteBuffer?
 
     private let frameLength: Int
