@@ -26,7 +26,7 @@ public struct ClientGreeting: Hashable {
     /// The SOCKS server will select one to use.
     public var methods: [AuthenticationMethod]
     
-    /// Creates a new `ClientGreeting`
+    /// Creates a new ``ClientGreeting``
     /// - parameter methods: The client-supported authentication methods.
     public init(methods: [AuthenticationMethod]) {
         self.methods = methods

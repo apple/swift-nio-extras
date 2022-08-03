@@ -34,30 +34,35 @@ extension ByteBuffer {
 }
 
 
+/// Error types from ``LengthFieldPrepender``
 public enum LengthFieldPrependerError: Error {
+    /// More data was given than the maximum encodable length value.
     case messageDataTooLongForLengthField
 }
 
-///
 /// An encoder that takes a `ByteBuffer` message and prepends the number of bytes in the message.
 /// The length field is always the same fixed length specified on construction.
 /// These bytes contain a binary specification of the message size.
 ///
 /// For example, if you received a packet with the 3 byte length (BCD)...
 /// Given that the specified header length is 1 byte, there would be a single byte prepended which contains the number 3
+///
 ///     +---+-----+
 ///     | A | BCD | ('A' contains 0x03)
 ///     +---+-----+
+///
 /// This initial prepended byte is called the 'length field'.
 ///
 public final class LengthFieldPrepender: ChannelOutboundHandler {
-    ///
     /// An enumeration to describe the length of a piece of data in bytes.
-    ///
     public enum ByteLength {
+        /// One byte
         case one
+        /// Two bytes
         case two
+        /// Four bytes
         case four
+        /// Eight bytes
         case eight
         
         fileprivate var bitLength: NIOLengthFieldBitLength {
@@ -70,7 +75,9 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         }
     }
 
+    /// `ByteBuffer` is the expected type to be given for encoding.
     public typealias OutboundIn = ByteBuffer
+    /// Encoded output is passed in a `ByteBuffer`
     public typealias OutboundOut = ByteBuffer
 
     private let lengthFieldLength: NIOLengthFieldBitLength
@@ -78,15 +85,19 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     
     private var lengthBuffer: ByteBuffer?
 
-    /// Create `LengthFieldPrepender` with a given length field length.
+    /// Create ``LengthFieldPrepender`` with a given length field length.
     ///
     /// - parameters:
     ///    - lengthFieldLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
-    ///
     public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
         self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
     }
+
+    /// Create ``LengthFieldPrepender`` with a given length field length.
+    /// - parameters:
+    ///    - lengthFieldBitLength: The length of the field specifying the remaining length of the frame.
+    ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
     public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.

@@ -47,23 +47,25 @@ extension ByteBuffer {
 }
 
 public enum NIOLengthFieldBasedFrameDecoderError: Error {
-    /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `Int.max`
+    /// This error can be thrown by ``LengthFieldBasedFrameDecoder`` if the length field value is larger than `Int.max`
     case lengthFieldValueTooLarge
-    /// This error can be thrown by `LengthFieldBasedFrameDecoder` if the length field value is larger than `LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize`
+    /// This error can be thrown by ``LengthFieldBasedFrameDecoder`` if the length field value is larger than `LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize`
     case lengthFieldValueLargerThanMaxSupportedSize
 }
 
 ///
 /// A decoder that splits the received `ByteBuffer` by the number of bytes specified in a fixed length header
 /// contained within the buffer.
+///
 /// For example, if you received the following four fragmented packets:
+/// 
 ///     +---+----+------+----+
 ///     | A | BC | DEFG | HI |
 ///     +---+----+------+----+
 ///
 /// Given that the specified header length is 1 byte,
 /// where the first header specifies 3 bytes while the second header specifies 4 bytes,
-/// a `LengthFieldBasedFrameDecoder` will decode them into the following packets:
+/// a ``LengthFieldBasedFrameDecoder`` will decode them into the following packets:
 ///
 ///     +-----+------+
 ///     | BCD | FGHI |
@@ -72,15 +74,18 @@ public enum NIOLengthFieldBasedFrameDecoderError: Error {
 /// 'A' and 'E' will be the headers and will not be passed forward.
 ///
 public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
-    /// Maximum supported length field size in bytes of `LengthFieldBasedFrameDecoder` and is currently `Int32.max`
+    /// Maximum supported length field size in bytes of ``LengthFieldBasedFrameDecoder`` and is currently `Int32.max`
     public static let maxSupportedLengthFieldSize: Int = Int(Int32.max)
-    ///
+
     /// An enumeration to describe the length of a piece of data in bytes.
-    ///
     public enum ByteLength {
+        /// One byte
         case one
+        /// Two bytes
         case two
+        /// Four bytes
         case four
+        /// Eight bytes
         case eight
         
         fileprivate var bitLength: NIOLengthFieldBitLength {
@@ -92,18 +97,20 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             }
         }
     }
-    
-    ///
+
     /// The decoder has two distinct sections of data to read.
     /// Each must be fully present before it is considered as read.
-    /// During the time when it is not present the decoder must wait. `DecoderReadState` details that waiting state.
-    ///
+    /// During the time when it is not present the decoder must wait. ``DecoderReadState`` details that waiting state.
     private enum DecoderReadState {
+        // Expending a header next.
         case waitingForHeader
+        // Expecting the frame next.
         case waitingForFrame(length: Int)
     }
 
+    /// Incoming data is in `ByteBuffer`
     public typealias InboundIn = ByteBuffer
+    /// `ByteBuffer` is type passed to next stage.
     public typealias InboundOut = ByteBuffer
 
     @available(*, deprecated, message: "No longer used")
@@ -118,7 +125,6 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     /// - parameters:
     ///    - lengthFieldLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
-    ///
     public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
         self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
     }
@@ -128,12 +134,16 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     /// - parameters:
     ///    - lengthFieldBitLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
-    ///
     public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
         self.lengthFieldLength = lengthFieldBitLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
-    
+
+    /// Decode supplied data.
+    /// - Parameters:
+    ///   - context: Calling context.
+    ///   - buffer: data to decode.
+    /// - Returns: `DecodingState` describing what's needed next.
     public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         
         if case .waitingForHeader = self.readState {
@@ -152,7 +162,14 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
 
         return .continue
     }
-    
+
+    /// Decode all data supplied.  No more is expected after this.
+    /// If all data is not exactly consumed reports and error through `context.fireErrorCaught`
+    /// - Parameters:
+    ///   - context: Calling context.
+    ///   - buffer: The data to decode
+    ///   - seenEOF: If End of File has been seen.
+    /// - Returns: .needMoreData always as all data has been consumed.
     public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         // we'll just try to decode as much as we can as usually
         while case .continue = try self.decode(context: context, buffer: &buffer) {}
@@ -162,12 +179,10 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         return .needMoreData
     }
 
-    ///
     /// Attempts to read the header data. Updates the status is successful.
     ///
     /// - parameters:
     ///    - buffer: The buffer containing the integer frame length.
-    ///
     private func readNextLengthFieldToState(buffer: inout ByteBuffer) throws {
 
         // Convert the length field to an integer specifying the length
@@ -177,14 +192,12 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
 
         self.readState = .waitingForFrame(length: lengthFieldValue)
     }
-    
-    ///
+
     /// Attempts to read the body data for a given length. Updates the status is successful.
     ///
     /// - parameters:
     ///    - buffer: The buffer containing the frame data.
     ///    - frameLength: The length of the frame data to be read.
-    ///
     private func readNextFrame(buffer: inout ByteBuffer, frameLength: Int) throws -> ByteBuffer? {
         
         guard let contentsFieldSlice = buffer.readSlice(length: frameLength) else {
@@ -196,13 +209,11 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         return contentsFieldSlice
     }
 
-    ///
     /// Decodes the specified region of the buffer into an unadjusted frame length. The default implementation is
     /// capable of decoding the specified region into an unsigned 8/16/24/32/64 bit integer.
     ///
     /// - parameters:
     ///    - buffer: The buffer containing the integer frame length.
-    ///
     private func readFrameLength(for buffer: inout ByteBuffer) throws -> Int? {
         let frameLength: Int?
         switch self.lengthFieldLength.bitLength {

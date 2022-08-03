@@ -21,7 +21,7 @@ import NIOCore
 ///     | A | BC | DEFG | HI |
 ///     +---+----+------+----+
 ///
-/// A `FixedLengthFrameDecoder` will decode them into the
+/// A ``FixedLengthFrameDecoder`` will decode them into the
 /// following three packets with the fixed length:
 ///
 ///     +-----+-----+-----+
@@ -29,7 +29,9 @@ import NIOCore
 ///     +-----+-----+-----+
 ///
 public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
+    /// Data type we receive.
     public typealias InboundIn = ByteBuffer
+    /// Data type we send to the next stage.
     public typealias InboundOut = ByteBuffer
 
     @available(*, deprecated, message: "No longer used")
@@ -45,6 +47,11 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
         self.frameLength = frameLength
     }
 
+    /// Get a frame of data and `fireChannelRead` if sufficient data exists in the buffer.
+    /// - Parameters:
+    ///   - context: Calling context.
+    ///   - buffer: Buffer containing data.
+    /// - Returns: Status detailing if more data is required or if a successful decode occurred.
     public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         guard let slice = buffer.readSlice(length: frameLength) else {
             return .needMoreData
@@ -54,6 +61,13 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
         return .continue
     }
 
+    /// Repeatedly decode frames until there is not enough data to decode any more.
+    /// Reports an error through `fireErrorCaught` if this doesn't empty the buffer exactly.
+    /// - Parameters:
+    ///   - context: Calling context
+    ///   - buffer: Buffer containing data.
+    ///   - seenEOF: If end of file has been seen.
+    /// - Returns: needMoreData always as all data is consumed.
     public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while case .continue = try self.decode(context: context, buffer: &buffer) {}
         if buffer.readableBytes > 0 {

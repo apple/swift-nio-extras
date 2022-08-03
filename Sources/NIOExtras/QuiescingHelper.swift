@@ -191,8 +191,8 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
 /// Helper that can be used to orchestrate the quiescing of a server `Channel` and all the child `Channel`s that are
 /// open at a given point in time.
 ///
-/// `ServerQuiescingHelper` makes it easy to collect all child `Channel`s that a given server `Channel` accepts. When
-/// the quiescing period starts (that is when `ServerQuiescingHelper.initiateShutdown` is invoked), it will perform the
+/// ``ServerQuiescingHelper`` makes it easy to collect all child `Channel`s that a given server `Channel` accepts. When
+/// the quiescing period starts (that is when ``initiateShutdown(promise:)`` is invoked), it will perform the
 /// following actions:
 ///
 /// 1. close the server `Channel` so no further connections get accepted
@@ -240,8 +240,9 @@ public final class ServerQuiescingHelper {
         return CollectAcceptedChannelsHandler(channelCollector: collector)
     }
 
-    /// Initiate the shutdown. The following actions will be performed:
+    /// Initiate the shutdown.
     ///
+    /// The following actions will be performed:
     /// 1. close the server `Channel` so no further connections get accepted
     /// 2. send a `ChannelShouldQuiesceEvent` user event to all currently still open child `Channel`s
     /// 3. after all previously open child `Channel`s have closed, notify `promise`

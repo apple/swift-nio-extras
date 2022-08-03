@@ -35,7 +35,7 @@ public struct SOCKSRequest: Hashable {
     /// The target host address.
     public var addressType: SOCKSAddress
     
-    /// Creates a new `SOCKSRequest`.
+    /// Creates a new ``SOCKSRequest``.
     /// - parameter command: How to connect to the host.
     /// - parameter addressType: The target host address.
     public init(command: SOCKSCommand, addressType: SOCKSAddress) {
@@ -87,9 +87,10 @@ public struct SOCKSCommand: Hashable {
     /// Used to establish an association within the UDP relay process to
     /// handle UDP datagrams.
     public static let udpAssociate = SOCKSCommand(value: 0x03)
-    
+
+    /// Command value as defined in RFC
     public var value: UInt8
-    
+
     public init(value: UInt8) {
         self.value = value
     }
@@ -99,9 +100,9 @@ public struct SOCKSCommand: Hashable {
 
 /// The address used to connect to the target host.
 public enum SOCKSAddress: Hashable {
-    
+    /// Socket Adress
     case address(SocketAddress)
-    
+    /// Host and port
     case domain(String, port: Int)
     
     static let ipv4IdentifierByte: UInt8 = 0x01

@@ -19,10 +19,13 @@ import NIOCore
 /// channel's pipeline. Note that SOCKS only supports fully-qualified
 /// domain names and IPv4 or IPv6 sockets, and not UNIX sockets.
 public final class SOCKSClientHandler: ChannelDuplexHandler {
-    
+    /// Accepts `ByteBuffer` as input where receiving.
     public typealias InboundIn = ByteBuffer
+    /// Sends `ByteBuffer` to the next pipeline stage when receiving.
     public typealias InboundOut = ByteBuffer
+    /// Accepts `ByteBuffer` as the type to send.
     public typealias OutboundIn = ByteBuffer
+    /// Sends `ByteBuffer` to the next outbound stage.
     public typealias OutboundOut = ByteBuffer
     
     private let targetAddress: SOCKSAddress
@@ -33,7 +36,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     
     private var bufferedWrites: MarkedCircularBuffer<(NIOAny, EventLoopPromise<Void>?)> = .init(initialCapacity: 8)
     
-    /// Creates a new `SOCKSClientHandler` that connects to a server
+    /// Creates a new ``SOCKSClientHandler`` that connects to a server
     /// and instructs the server to connect to `targetAddress`.
     /// - parameter targetAddress: The desired end point - note that only IPv4, IPv6, and FQDNs are supported.
     public init(targetAddress: SOCKSAddress) {
@@ -52,7 +55,9 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     public func channelActive(context: ChannelHandlerContext) {
         self.beginHandshake(context: context)
     }
-    
+
+    /// Add handler to pipeline and start handshake.
+    /// - Parameter context: Calling context.
     public func handlerAdded(context: ChannelHandlerContext) {
         self.beginHandshake(context: context)
     }

@@ -23,7 +23,7 @@ import NIOCore
 ///     | AB | C\nDE | F\r\nGHI\n |
 ///     +----+-------+------------+
 ///
-/// A instance of `LineBasedFrameDecoder` will split this buffer
+/// A instance of ``LineBasedFrameDecoder`` will split this buffer
 /// as follows:
 ///
 ///     +-----+-----+-----+
@@ -31,7 +31,9 @@ import NIOCore
 ///     +-----+-----+-----+
 ///
 public class LineBasedFrameDecoder: ByteToMessageDecoder {
+    /// `ByteBuffer` is the expected type passed in.
     public typealias InboundIn = ByteBuffer
+    /// `ByteBuffer`s will be passed to the next stage.
     public typealias InboundOut = ByteBuffer
     
     @available(*, deprecated, message: "No longer used")
@@ -40,7 +42,12 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     private var lastScanOffset = 0
     
     public init() { }
-    
+
+    /// Decode data in the supplied buffer.
+    /// - Parameters:
+    ///   - context: Calling cotext
+    ///   - buffer: Buffer containing data to decode.
+    /// - Returns: State describing if more data is required.
     public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
         if let frame = try self.findNextFrame(buffer: &buffer) {
             context.fireChannelRead(wrapInboundOut(frame))
@@ -49,7 +56,14 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
             return .needMoreData
         }
     }
-    
+
+    /// Decode all remaining data.
+    /// If it is not possible to consume all the data then ``NIOExtrasErrors/LeftOverBytesError`` is reported via `context.fireErrorCaught`
+    /// - Parameters:
+    ///   - context: Calling context.
+    ///   - buffer: Buffer containing the data to decode.
+    ///   - seenEOF: Has end of file been seen.
+    /// - Returns: Always .needMoreData as all data will be consumed.
     public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > 0 {

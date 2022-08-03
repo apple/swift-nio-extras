@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// Namespace to contain JSON framing implementation.
 public enum NIOJSONRPCFraming {
     // just a name-space
 }

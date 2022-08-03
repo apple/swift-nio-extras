@@ -15,22 +15,31 @@
 import NIOCore
 
 extension NIOJSONRPCFraming {
-    /// `ContentLengthHeaderFrameEncoder` is responsible for emitting JSON-RPC wire protocol with 'Content-Length'
+    /// ``ContentLengthHeaderFrameEncoder`` is responsible for emitting JSON-RPC wire protocol with 'Content-Length'
     /// HTTP-like headers as used by for example by LSP (Language Server Protocol).
     public final class ContentLengthHeaderFrameEncoder: ChannelOutboundHandler {
-        /// We'll get handed one message through the `Channel` and ...
+        /// We'll get handed one message through the `Channel` of this type and will encode into `OutboundOut`
         public typealias OutboundIn = ByteBuffer
-        /// ... will encode it into a `ByteBuffer`.
+        /// Outbound data will be encoded into a `ByteBuffer`.
         public typealias OutboundOut = ByteBuffer
 
         private var scratchBuffer: ByteBuffer!
 
         public init() {}
 
+        /// Called when this `ChannelHandler` is added to the `ChannelPipeline`.
+        ///
+        /// - parameters:
+        ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
         public func handlerAdded(context: ChannelHandlerContext) {
             self.scratchBuffer = context.channel.allocator.buffer(capacity: 512)
         }
 
+        /// Called to request a write operation.  Writes write protocol header and then the message.
+        /// - parameters:
+        ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
+        ///     - data: The data to write through the `Channel`, wrapped in a `NIOAny`.
+        ///     - promise: The `EventLoopPromise` which should be notified once the operation completes, or nil if no notification should take place.
         public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
             let data = self.unwrapOutboundIn(data)
             // Step 1, clear the target buffer (note, we are re-using it so if we get lucky we don't need to
@@ -52,7 +61,7 @@ extension NIOJSONRPCFraming {
         }
     }
 
-    /// `ContentLengthHeaderFrameDecoder` is responsible for parsing JSON-RPC wire protocol with 'Content-Length'
+    /// ``ContentLengthHeaderFrameDecoder`` is responsible for parsing JSON-RPC wire protocol with 'Content-Length'
     /// HTTP-like headers as used by for example by LSP (Language Server Protocol).
     public struct ContentLengthHeaderFrameDecoder: ByteToMessageDecoder {
         /// We're emitting one `ByteBuffer` corresponding exactly to one full payload, no headers etc.
@@ -60,15 +69,15 @@ extension NIOJSONRPCFraming {
 
         /// `ContentLengthHeaderFrameDecoder` is a simple state machine.
         private enum State {
-            /// either we're waiting for the end of the header block or a new header field, ...
+            /// Waiting for the end of the header block or a new header field
             case waitingForHeaderNameOrHeaderBlockEnd
-            /// ... or for a header value, or ...
+            /// Waiting for a header value
             case waitingForHeaderValue(name: String)
-            /// ... or for the payload of a given size.
+            /// Waiting for the payload of a given size.
             case waitingForPayload(length: Int)
         }
 
-        /// A `DecodingError` is sent through the pipeline if anything went wrong.
+        /// A ``DecodingError`` is sent through the pipeline if anything went wrong.
         public enum DecodingError: Error, Equatable {
             /// Missing 'Content-Length' header.
             case missingContentLengthHeader
@@ -106,7 +115,12 @@ extension NIOJSONRPCFraming {
             }
         }
 
-        // `decode` will be invoked whenever there is more data available (or if we return `.continue`).
+        /// Decode the data in the supplied `buffer`.
+        /// `decode` will be invoked whenever there is more data available (or if we return `.continue`).
+        /// - parameters:
+        ///     - context: Calling context.
+        ///     - buffer: The data to decode.
+        /// - returns: Status describing need for more data or otherwise.
         public mutating func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
             switch self.state {
             case .waitingForHeaderNameOrHeaderBlockEnd:
@@ -166,7 +180,14 @@ extension NIOJSONRPCFraming {
             }
         }
 
-        /// Invoked when the `Channel` is being brough down.
+        /// Decode all remaining data.
+        /// Invoked when the `Channel` is being brought down.
+        /// Reports error through `ByteToMessageDecoderError.leftoverDataWhenDone` if not all data is consumed.
+        /// - parameters:
+        ///     - context: Calling context.
+        ///     - buffer: Buffer of data to decode.
+        ///     - seenEOF: If the end of file has been seen.
+        ///     - returns: .needMoreData always as all data should be consumed.
         public mutating func decodeLast(context: ChannelHandlerContext,
                                         buffer: inout ByteBuffer,
                                         seenEOF: Bool) throws -> DecodingState {

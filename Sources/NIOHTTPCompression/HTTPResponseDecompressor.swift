@@ -15,10 +15,15 @@
 import NIOCore
 import NIOHTTP1
 
+/// Duplex channel handler which will accept deflate and gzip encoded responses and decompress them.
 public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
+    /// Expect `HTTPClientResponsePart` inbound.
     public typealias InboundIn = HTTPClientResponsePart
+    /// Sends `HTTPClientResponsePart` to the next pipeline stage inbound.
     public typealias InboundOut = HTTPClientResponsePart
+    /// Expect `HTTPClientRequestPart` outbound.
     public typealias OutboundIn = HTTPClientRequestPart
+    /// Send `HTTPClientRequestPart` to the next stage outbound.
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// this struct encapsulates the state of a single http response decompression
@@ -34,6 +39,8 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     private var compression: Compression? = nil
     private var decompressor: NIOHTTPDecompression.Decompressor
 
+    /// Initialise
+    /// - Parameter limit: Limit on the amount of decompression allowed.
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
         self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
     }
