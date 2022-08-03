@@ -112,7 +112,8 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public typealias InboundIn = ByteBuffer
     /// `ByteBuffer` is type passed to next stage.
     public typealias InboundOut = ByteBuffer
-    
+
+    @available(*, deprecated, message: "No longer used")
     public var cumulationBuffer: ByteBuffer?
     private var readState: DecoderReadState = .waitingForHeader
     
