@@ -184,7 +184,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     private var localAddress: SocketAddress?
     private var remoteAddress: SocketAddress?
 
-    /// Reusable header for `. pcap` file.
+    /// Reusable header for `.pcap` file.
     public static var pcapFileHeader: ByteBuffer {
         var buffer = ByteBufferAllocator().buffer(capacity: 24)
         buffer.writePCAPHeader()
