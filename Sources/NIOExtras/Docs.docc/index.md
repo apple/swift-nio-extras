@@ -1,4 +1,4 @@
-# NIOExtras
+# ``NIOExtras``
 
 A collection of helpful utilities to assist in building and debugging Swift-NIO based applications.
 
@@ -18,26 +18,26 @@ Easy request response flows can be built using the ``RequestResponseHandler`` wh
 
 ### Debugging Aids
 
-- ``DebugInboundEventsHandler`` allows logging of inbound channel pipeline events.
-- ``DebugOutboundEventsHandler`` allows logging of outbound channel pipeline events.
-- ``NIOWritePCAPHandler``captures data from the channel pipeline in PCAP format.
-- ``NIOPCAPRingBuffer`` stores captured packet data.
+- ``DebugInboundEventsHandler``
+- ``DebugOutboundEventsHandler``
+- ``NIOWritePCAPHandler``
+- ``NIOPCAPRingBuffer``
 
 ### Encoding and Decoding
 
-- ``FixedLengthFrameDecoder`` splits received data into frames of a fixed number of bytes.
-- ``NIOJSONRPCFraming`` emits JSON-RPC wire protocol with 'Content-Length' HTTP-like headers.
-- ``LengthFieldBasedFrameDecoder`` splits received data into frames based on a length header in the data stream.
-- ``NIOLengthFieldBasedFrameDecoderError`` contains errors emitted from ``LengthFieldBasedFrameDecoder``
-- ``LengthFieldPrepender`` is an encoder that takes a `ByteBuffer` message and prepends the number of bytes in the message.
-- ``LengthFieldPrependerError`` contains errors emitted from ``LengthFieldPrepender``
-- ``LineBasedFrameDecoder`` splits received data into frames terminated by new lines.
-- ``NIOExtrasErrors`` contains errors emitted from the NIOExtras decoders.
-- ``NIOExtrasError`` base type for ``NIOExtrasErrors``
+- ``FixedLengthFrameDecoder``
+- ``NIOJSONRPCFraming``
+- ``LengthFieldBasedFrameDecoder``
+- ``NIOLengthFieldBasedFrameDecoderError``
+- ``LengthFieldPrepender``
+- ``LengthFieldPrependerError``
+- ``LineBasedFrameDecoder``
+- ``NIOExtrasErrors``
+- ``NIOExtrasError``
 
 ### Channel Pipeline Aids
-- ``ServerQuiescingHelper`` makes it easy to collect all child `Channel`s that a given server `Channel` accepts.
-- ``RequestResponseHandler`` takes a request and a promise which is fulfilled when expected response is received.
+- ``ServerQuiescingHelper``
+- ``RequestResponseHandler``
 
 ### Data Types
-- ``NIOLengthFieldBitLength`` describes the length of a piece of data in bits
+- ``NIOLengthFieldBitLength``

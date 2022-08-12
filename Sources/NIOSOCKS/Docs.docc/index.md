@@ -1,4 +1,4 @@
-# NIOSOCKS
+# ``NIOSOCKS``
 
 SOCKS v5 protocol implementation
 
@@ -13,23 +13,23 @@ For an example see the NIOSOCKSClient target.
 ## Topics
 
 ### Channel Handlers
-- ``SOCKSClientHandler`` connects to a SOCKS server to establish a proxied connection to a host.
-- ``SOCKSServerHandshakeHandler`` server side SOCKS channel handler.
+- ``SOCKSClientHandler``
+- ``SOCKSServerHandshakeHandler``
 
 ### Client Messages
-- ``ClientMessage`` message types from the client to the server.
-- ``ClientGreeting`` client initiation of SOCKS handshake.
-- ``SOCKSRequest`` the target host and how to connect.
+- ``ClientMessage``
+- ``ClientGreeting``
+- ``SOCKSRequest``
 
 ### Server Messages
-- ``ServerMessage`` message types from the server to the client.
-- ``SelectedAuthenticationMethod`` the authentication method selected by the SOCKS server.
-- ``SOCKSResponse`` the server response to the client request.
+- ``ServerMessage``
+- ``SelectedAuthenticationMethod``
+- ``SOCKSResponse``
 
 ### Supporting Types
-- ``AuthenticationMethod`` The SOCKS authentication method to use.
-- ``SOCKSServerReply`` indicates the success or failure of connection.
-- ``SOCKSCommand`` the type of connection to establish.
-- ``SOCKSAddress`` the address used to connect to the target host.
-- ``SOCKSProxyEstablishedEvent`` a user event that is sent when a SOCKS connection has been established.
-- ``SOCKSError`` socks protocol errors which can be emitted.
+- ``AuthenticationMethod``
+- ``SOCKSServerReply``
+- ``SOCKSCommand``
+- ``SOCKSAddress``
+- ``SOCKSProxyEstablishedEvent``
+- ``SOCKSError``

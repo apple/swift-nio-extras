@@ -1,4 +1,4 @@
-# NIOHTTPCompression
+# ``NIOHTTPCompression``
 
 Automatic compression and decompression of HTTP data.
 
