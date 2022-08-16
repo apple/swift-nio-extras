@@ -10,6 +10,8 @@ services:
 
   test:
     image: swift-nio-extras:20.04-main
+    environment:
+      - IMPORT_CHECK_ARG=--explicit-target-dependency-import-check error
 
   shell:
     image: swift-nio-extras:20.04-main
