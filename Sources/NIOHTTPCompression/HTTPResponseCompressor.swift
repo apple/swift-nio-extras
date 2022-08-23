@@ -221,6 +221,12 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         pendingWritePromise = context.eventLoop.makePromise()
     }
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension HTTPResponseCompressor: Sendable {}
+#endif
+
 /// A buffer object that allows us to keep track of how much of a HTTP response we've seen before
 /// a flush.
 ///
