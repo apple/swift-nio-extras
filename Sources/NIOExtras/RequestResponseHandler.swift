@@ -119,3 +119,8 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
         }
     }
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension RequestResponseHandler: Sendable {}
+#endif

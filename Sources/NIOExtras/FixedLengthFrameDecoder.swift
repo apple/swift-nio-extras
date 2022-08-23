@@ -28,14 +28,17 @@ import NIOCore
 ///     | ABC | DEF | GHI |
 ///     +-----+-----+-----+
 ///
-public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
+public final class FixedLengthFrameDecoder: ByteToMessageDecoder, NIOSendable {
     /// Data type we receive.
     public typealias InboundIn = ByteBuffer
     /// Data type we send to the next stage.
     public typealias InboundOut = ByteBuffer
 
     @available(*, deprecated, message: "No longer used")
-    public var cumulationBuffer: ByteBuffer?
+    public var cumulationBuffer: ByteBuffer? {
+        get { nil }
+        set { /* discard newValue */ }
+    }
 
     private let frameLength: Int
 

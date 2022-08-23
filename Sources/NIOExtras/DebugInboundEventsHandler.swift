@@ -174,3 +174,8 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         fflush(stdout)
     }
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension DebugInboundEventsHandler: Sendable {}
+#endif
