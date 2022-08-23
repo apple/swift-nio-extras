@@ -121,3 +121,8 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     }
     
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension SOCKSServerHandshakeHandler: Sendable {}
+#endif

@@ -17,7 +17,7 @@ import NIOCore
 /// Clients begin the SOCKS handshake process
 /// by providing an array of suggested authentication
 /// methods.
-public struct ClientGreeting: Hashable {
+public struct ClientGreeting: Hashable, NIOSendable {
     
     /// The protocol version.
     public let version: UInt8 = 5
