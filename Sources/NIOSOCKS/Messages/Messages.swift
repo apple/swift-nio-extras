@@ -15,7 +15,7 @@
 import NIOCore
 
 /// Sent by the client and received by the server.
-public enum ClientMessage: Hashable {
+public enum ClientMessage: Hashable, NIOSendable {
     
     /// Contains the proposed authentication methods.
     case greeting(ClientGreeting)
@@ -28,7 +28,7 @@ public enum ClientMessage: Hashable {
 }
 
 /// Sent by the server and received by the client.
-public enum ServerMessage: Hashable {
+public enum ServerMessage: Hashable, NIOSendable {
     
     /// Used by the server to instruct the client of the authentication method to use.
     case selectedAuthenticationMethod(SelectedAuthenticationMethod)

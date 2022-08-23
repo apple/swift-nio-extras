@@ -114,6 +114,11 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     }
 }
 
+#if swift(>=5.6)
+@available(*, unavailable)
+extension SOCKSClientHandler: Sendable {}
+#endif
+
 extension SOCKSClientHandler {
     
     private func beginHandshake(context: ChannelHandlerContext) {
@@ -207,7 +212,7 @@ extension SOCKSClientHandler: RemovableChannelHandler {
 /// A `Channel` user event that is sent when a SOCKS connection has been established
 ///
 /// After this event has been received it is save to remove the `SOCKSClientHandler` from the channel pipeline.
-public struct SOCKSProxyEstablishedEvent {
+public struct SOCKSProxyEstablishedEvent: NIOSendable {
     public init() {
     }
 }
