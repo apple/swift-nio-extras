@@ -19,7 +19,7 @@ import NIOCore
 public enum NIOCompression {
 
     /// Which algorithm should be used for compression.
-    public struct Algorithm: CustomStringConvertible, Equatable {
+    public struct Algorithm: CustomStringConvertible, Equatable, NIOSendable {
         fileprivate enum AlgorithmEnum: String {
             case gzip
             case deflate
