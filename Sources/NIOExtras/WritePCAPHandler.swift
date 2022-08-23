@@ -290,6 +290,11 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     }
 }
 
+#if swift(>=5.6)
+@available(*, unavailable)
+extension NIOWritePCAPHandler: Sendable {}
+#endif
+
 extension NIOWritePCAPHandler: ChannelDuplexHandler {
     public typealias InboundIn = ByteBuffer
     public typealias InboundOut = ByteBuffer

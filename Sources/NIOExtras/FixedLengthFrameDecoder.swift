@@ -76,3 +76,8 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
         return .needMoreData
     }
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension FixedLengthFrameDecoder: Sendable {}
+#endif

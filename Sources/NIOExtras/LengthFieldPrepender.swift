@@ -144,3 +144,8 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         context.write(data, promise: promise)
     }
 }
+
+#if swift(>=5.6)
+@available(*, unavailable)
+extension LengthFieldPrepender: Sendable {}
+#endif

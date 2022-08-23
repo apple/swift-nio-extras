@@ -12,8 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOCore
+
 /// A struct to describe the length of a piece of data in bits
-public struct NIOLengthFieldBitLength {
+public struct NIOLengthFieldBitLength: NIOSendable {
     internal enum Backing {
         case bits8
         case bits16
