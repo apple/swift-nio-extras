@@ -24,7 +24,7 @@ import NIOCore
 
 /// Instructs the SOCKS proxy server of the target host,
 /// and how to connect.
-public struct SOCKSRequest: Hashable {
+public struct SOCKSRequest: Hashable, NIOSendable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -75,7 +75,7 @@ extension ByteBuffer {
 
 /// What type of connection the SOCKS server should establish with
 /// the target host.
-public struct SOCKSCommand: Hashable {
+public struct SOCKSCommand: Hashable, NIOSendable {
     
     /// Typically the primary connection type, suitable for HTTP.
     public static let connect = SOCKSCommand(value: 0x01)
@@ -99,7 +99,7 @@ public struct SOCKSCommand: Hashable {
 // MARK: - SOCKSAddress
 
 /// The address used to connect to the target host.
-public enum SOCKSAddress: Hashable {
+public enum SOCKSAddress: Hashable, NIOSendable {
     /// Socket Adress
     case address(SocketAddress)
     /// Host and port
