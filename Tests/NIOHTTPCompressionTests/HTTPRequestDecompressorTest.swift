@@ -120,9 +120,33 @@ class HTTPRequestDecompressorTest: XCTestCase {
             )
 
             XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+            XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.end(nil)))
         }
+    }
 
-        XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.end(nil)))
+    func testDecompressionTrailingData() throws {
+        // Valid compressed data with some trailing garbage
+        let compressed = ByteBuffer(bytes: [120, 156, 99, 0, 0, 0, 1, 0, 1] + [1, 2, 3])
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
+        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
+
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testDecompressionTruncatedInput() throws {
+        // Truncated compressed data
+        let compressed = ByteBuffer(bytes: [120, 156, 99, 0])
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
+        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(version: .init(major: 1, minor: 1), method: .POST, uri: "https://nio.swift.org/test", headers: headers)))
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.end(nil)))
     }
 
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
