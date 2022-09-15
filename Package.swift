@@ -119,7 +119,7 @@ let package = Package(
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.34.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.42.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     ],
     targets: targets
