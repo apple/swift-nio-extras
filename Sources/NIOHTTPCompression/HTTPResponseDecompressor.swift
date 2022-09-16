@@ -33,9 +33,11 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
     private var compression: Compression? = nil
     private var decompressor: NIOHTTPDecompression.Decompressor
+    private var decompressionComplete: Bool
 
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
         self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
+        self.decompressionComplete = false
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -77,22 +79,36 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             
             do {
                 compression.compressedLength += part.readableBytes
-                while part.readableBytes > 0 {
+                while part.readableBytes > 0 && !self.decompressionComplete {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
+                    let result = try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
+                    if result.complete {
+                        self.decompressionComplete = true
+                    }
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 }
                 
                 // assign the changed local property back to the class state
                 self.compression = compression
+
+                if part.readableBytes > 0 {
+                    context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.invalidTrailingData)
+                }
             }
             catch {
                 context.fireErrorCaught(error)
             }
         case .end:
             if self.compression != nil {
+                let wasDecompressionComplete = self.decompressionComplete
+
                 self.decompressor.deinitializeDecoder()
                 self.compression = nil
+                self.decompressionComplete = false
+
+                if !wasDecompressionComplete {
+                    context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.truncatedData)
+                }
             }
             context.fireChannelRead(data)
         }
