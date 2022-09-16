@@ -30,6 +30,8 @@ extension HTTPRequestDecompressorTest {
                 ("testDecompressionLimitRatio", testDecompressionLimitRatio),
                 ("testDecompressionLimitSize", testDecompressionLimitSize),
                 ("testDecompression", testDecompression),
+                ("testDecompressionTrailingData", testDecompressionTrailingData),
+                ("testDecompressionTruncatedInput", testDecompressionTruncatedInput),
            ]
    }
 }

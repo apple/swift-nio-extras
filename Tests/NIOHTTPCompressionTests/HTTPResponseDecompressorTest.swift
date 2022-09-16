@@ -239,6 +239,31 @@ class HTTPResponseDecompressorTest: XCTestCase {
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
 
+    func testDecompressionTrailingData() throws {
+        // Valid compressed data with some trailing garbage
+        let compressed = ByteBuffer(bytes: [120, 156, 99, 0, 0, 0, 1, 0, 1] + [1, 2, 3])
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
+        try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
+
+        XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
+    }
+
+    func testDecompressionTruncatedInput() throws {
+        // Truncated compressed data
+        let compressed = ByteBuffer(bytes: [120, 156, 99, 0])
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
+        try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers)))
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
+    }
+
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
         var stream = z_stream()
 
