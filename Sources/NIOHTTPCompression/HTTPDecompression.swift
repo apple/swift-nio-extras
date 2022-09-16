@@ -66,10 +66,10 @@ public enum NIOHTTPDecompression {
         }
 
         /// Decompression completed but there was invalid trailing data behind the compressed data.
-        static let invalidTrailingData = Self(.invalidTrailingData)
+        static let invalidTrailingData = ExtraDecompressionError(.invalidTrailingData)
 
         /// The decompressed data was incorrectly truncated.
-        static let truncatedData = Self(.truncatedData)
+        static let truncatedData = ExtraDecompressionError(.truncatedData)
 
         var description: String {
             return String(describing: self.backing)
