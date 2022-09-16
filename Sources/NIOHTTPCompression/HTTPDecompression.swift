@@ -52,6 +52,30 @@ public enum NIOHTTPDecompression {
         case initializationError(Int)
     }
 
+    // Would have been public, but this is a backport and cannot add new API.
+    internal struct ExtraDecompressionError: Error, Hashable, CustomStringConvertible {
+        private var backing: Backing
+
+        private enum Backing {
+            case invalidTrailingData
+            case truncatedData
+        }
+
+        private init(_ backing: Backing) {
+            self.backing = backing
+        }
+
+        /// Decompression completed but there was invalid trailing data behind the compressed data.
+        static let invalidTrailingData = ExtraDecompressionError(.invalidTrailingData)
+
+        /// The decompressed data was incorrectly truncated.
+        static let truncatedData = ExtraDecompressionError(.truncatedData)
+
+        var description: String {
+            return String(describing: self.backing)
+        }
+    }
+
     enum CompressionAlgorithm: String {
         case gzip
         case deflate
@@ -86,12 +110,15 @@ public enum NIOHTTPDecompression {
             self.limit = limit
         }
 
-        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, compressedLength: Int) throws {
-            self.inflated += try self.stream.inflatePart(input: &part, output: &buffer)
+        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, compressedLength: Int) throws -> InflateResult {
+            let result = try self.stream.inflatePart(input: &part, output: &buffer)
+            self.inflated += result.written
 
             if self.limit.exceeded(compressed: compressedLength, decompressed: self.inflated) {
                 throw NIOHTTPDecompression.DecompressionError.limit
             }
+
+            return result
         }
 
         mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm) throws {
@@ -112,9 +139,10 @@ public enum NIOHTTPDecompression {
 }
 
 extension z_stream {
-    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> Int {
+    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> InflateResult {
         let minimumCapacity = input.readableBytes * 2
-        var written = 0
+        var inflateResult = InflateResult(written: 0, complete: false)
+
         try input.readWithUnsafeMutableReadableBytes { pointer in
             self.avail_in = UInt32(pointer.count)
             self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
@@ -126,24 +154,34 @@ extension z_stream {
                 self.next_out = nil
             }
 
-            written += try self.inflatePart(to: &output, minimumCapacity: minimumCapacity)
+            inflateResult = try self.inflatePart(to: &output, minimumCapacity: minimumCapacity)
 
             return pointer.count - Int(self.avail_in)
         }
-        return written
+        return inflateResult
     }
 
-    private mutating func inflatePart(to buffer: inout ByteBuffer, minimumCapacity: Int) throws -> Int {
-        return try buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: minimumCapacity) { pointer in
+    private mutating func inflatePart(to buffer: inout ByteBuffer, minimumCapacity: Int) throws -> InflateResult {
+        var rc = Z_OK
+
+        let written = try buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: minimumCapacity) { pointer in
             self.avail_out = UInt32(pointer.count)
             self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
-            let rc = inflate(&self, Z_NO_FLUSH)
+            rc = inflate(&self, Z_NO_FLUSH)
             guard rc == Z_OK || rc == Z_STREAM_END else {
                 throw NIOHTTPDecompression.DecompressionError.inflationError(Int(rc))
             }
 
             return pointer.count - Int(self.avail_out)
         }
+
+        return InflateResult(written: written, complete: rc == Z_STREAM_END)
     }
+}
+
+struct InflateResult {
+    var written: Int
+
+    var complete: Bool
 }
