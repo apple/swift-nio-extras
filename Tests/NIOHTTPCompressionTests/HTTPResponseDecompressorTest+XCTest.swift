@@ -37,6 +37,8 @@ extension HTTPResponseDecompressorTest {
                 ("testDecompressionLimitRatioWithoutContentLenghtHeaderFails", testDecompressionLimitRatioWithoutContentLenghtHeaderFails),
                 ("testDecompression", testDecompression),
                 ("testDecompressionWithoutContentLength", testDecompressionWithoutContentLength),
+                ("testDecompressionTrailingData", testDecompressionTrailingData),
+                ("testDecompressionTruncatedInput", testDecompressionTruncatedInput),
            ]
    }
 }
