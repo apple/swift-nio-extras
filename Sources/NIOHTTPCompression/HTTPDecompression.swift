@@ -52,7 +52,8 @@ public enum NIOHTTPDecompression {
         case initializationError(Int)
     }
 
-    public struct ExtraDecompressionError: Error, Hashable, CustomStringConvertible {
+    // Would have been public, but this is a backport and cannot add new API.
+    internal struct ExtraDecompressionError: Error, Hashable, CustomStringConvertible {
         private var backing: Backing
 
         private enum Backing {
@@ -65,12 +66,12 @@ public enum NIOHTTPDecompression {
         }
 
         /// Decompression completed but there was invalid trailing data behind the compressed data.
-        public static let invalidTrailingData = Self(.invalidTrailingData)
+        static let invalidTrailingData = Self(.invalidTrailingData)
 
         /// The decompressed data was incorrectly truncated.
-        public static let truncatedData = Self(.truncatedData)
+        static let truncatedData = Self(.truncatedData)
 
-        public var description: String {
+        var description: String {
             return String(describing: self.backing)
         }
     }
