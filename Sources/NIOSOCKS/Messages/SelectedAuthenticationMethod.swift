@@ -17,7 +17,7 @@ import NIOCore
 /// Used by the SOCKS server to inform the client which
 /// authentication method it would like to use out of those
 /// offered.
-public struct SelectedAuthenticationMethod: Hashable, NIOSendable {
+public struct SelectedAuthenticationMethod: Hashable, Sendable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
