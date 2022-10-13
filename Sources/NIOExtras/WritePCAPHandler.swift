@@ -722,8 +722,4 @@ extension NIOWritePCAPHandler {
     }
 }
 
-#if swift(>=5.5) && canImport(_Concurrency)
-extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {
-
-}
-#endif
+extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {}

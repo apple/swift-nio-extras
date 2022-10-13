@@ -144,11 +144,8 @@ private final class ChannelCollector {
     }
 }
 
-#if swift(>=5.5) && canImport(_Concurrency)
-extension ChannelCollector: @unchecked Sendable {
 
-}
-#endif
+extension ChannelCollector: @unchecked Sendable {}
 
 /// A `ChannelHandler` that adds all channels that it receives through the `ChannelPipeline` to a `ChannelCollector`.
 ///
