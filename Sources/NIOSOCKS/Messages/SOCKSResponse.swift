@@ -18,7 +18,7 @@ import NIOCore
 
 /// The SOCKS Server's response to the client's request
 /// indicating if the request succeeded or failed.
-public struct SOCKSResponse: Hashable, NIOSendable {
+public struct SOCKSResponse: Hashable, Sendable {
     
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
@@ -69,7 +69,7 @@ extension ByteBuffer {
 
 /// Used to indicate if the SOCKS client's connection request succeeded
 /// or failed.
-public struct SOCKSServerReply: Hashable, NIOSendable {
+public struct SOCKSServerReply: Hashable, Sendable {
     
     /// The connection succeeded and data can now be transmitted.
     public static let succeeded = SOCKSServerReply(value: 0x00)

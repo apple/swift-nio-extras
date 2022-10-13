@@ -18,7 +18,7 @@ import NIOCore
 /// Namespace for decompression code.
 public enum NIOHTTPDecompression {
     /// Specifies how to limit decompression inflation.
-    public struct DecompressionLimit: NIOSendable {
+    public struct DecompressionLimit: Sendable {
         private enum Limit {
             case none
             case size(Int)

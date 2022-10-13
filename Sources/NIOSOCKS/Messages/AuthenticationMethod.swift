@@ -15,7 +15,7 @@
 import NIOCore
 
 /// The SOCKS authentication method to use, defined in RFC 1928.
-public struct AuthenticationMethod: Hashable, NIOSendable {
+public struct AuthenticationMethod: Hashable, Sendable {
     
     /// No authentication required
     public static let noneRequired = AuthenticationMethod(value: 0x00)

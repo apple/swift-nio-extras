@@ -256,6 +256,6 @@ public final class ServerQuiescingHelper {
     }
 }
 
-extension ServerQuiescingHelper: NIOSendable {
+extension ServerQuiescingHelper: Sendable {
 
 }

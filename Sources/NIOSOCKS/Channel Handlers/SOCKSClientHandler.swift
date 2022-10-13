@@ -212,7 +212,7 @@ extension SOCKSClientHandler: RemovableChannelHandler {
 /// A `Channel` user event that is sent when a SOCKS connection has been established
 ///
 /// After this event has been received it is save to remove the `SOCKSClientHandler` from the channel pipeline.
-public struct SOCKSProxyEstablishedEvent: NIOSendable {
+public struct SOCKSProxyEstablishedEvent: Sendable {
     public init() {
     }
 }
