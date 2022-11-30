@@ -15,12 +15,12 @@
 import NIOCore
 import NIOHTTP1
 
-public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChannelHandler {
+public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias OutboundIn = Never
     public typealias OutboundOut = HTTPClientRequestPart
     public typealias InboundIn = HTTPClientResponsePart
 
-    enum State {
+    private enum State {
         // transitions to `.connectSent` or `.failed`
         case initialized
         // transitions to `.headReceived` or `.failed`
@@ -39,25 +39,29 @@ public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChan
     private let targetPort: Int
     private let headers: HTTPHeaders
     private let deadline: NIODeadline
+    private let promise: EventLoopPromise<Void>?
 
-    private var proxyEstablishedPromise: EventLoopPromise<Void>?
-    var proxyEstablishedFuture: EventLoopFuture<Void>? {
-        return self.proxyEstablishedPromise?.futureResult
-    }
-
-    init(targetHost: String,
+    /// Creates a new ``NIOHTTP1ProxyConnectHandler`` that issues a CONNECT request to a proxy server
+    /// and instructs the server to connect to `targetHost`.
+    /// - Parameters:
+    ///   - targetHost: The desired end point host
+    ///   - targetPort: The port to be used when connecting to `targetHost`
+    ///   - headers: Headers to supply to the proxy server as part of the CONNECT request
+    ///   - deadline: Deadline for the CONNECT request
+    ///   - promise: Promise with which the result of the connect operation is communicated
+    public init(targetHost: String,
          targetPort: Int,
          headers: HTTPHeaders,
-         deadline: NIODeadline) {
+         deadline: NIODeadline,
+         promise: EventLoopPromise<Void>?) {
         self.targetHost = targetHost
         self.targetPort = targetPort
         self.headers = headers
         self.deadline = deadline
+        self.promise = promise
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
-        self.proxyEstablishedPromise = context.eventLoop.makePromise(of: Void.self)
-
         self.sendConnect(context: context)
     }
 
@@ -67,12 +71,13 @@ public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChan
             break
         case .initialized, .connectSent, .headReceived:
             self.state = .failed(Error.noResult)
-            self.proxyEstablishedPromise?.fail(Error.noResult)
+            self.promise?.fail(Error.noResult)
         }
     }
 
     public func channelActive(context: ChannelHandlerContext) {
         self.sendConnect(context: context)
+        context.fireChannelActive()
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
@@ -86,6 +91,7 @@ public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChan
         case .failed, .completed:
             break
         }
+        context.fireChannelInactive()
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -176,7 +182,7 @@ public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChan
         case .headReceived(let timeout):
             timeout.cancel()
             self.state = .completed
-            self.proxyEstablishedPromise?.succeed(())
+            self.promise?.succeed(())
 
         case .failed:
             // ran into an error before... ignore this one
@@ -188,7 +194,7 @@ public final class HTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableChan
 
     private func failWithError(_ error: Error, context: ChannelHandlerContext, closeConnection: Bool = true) {
         self.state = .failed(error)
-        self.proxyEstablishedPromise?.fail(error)
+        self.promise?.fail(error)
         context.fireErrorCaught(error)
         if closeConnection {
             context.close(mode: .all, promise: nil)

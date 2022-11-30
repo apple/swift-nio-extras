@@ -26,7 +26,7 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let socketAddress = try! SocketAddress.makeAddressResolvingHost("localhost", port: 0)
         XCTAssertNoThrow(try embedded.connect(to: socketAddress).wait())
 
-        let proxyConnectHandler = HTTP1ProxyConnectHandler(
+        let proxyConnectHandler = NIOHTTP1ProxyConnectHandler(
             targetHost: "swift.org",
             targetPort: 443,
             headers: [:],
@@ -59,7 +59,7 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let socketAddress = try! SocketAddress.makeAddressResolvingHost("localhost", port: 0)
         XCTAssertNoThrow(try embedded.connect(to: socketAddress).wait())
 
-        let proxyConnectHandler = HTTP1ProxyConnectHandler(
+        let proxyConnectHandler = NIOHTTP1ProxyConnectHandler(
             targetHost: "swift.org",
             targetPort: 443,
             headers: ["proxy-authorization" : "Basic abc123"],
@@ -92,7 +92,7 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let socketAddress = try! SocketAddress.makeAddressResolvingHost("localhost", port: 0)
         XCTAssertNoThrow(try embedded.connect(to: socketAddress).wait())
 
-        let proxyConnectHandler = HTTP1ProxyConnectHandler(
+        let proxyConnectHandler = NIOHTTP1ProxyConnectHandler(
             targetHost: "swift.org",
             targetPort: 443,
             headers: [:],
@@ -115,13 +115,13 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let responseHead = HTTPResponseHead(version: .http1_1, status: .internalServerError)
         // answering with 500 should lead to a triggered error in pipeline
         XCTAssertThrowsError(try embedded.writeInbound(HTTPClientResponsePart.head(responseHead))) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
         }
         XCTAssertFalse(embedded.isActive, "Channel should be closed in response to the error")
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.end(nil)))
 
         XCTAssertThrowsError(try XCTUnwrap(proxyConnectHandler.proxyEstablishedFuture).wait()) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
         }
     }
 
@@ -131,7 +131,7 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let socketAddress = try! SocketAddress.makeAddressResolvingHost("localhost", port: 0)
         XCTAssertNoThrow(try embedded.connect(to: socketAddress).wait())
 
-        let proxyConnectHandler = HTTP1ProxyConnectHandler(
+        let proxyConnectHandler = NIOHTTP1ProxyConnectHandler(
             targetHost: "swift.org",
             targetPort: 443,
             headers: [:],
@@ -154,13 +154,13 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let responseHead = HTTPResponseHead(version: .http1_1, status: .proxyAuthenticationRequired)
         // answering with 500 should lead to a triggered error in pipeline
         XCTAssertThrowsError(try embedded.writeInbound(HTTPClientResponsePart.head(responseHead))) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
         }
         XCTAssertFalse(embedded.isActive, "Channel should be closed in response to the error")
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.end(nil)))
 
         XCTAssertThrowsError(try XCTUnwrap(proxyConnectHandler.proxyEstablishedFuture).wait()) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
         }
     }
 
@@ -170,7 +170,7 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let socketAddress = try! SocketAddress.makeAddressResolvingHost("localhost", port: 0)
         XCTAssertNoThrow(try embedded.connect(to: socketAddress).wait())
 
-        let proxyConnectHandler = HTTP1ProxyConnectHandler(
+        let proxyConnectHandler = NIOHTTP1ProxyConnectHandler(
             targetHost: "swift.org",
             targetPort: 443,
             headers: [:],
@@ -193,13 +193,13 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.head(responseHead)))
         // answering with a body should lead to a triggered error in pipeline
         XCTAssertThrowsError(try embedded.writeInbound(HTTPClientResponsePart.body(ByteBuffer(bytes: [0, 1, 2, 3])))) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
         }
         XCTAssertEqual(embedded.isActive, false)
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.end(nil)))
 
         XCTAssertThrowsError(try XCTUnwrap(proxyConnectHandler.proxyEstablishedFuture).wait()) {
-            XCTAssertEqual($0 as? HTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
         }
     }
 }
