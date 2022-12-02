@@ -161,9 +161,9 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 // has not yet been formed and that the connection remains governed by HTTP.
                 self.failWithError(Error.invalidProxyResponseHead(head), context: context)
             }
-        case .failed, .completed:
+        case .failed:
             break
-        case .initialized, .headReceived:
+        case .initialized, .headReceived, .completed:
             preconditionFailure("Invalid state: \(self.state)")
         }
     }
