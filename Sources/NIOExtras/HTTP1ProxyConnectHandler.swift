@@ -39,7 +39,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     private let targetPort: Int
     private let headers: HTTPHeaders
     private let deadline: NIODeadline
-    private let promise: EventLoopPromise<Void>?
+    private let promise: EventLoopPromise<Void>
 
     /// Creates a new ``NIOHTTP1ProxyConnectHandler`` that issues a CONNECT request to a proxy server
     /// and instructs the server to connect to `targetHost`.
@@ -53,7 +53,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
          targetPort: Int,
          headers: HTTPHeaders,
          deadline: NIODeadline,
-         promise: EventLoopPromise<Void>?) {
+         promise: EventLoopPromise<Void>) {
         self.targetHost = targetHost
         self.targetPort = targetPort
         self.headers = headers
@@ -62,7 +62,9 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
-        self.sendConnect(context: context)
+        if context.channel.isActive {
+            self.sendConnect(context: context)
+        }
     }
 
     public func handlerRemoved(context: ChannelHandlerContext) {
@@ -71,7 +73,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             break
         case .initialized, .connectSent, .headReceived:
             self.state = .failed(Error.noResult)
-            self.promise?.fail(Error.noResult)
+            self.promise.fail(Error.noResult)
         }
     }
 
@@ -143,23 +145,26 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     }
 
     private func handleHTTPHeadReceived(_ head: HTTPResponseHead, context: ChannelHandlerContext) {
-        guard case .connectSent(let scheduled) = self.state else {
-            preconditionFailure("HTTPDecoder should throw an error, if we have not send a request")
-        }
+        switch self.state {
+        case .connectSent(let scheduled):
+            switch head.status.code {
+            case 200..<300:
+                // Any 2xx (Successful) response indicates that the sender (and all
+                // inbound proxies) will switch to tunnel mode immediately after the
+                // blank line that concludes the successful response's header section
+                self.state = .headReceived(scheduled)
+            case 407:
+                self.failWithError(Error.proxyAuthenticationRequired, context: context)
 
-        switch head.status.code {
-        case 200..<300:
-            // Any 2xx (Successful) response indicates that the sender (and all
-            // inbound proxies) will switch to tunnel mode immediately after the
-            // blank line that concludes the successful response's header section
-            self.state = .headReceived(scheduled)
-        case 407:
-            self.failWithError(Error.proxyAuthenticationRequired, context: context)
-
-        default:
-            // Any response other than a successful response indicates that the tunnel
-            // has not yet been formed and that the connection remains governed by HTTP.
-            self.failWithError(Error.invalidProxyResponse, context: context)
+            default:
+                // Any response other than a successful response indicates that the tunnel
+                // has not yet been formed and that the connection remains governed by HTTP.
+                self.failWithError(Error.invalidProxyResponseHead(head), context: context)
+            }
+        case .failed, .completed:
+            break
+        case .initialized, .headReceived:
+            preconditionFailure("Invalid state: \(self.state)")
         }
     }
 
@@ -182,7 +187,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         case .headReceived(let timeout):
             timeout.cancel()
             self.state = .completed
-            self.promise?.succeed(())
+            self.promise.succeed(())
 
         case .failed:
             // ran into an error before... ignore this one
@@ -194,7 +199,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
 
     private func failWithError(_ error: Error, context: ChannelHandlerContext, closeConnection: Bool = true) {
         self.state = .failed(error)
-        self.promise?.fail(error)
+        self.promise.fail(error)
         context.fireErrorCaught(error)
         if closeConnection {
             context.close(mode: .all, promise: nil)
@@ -202,9 +207,11 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     }
 
     /// Error types for ``HTTP1ProxyConnectHandler``
-    public struct Error: Swift.Error, CustomStringConvertible, Equatable {
-        fileprivate enum ErrorEnum: String {
+    public struct Error: Swift.Error, Equatable {
+
+        fileprivate enum ErrorEnum: Equatable {
             case proxyAuthenticationRequired
+            case invalidProxyResponseHead(head: HTTPResponseHead)
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
@@ -212,13 +219,15 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         }
         fileprivate let error: ErrorEnum
 
-        /// return as String
-        public var description: String { return error.rawValue }
-
         /// Proxy response status `407` indicates that authentication is required
         public static let proxyAuthenticationRequired = Error(error: .proxyAuthenticationRequired)
 
-        /// Proxy response contains unexpected status or body
+        /// Proxy response contains unexpected status
+        public static func invalidProxyResponseHead(_ head: HTTPResponseHead) -> Error {
+            Error(error: .invalidProxyResponseHead(head: head))
+        }
+
+        /// Proxy response contains unexpected body
         public static let invalidProxyResponse = Error(error: .invalidProxyResponse)
 
         /// Connection has been closed for ongoing request
@@ -229,4 +238,5 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
 
         /// Handler was removed before we received a result for the request
         public static let noResult = Error(error: .noResult)
-    }}
+    }
+}
