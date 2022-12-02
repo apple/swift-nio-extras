@@ -19,6 +19,7 @@
 #
 #   Created by Tony Stone on 5/4/16.
 #
+require 'date'
 require 'getoptlong'
 require 'fileutils'
 require 'pathname'
@@ -28,13 +29,61 @@ include FileUtils
 #
 # This ruby script will auto generate LinuxMain.swift and the +XCTest.swift extension files for Swift Package Manager on Linux platforms.
 #
+def extractCopyright(log)
+  startYear = 0
+  endYear = 0
+
+  indices = log.enum_for(:scan, /(?=Date:)/).map do
+    Regexp.last_match.offset(0).first
+  end
+
+  # If there are no years, assume this year.
+  if indices.count == 0
+    return "#{Date.today.year}"
+  end
+
+  # Return one year if there is only one year
+  if indices.count == 1
+    year = log[indices[0]+27..indices[0]+31]
+    return "#{year}"
+  end
+  # Return a year range
+  indices.each_with_index do |ind, i|
+    year = log[ind+27..ind+31]
+    # Seed start year
+    if i == 0
+        startYear = Integer(year)
+    end
+
+    # For all other years following
+    if Integer(year) > endYear
+        endYear = Integer(year)
+    end
+
+    if Integer(year) < startYear
+        startYear = Integer(year)
+    end
+
+  end
+
+  # If the years end up being the same
+  if startYear == endYear
+    return "#{startYear}"
+  end
+  # Otherwise, return the year range
+  return "#{startYear}-#{endYear}"
+end
+
 def header(fileName)
+  log = %x(git log --follow -p #{fileName})
+  copyrightYears = extractCopyright(log).strip
+
   string = <<-eos
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) #{copyrightYears} Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -70,6 +119,7 @@ def createExtensionFile(fileName, classes)
 
     for classArray in classes
       file.write 'extension ' + classArray[0] + " {\n\n"
+      file.write '   @available(*, deprecated, message: "not actually deprecated. Just deprecated to allow deprecated tests (which test deprecated functionality) without warnings")' +"\n"
       file.write '   static var allTests : [(String, (' + classArray[0] + ") -> () throws -> Void)] {\n"
       file.write "      return [\n"
 
@@ -92,12 +142,18 @@ def createLinuxMain(testsDirectory, allTestSubDirectories, files)
     file.write header(fileName)
     file.write "\n"
 
-    file.write "#if os(Linux) || os(FreeBSD)\n"
+    file.write "#if !compiler(>=5.5)\n"
+    file.write "#if os(Linux) || os(FreeBSD) || os(Android)\n"
     for testSubDirectory in allTestSubDirectories.sort { |x, y| x <=> y }
       file.write '   @testable import ' + testSubDirectory + "\n"
     end
     file.write "\n"
-    file.write "   XCTMain([\n"
+    file.write '@available(*, deprecated, message: "not actually deprecated. Just deprecated to allow deprecated tests (which test deprecated functionality) without warnings")' + "\n"
+    file.write "@main\n"
+    file.write "class LinuxMainRunner {\n"
+    file.write '   @available(*, deprecated, message: "not actually deprecated. Just deprecated to allow deprecated tests (which test deprecated functionality) without warnings")' + "\n"
+    file.write "   static func main() {\n"
+    file.write "       XCTMain([\n"
 
     testCases = []
     for classes in files
@@ -107,9 +163,14 @@ def createLinuxMain(testsDirectory, allTestSubDirectories, files)
     end
 
     for testCase in testCases.sort { |x, y| x <=> y }
-      file.write '         testCase(' + testCase + ".allTests),\n"
+      file.write '             testCase(' + testCase + ".allTests),\n"
     end
-    file.write "    ])\n"
+    file.write "        ])\n"
+    file.write "    }\n"
+    file.write "}\n"
+    file.write "#endif\n"
+    file.write "#else\n"
+    file.write "#error(\"on Swift 5.5 and newer, --enable-test-discovery is required\")\n"
     file.write "#endif\n"
   end
 end
