@@ -50,10 +50,10 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     ///   - deadline: Deadline for the CONNECT request
     ///   - promise: Promise with which the result of the connect operation is communicated
     public init(targetHost: String,
-         targetPort: Int,
-         headers: HTTPHeaders,
-         deadline: NIODeadline,
-         promise: EventLoopPromise<Void>) {
+                targetPort: Int,
+                headers: HTTPHeaders,
+                deadline: NIODeadline,
+                promise: EventLoopPromise<Void>) {
         self.targetHost = targetHost
         self.targetPort = targetPort
         self.headers = headers
@@ -208,16 +208,61 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
 
     /// Error types for ``HTTP1ProxyConnectHandler``
     public struct Error: Swift.Error, Equatable {
-
-        fileprivate enum ErrorEnum: Equatable {
+        fileprivate enum Storage: Equatable, Hashable {
             case proxyAuthenticationRequired
             case invalidProxyResponseHead(head: HTTPResponseHead)
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
             case noResult
+
+            @inlinable
+            static func == (lhs: Self, rhs: Self) -> Bool {
+                return Kind(from: lhs) == Kind(from: rhs)
+            }
+
+            @inlinable
+            public func hash(into hasher: inout Hasher) {
+                hasher.combine(Kind(from: self))
+            }
         }
-        fileprivate let error: ErrorEnum
+
+        fileprivate enum Kind: Equatable, Hashable {
+            case proxyAuthenticationRequired
+            case invalidProxyResponseHead
+            case invalidProxyResponse
+            case remoteConnectionClosed
+            case httpProxyHandshakeTimeout
+            case noResult
+
+            init(from storage: Storage) {
+                switch storage {
+                case .proxyAuthenticationRequired:
+                    self = .proxyAuthenticationRequired
+                case .invalidProxyResponseHead:
+                    self = .invalidProxyResponseHead
+                case .invalidProxyResponse:
+                    self = .invalidProxyResponse
+                case .remoteConnectionClosed:
+                    self = .remoteConnectionClosed
+                case .httpProxyHandshakeTimeout:
+                    self = .httpProxyHandshakeTimeout
+                case .noResult:
+                    self = .noResult
+                }
+            }
+        }
+
+        fileprivate let error: Storage
+
+        public var file: String
+        public var line: Int
+
+        fileprivate init(error: Storage, file: String = #file, line: Int = #line) {
+            self.error = error
+            self.file = file
+            self.line = line
+        }
 
         /// Proxy response status `407` indicates that authentication is required
         public static let proxyAuthenticationRequired = Error(error: .proxyAuthenticationRequired)
