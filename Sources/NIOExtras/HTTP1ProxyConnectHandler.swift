@@ -210,20 +210,21 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     public struct Error: Swift.Error, Equatable {
         fileprivate enum Storage: Equatable, Hashable {
             case proxyAuthenticationRequired
-            case invalidProxyResponseHead(head: HTTPResponseHead)
+            indirect case invalidProxyResponseHead(head: HTTPResponseHead)
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
             case noResult
 
+            // compare only the kind of error, not the associated response head
             @inlinable
             static func == (lhs: Self, rhs: Self) -> Bool {
-                return Kind(from: lhs) == Kind(from: rhs)
+                Kind(lhs) == Kind(rhs)
             }
 
             @inlinable
             public func hash(into hasher: inout Hasher) {
-                hasher.combine(Kind(from: self))
+                hasher.combine(Kind(self))
             }
         }
 
@@ -235,7 +236,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             case httpProxyHandshakeTimeout
             case noResult
 
-            init(from storage: Storage) {
+            init(_ storage: Storage) {
                 switch storage {
                 case .proxyAuthenticationRequired:
                     self = .proxyAuthenticationRequired
@@ -253,15 +254,26 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             }
         }
 
+        final class Location: Sendable {
+            public let file: String
+            public let line: UInt
+            init(file: String, line: UInt) {
+                self.file = file
+                self.line = line
+            }
+        }
+
         fileprivate let error: Storage
+        let location: Location
 
-        public var file: String
-        public var line: Int
-
-        fileprivate init(error: Storage, file: String = #file, line: Int = #line) {
+        fileprivate init(error: Storage, file: String = #file, line: UInt = #line) {
             self.error = error
-            self.file = file
-            self.line = line
+            self.location = Location(file: file, line: line)
+        }
+
+        public static func == (lhs: NIOHTTP1ProxyConnectHandler.Error, rhs: NIOHTTP1ProxyConnectHandler.Error) -> Bool {
+            // ignore *where* the error was thrown
+            lhs.error == rhs.error
         }
 
         /// Proxy response status `407` indicates that authentication is required
