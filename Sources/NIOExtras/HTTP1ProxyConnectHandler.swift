@@ -72,8 +72,8 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         case .failed, .completed:
             break
         case .initialized, .connectSent, .headReceived:
-            self.state = .failed(Error.noResult)
-            self.promise.fail(Error.noResult)
+            self.state = .failed(Error.noResult())
+            self.promise.fail(Error.noResult())
         }
     }
 
@@ -88,7 +88,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             preconditionFailure("How can we receive a channelInactive before a channelActive?")
         case .connectSent(let timeout), .headReceived(let timeout):
             timeout.cancel()
-            self.failWithError(Error.remoteConnectionClosed, context: context, closeConnection: false)
+            self.failWithError(Error.remoteConnectionClosed(), context: context, closeConnection: false)
 
         case .failed, .completed:
             break
@@ -123,7 +123,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 preconditionFailure("How can we have a scheduled timeout, if the connection is not even up?")
 
             case .connectSent, .headReceived:
-                self.failWithError(Error.httpProxyHandshakeTimeout, context: context)
+                self.failWithError(Error.httpProxyHandshakeTimeout(), context: context)
 
             case .failed, .completed:
                 break
@@ -154,7 +154,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 // blank line that concludes the successful response's header section
                 self.state = .headReceived(scheduled)
             case 407:
-                self.failWithError(Error.proxyAuthenticationRequired, context: context)
+                self.failWithError(Error.proxyAuthenticationRequired(), context: context)
 
             default:
                 // Any response other than a successful response indicates that the tunnel
@@ -173,7 +173,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         case .headReceived(let timeout):
             timeout.cancel()
             // we don't expect a body
-            self.failWithError(Error.invalidProxyResponse, context: context)
+            self.failWithError(Error.invalidProxyResponse(), context: context)
         case .failed:
             // ran into an error before... ignore this one
             break
@@ -207,93 +207,120 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     }
 
     /// Error types for ``HTTP1ProxyConnectHandler``
-    public struct Error: Swift.Error, Equatable {
-        fileprivate enum Storage: Equatable, Hashable {
+    public struct Error: Swift.Error {
+        fileprivate enum Details {
             case proxyAuthenticationRequired
-            indirect case invalidProxyResponseHead(head: HTTPResponseHead)
+            case invalidProxyResponseHead(head: HTTPResponseHead)
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
             case noResult
-
-            // compare only the kind of error, not the associated response head
-            @inlinable
-            static func == (lhs: Self, rhs: Self) -> Bool {
-                Kind(lhs) == Kind(rhs)
-            }
-
-            @inlinable
-            public func hash(into hasher: inout Hasher) {
-                hasher.combine(Kind(self))
-            }
         }
 
-        fileprivate enum Kind: Equatable, Hashable {
+        fileprivate enum Kind: String, Equatable, Hashable {
             case proxyAuthenticationRequired
             case invalidProxyResponseHead
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
             case noResult
-
-            init(_ storage: Storage) {
-                switch storage {
-                case .proxyAuthenticationRequired:
-                    self = .proxyAuthenticationRequired
-                case .invalidProxyResponseHead:
-                    self = .invalidProxyResponseHead
-                case .invalidProxyResponse:
-                    self = .invalidProxyResponse
-                case .remoteConnectionClosed:
-                    self = .remoteConnectionClosed
-                case .httpProxyHandshakeTimeout:
-                    self = .httpProxyHandshakeTimeout
-                case .noResult:
-                    self = .noResult
-                }
-            }
         }
 
-        final class Location: Sendable {
+        final class Storage: Sendable {
+            fileprivate let details: Details
             public let file: String
             public let line: UInt
-            init(file: String, line: UInt) {
+
+            fileprivate init(error details: Details, file: String, line: UInt) {
+                self.details = details
                 self.file = file
                 self.line = line
             }
         }
 
-        fileprivate let error: Storage
-        let location: Location
+        fileprivate let store: Storage
 
-        fileprivate init(error: Storage, file: String = #file, line: UInt = #line) {
-            self.error = error
-            self.location = Location(file: file, line: line)
-        }
-
-        public static func == (lhs: NIOHTTP1ProxyConnectHandler.Error, rhs: NIOHTTP1ProxyConnectHandler.Error) -> Bool {
-            // ignore *where* the error was thrown
-            lhs.error == rhs.error
+        fileprivate init(error: Details, file: String, line: UInt) {
+            self.store = Storage(error: error, file: file, line: line)
         }
 
         /// Proxy response status `407` indicates that authentication is required
-        public static let proxyAuthenticationRequired = Error(error: .proxyAuthenticationRequired)
+        public static func proxyAuthenticationRequired(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .proxyAuthenticationRequired, file: file, line: line)
+        }
 
         /// Proxy response contains unexpected status
-        public static func invalidProxyResponseHead(_ head: HTTPResponseHead) -> Error {
-            Error(error: .invalidProxyResponseHead(head: head))
+        public static func invalidProxyResponseHead(_ head: HTTPResponseHead, file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .invalidProxyResponseHead(head: head), file: file, line: line)
         }
 
         /// Proxy response contains unexpected body
-        public static let invalidProxyResponse = Error(error: .invalidProxyResponse)
+        public static func invalidProxyResponse(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .invalidProxyResponse, file: file, line: line)
+        }
 
         /// Connection has been closed for ongoing request
-        public static let remoteConnectionClosed = Error(error: .remoteConnectionClosed)
+        public static func remoteConnectionClosed(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .remoteConnectionClosed, file: file, line: line)
+        }
 
         /// Proxy connection handshake has timed out
-        public static let httpProxyHandshakeTimeout = Error(error: .httpProxyHandshakeTimeout)
+        public static func httpProxyHandshakeTimeout(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .httpProxyHandshakeTimeout, file: file, line: line)
+        }
 
         /// Handler was removed before we received a result for the request
-        public static let noResult = Error(error: .noResult)
+        public static func noResult(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .noResult, file: file, line: line)
+        }
     }
+
+}
+
+extension NIOHTTP1ProxyConnectHandler.Error: Hashable {
+    public static func == (lhs: NIOHTTP1ProxyConnectHandler.Error, rhs: NIOHTTP1ProxyConnectHandler.Error) -> Bool {
+        // ignore *where* the error was thrown
+        lhs.store.details == rhs.store.details
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.store.details)
+    }
+}
+
+extension NIOHTTP1ProxyConnectHandler.Error.Details: Hashable {
+    // compare only the kind of error, not the associated response head
+    @inlinable
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        NIOHTTP1ProxyConnectHandler.Error.Kind(lhs) == NIOHTTP1ProxyConnectHandler.Error.Kind(rhs)
+    }
+
+    @inlinable
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(NIOHTTP1ProxyConnectHandler.Error.Kind(self))
+    }
+}
+
+extension NIOHTTP1ProxyConnectHandler.Error.Kind {
+    init(_ details: NIOHTTP1ProxyConnectHandler.Error.Details) {
+        switch details {
+        case .proxyAuthenticationRequired:
+            self = .proxyAuthenticationRequired
+        case .invalidProxyResponseHead:
+            self = .invalidProxyResponseHead
+        case .invalidProxyResponse:
+            self = .invalidProxyResponse
+        case .remoteConnectionClosed:
+            self = .remoteConnectionClosed
+        case .httpProxyHandshakeTimeout:
+            self = .httpProxyHandshakeTimeout
+        case .noResult:
+            self = .noResult
+        }
+    }
+}
+
+
+extension NIOHTTP1ProxyConnectHandler.Error: CustomStringConvertible {
+    public var description: String { return NIOHTTP1ProxyConnectHandler.Error.Kind(store.details).rawValue }
 }

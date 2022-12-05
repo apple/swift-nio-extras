@@ -162,13 +162,13 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let responseHead = HTTPResponseHead(version: .http1_1, status: .proxyAuthenticationRequired)
         // answering with 500 should lead to a triggered error in pipeline
         XCTAssertThrowsError(try embedded.writeInbound(HTTPClientResponsePart.head(responseHead))) {
-            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired())
         }
         XCTAssertFalse(embedded.isActive, "Channel should be closed in response to the error")
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.end(nil)))
 
         XCTAssertThrowsError(try promise.futureResult.wait()) {
-            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .proxyAuthenticationRequired())
         }
     }
 
@@ -203,13 +203,13 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.head(responseHead)))
         // answering with a body should lead to a triggered error in pipeline
         XCTAssertThrowsError(try embedded.writeInbound(HTTPClientResponsePart.body(ByteBuffer(bytes: [0, 1, 2, 3])))) {
-            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse())
         }
         XCTAssertEqual(embedded.isActive, false)
         XCTAssertNoThrow(try embedded.writeInbound(HTTPClientResponsePart.end(nil)))
 
         XCTAssertThrowsError(try promise.futureResult.wait()) {
-            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse)
+            XCTAssertEqual($0 as? NIOHTTP1ProxyConnectHandler.Error, .invalidProxyResponse())
         }
     }
 }
