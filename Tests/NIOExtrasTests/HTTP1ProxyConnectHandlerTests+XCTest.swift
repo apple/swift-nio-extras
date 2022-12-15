@@ -32,6 +32,8 @@ extension HTTP1ProxyConnectHandlerTests {
                 ("testProxyConnectWithoutAuthorizationFailure500", testProxyConnectWithoutAuthorizationFailure500),
                 ("testProxyConnectWithoutAuthorizationButAuthorizationNeeded", testProxyConnectWithoutAuthorizationButAuthorizationNeeded),
                 ("testProxyConnectReceivesBody", testProxyConnectReceivesBody),
+                ("testProxyConnectWithoutAuthorizationBufferedWrites", testProxyConnectWithoutAuthorizationBufferedWrites),
+                ("testProxyConnectFailsBufferedWritesAreFailed", testProxyConnectFailsBufferedWritesAreFailed),
            ]
    }
 }

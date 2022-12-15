@@ -20,6 +20,15 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     public typealias OutboundOut = HTTPClientRequestPart
     public typealias InboundIn = HTTPClientResponsePart
 
+    /// Whether we've already seen the first request.
+    private var seenFirstRequest = false
+    private var bufferedWrittenMessages: MarkedCircularBuffer<BufferedWrite>
+
+    struct BufferedWrite {
+        var data: NIOAny
+        var promise: EventLoopPromise<Void>?
+    }
+
     private enum State {
         // transitions to `.connectSent` or `.failed`
         case initialized
@@ -39,7 +48,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     private let targetPort: Int
     private let headers: HTTPHeaders
     private let deadline: NIODeadline
-    private let promise: EventLoopPromise<Void>
+    private let promise: EventLoopPromise<Void>?
 
     /// Creates a new ``NIOHTTP1ProxyConnectHandler`` that issues a CONNECT request to a proxy server
     /// and instructs the server to connect to `targetHost`.
@@ -59,7 +68,51 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         self.headers = headers
         self.deadline = deadline
         self.promise = promise
+
+        self.bufferedWrittenMessages = MarkedCircularBuffer(initialCapacity: 16) // matches CircularBuffer default
     }
+
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        switch self.state {
+        case .initialized, .connectSent, .headReceived, .completed:
+            self.bufferedWrittenMessages.append(BufferedWrite(data: data, promise: promise))
+        case .failed(let error):
+            promise?.fail(error)
+        }
+    }
+
+    public func flush(context: ChannelHandlerContext) {
+        self.bufferedWrittenMessages.mark()
+    }
+
+    public func removeHandler(context: ChannelHandlerContext, removalToken: ChannelHandlerContext.RemovalToken) {
+        // We have been formally removed from the pipeline. We should send any buffered data we have.
+        switch self.state {
+        case .initialized, .connectSent, .headReceived, .failed:
+            self.failWithError(.noResult(), context: context)
+
+        case .completed:
+            let hadMark = self.bufferedWrittenMessages.hasMark
+            while self.bufferedWrittenMessages.hasMark {
+                // write until mark
+                let bufferedPart = self.bufferedWrittenMessages.removeFirst()
+                context.write(bufferedPart.data, promise: bufferedPart.promise)
+            }
+
+            // flush any messages up to the mark
+            if hadMark {
+                context.flush()
+            }
+
+            // write remainder
+            while let bufferedPart = self.bufferedWrittenMessages.popFirst() {
+                context.write(bufferedPart.data, promise: bufferedPart.promise)
+            }
+        }
+
+        context.leavePipeline(removalToken: removalToken)
+    }
+
 
     public func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
@@ -70,10 +123,11 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     public func handlerRemoved(context: ChannelHandlerContext) {
         switch self.state {
         case .failed, .completed:
+            // we don't expect there to be any buffered messages in these states
+            assert(self.bufferedWrittenMessages.isEmpty)
             break
         case .initialized, .connectSent, .headReceived:
-            self.state = .failed(Error.noResult())
-            self.promise.fail(Error.noResult())
+            self.failWithError(Error.noResult(), context: context)
         }
     }
 
@@ -94,10 +148,6 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             break
         }
         context.fireChannelInactive()
-    }
-
-    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        preconditionFailure("We don't support outgoing traffic during HTTP Proxy update.")
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -187,22 +237,33 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         case .headReceived(let timeout):
             timeout.cancel()
             self.state = .completed
-            self.promise.succeed(())
-
         case .failed:
             // ran into an error before... ignore this one
-            break
+            return
         case .initialized, .connectSent, .completed:
             preconditionFailure("Invalid state: \(self.state)")
         }
+
+        // Ok, we've set up the proxy connection. We can now remove ourselves, which should happen synchronously.
+        context.pipeline.removeHandler(context: context, promise: nil)
+
+        self.promise?.succeed(())
     }
 
     private func failWithError(_ error: Error, context: ChannelHandlerContext, closeConnection: Bool = true) {
-        self.state = .failed(error)
-        self.promise.fail(error)
-        context.fireErrorCaught(error)
-        if closeConnection {
-            context.close(mode: .all, promise: nil)
+        switch self.state {
+        case .failed:
+            return
+        case .initialized, .connectSent, .headReceived, .completed:
+            self.state = .failed(error)
+            self.promise?.fail(error)
+            context.fireErrorCaught(error)
+            if closeConnection {
+                context.close(mode: .all, promise: nil)
+            }
+            for bufferedWrite in self.bufferedWrittenMessages {
+                bufferedWrite.promise?.fail(error)
+            }
         }
     }
 
@@ -211,15 +272,6 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         fileprivate enum Details {
             case proxyAuthenticationRequired
             case invalidProxyResponseHead(head: HTTPResponseHead)
-            case invalidProxyResponse
-            case remoteConnectionClosed
-            case httpProxyHandshakeTimeout
-            case noResult
-        }
-
-        fileprivate enum Kind: String, Equatable, Hashable {
-            case proxyAuthenticationRequired
-            case invalidProxyResponseHead
             case invalidProxyResponse
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
@@ -273,54 +325,75 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         public static func noResult(file: String = #file, line: UInt = #line) -> Error {
             Error(error: .noResult, file: file, line: line)
         }
+
+        fileprivate var errorCode: Int {
+            switch self.store.details {
+            case .proxyAuthenticationRequired:
+                return 0
+            case .invalidProxyResponseHead:
+                return 1
+            case .invalidProxyResponse:
+                return 2
+            case .remoteConnectionClosed:
+                return 3
+            case .httpProxyHandshakeTimeout:
+                return 4
+            case .noResult:
+                return 5
+            }
+        }
     }
 
 }
 
 extension NIOHTTP1ProxyConnectHandler.Error: Hashable {
-    public static func == (lhs: NIOHTTP1ProxyConnectHandler.Error, rhs: NIOHTTP1ProxyConnectHandler.Error) -> Bool {
-        // ignore *where* the error was thrown
-        lhs.store.details == rhs.store.details
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(self.store.details)
-    }
-}
-
-extension NIOHTTP1ProxyConnectHandler.Error.Details: Hashable {
     // compare only the kind of error, not the associated response head
-    @inlinable
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        NIOHTTP1ProxyConnectHandler.Error.Kind(lhs) == NIOHTTP1ProxyConnectHandler.Error.Kind(rhs)
-    }
-
-    @inlinable
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(NIOHTTP1ProxyConnectHandler.Error.Kind(self))
-    }
-}
-
-extension NIOHTTP1ProxyConnectHandler.Error.Kind {
-    init(_ details: NIOHTTP1ProxyConnectHandler.Error.Details) {
-        switch details {
-        case .proxyAuthenticationRequired:
-            self = .proxyAuthenticationRequired
-        case .invalidProxyResponseHead:
-            self = .invalidProxyResponseHead
-        case .invalidProxyResponse:
-            self = .invalidProxyResponse
-        case .remoteConnectionClosed:
-            self = .remoteConnectionClosed
-        case .httpProxyHandshakeTimeout:
-            self = .httpProxyHandshakeTimeout
-        case .noResult:
-            self = .noResult
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs.store.details, rhs.store.details) {
+        case (.proxyAuthenticationRequired, .proxyAuthenticationRequired):
+            return true
+        case (.invalidProxyResponseHead, .invalidProxyResponseHead):
+            return true
+        case (.invalidProxyResponse, .invalidProxyResponse):
+            return true
+        case (.remoteConnectionClosed, .remoteConnectionClosed):
+            return true
+        case (.httpProxyHandshakeTimeout, .httpProxyHandshakeTimeout):
+            return true
+        case (.noResult, .noResult):
+            return true
+        default:
+            return false
         }
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.errorCode)
     }
 }
 
 
 extension NIOHTTP1ProxyConnectHandler.Error: CustomStringConvertible {
-    public var description: String { return NIOHTTP1ProxyConnectHandler.Error.Kind(store.details).rawValue }
+    public var description: String {
+        self.store.details.description
+    }
+}
+
+extension NIOHTTP1ProxyConnectHandler.Error.Details: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .proxyAuthenticationRequired:
+            return "Proxy Authentication Required"
+        case .invalidProxyResponseHead:
+            return "Invalid Proxy Response Head"
+        case .invalidProxyResponse:
+            return "Invalid Proxy Response"
+        case .remoteConnectionClosed:
+            return "Remote Connection Closed"
+        case .httpProxyHandshakeTimeout:
+            return "HTTP Proxy Handshake Timeout"
+        case .noResult:
+            return "No Result"
+        }
+    }
 }
