@@ -62,7 +62,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 targetPort: Int,
                 headers: HTTPHeaders,
                 deadline: NIODeadline,
-                promise: EventLoopPromise<Void>) {
+                promise: EventLoopPromise<Void>?) {
         self.targetHost = targetHost
         self.targetPort = targetPort
         self.headers = headers
@@ -349,22 +349,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
 extension NIOHTTP1ProxyConnectHandler.Error: Hashable {
     // compare only the kind of error, not the associated response head
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        switch (lhs.store.details, rhs.store.details) {
-        case (.proxyAuthenticationRequired, .proxyAuthenticationRequired):
-            return true
-        case (.invalidProxyResponseHead, .invalidProxyResponseHead):
-            return true
-        case (.invalidProxyResponse, .invalidProxyResponse):
-            return true
-        case (.remoteConnectionClosed, .remoteConnectionClosed):
-            return true
-        case (.httpProxyHandshakeTimeout, .httpProxyHandshakeTimeout):
-            return true
-        case (.noResult, .noResult):
-            return true
-        default:
-            return false
-        }
+        return lhs.errorCode == rhs.errorCode
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -375,7 +360,7 @@ extension NIOHTTP1ProxyConnectHandler.Error: Hashable {
 
 extension NIOHTTP1ProxyConnectHandler.Error: CustomStringConvertible {
     public var description: String {
-        self.store.details.description
+        "\(self.store.details.description) (\(self.store.file): \(self.store.line))"
     }
 }
 
@@ -384,8 +369,8 @@ extension NIOHTTP1ProxyConnectHandler.Error.Details: CustomStringConvertible {
         switch self {
         case .proxyAuthenticationRequired:
             return "Proxy Authentication Required"
-        case .invalidProxyResponseHead:
-            return "Invalid Proxy Response Head"
+        case .invalidProxyResponseHead(let head):
+            return "Invalid Proxy Response Head: \(head)"
         case .invalidProxyResponse:
             return "Invalid Proxy Response"
         case .remoteConnectionClosed:
