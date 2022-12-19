@@ -171,4 +171,15 @@ extension NFS3FileSystemNoAuth {
         return promise.futureResult
     }
 
+    public func readdir(_ call: NFS3CallReadDir, eventLoop: EventLoop) -> EventLoopFuture<NFS3ReplyReadDir> {
+        let promise = eventLoop.makePromise(of: NFS3ReplyReadDir.self)
+        if eventLoop.inEventLoop {
+            self.readdir(call, promise: promise)
+        } else {
+            eventLoop.execute {
+                self.readdir(call, promise: promise)
+            }
+        }
+        return promise.futureResult
+    }
 }

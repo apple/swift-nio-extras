@@ -16,7 +16,7 @@ import NIOCore
 
 /// `ChannelHandler` which implements NFS calls & replies the user implements as a `NFS3FileSystemNoAuth`.
 ///
-/// `NFS3FileSystemNoAuthHandler` is a all-in-one SwiftNIO `ChannelHandler` that implements an NFS3 server. Every call
+/// `NFS3FileSystemNoAuthHandler` is an all-in-one SwiftNIO `ChannelHandler` that implements an NFS3 server. Every call
 /// it receives will be forwarded to the user-provided `FS` file system implementation.
 ///
 /// `NFS3FileSystemNoAuthHandler` ignores any [SUN RPC](https://datatracker.ietf.org/doc/html/rfc5531) credentials /
@@ -53,38 +53,40 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
 
     func sendSuccessfulReply(_ reply: NFS3Reply, call: RPCNFS3Call) {
         if let context = self.context {
-            context.writeAndFlush(self.wrapOutboundOut(.init(rpcReply: .init(xid: call.rpcCall.xid,
-                                                                             status: self.rpcReplySuccess),
-                                                             nfsReply: reply)),
-                                  promise: nil)
+            let reply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
+                                                     status: self.rpcReplySuccess),
+                                     nfsReply: reply)
+            context.writeAndFlush(self.wrapOutboundOut(reply), promise: nil)
         }
     }
 
     func sendError(_ error: Error, call: RPCNFS3Call) {
         if let context = self.context {
             context.fireErrorCaught(error)
-            context.writeAndFlush(self.wrapOutboundOut(.init(rpcReply: .init(xid: call.rpcCall.xid,
-                                                                             status: self.rpcReplySuccess),
-                                                             nfsReply: .mount(.init(result: .fail(.errorSERVERFAULT,
-                                                                                                  NFS3Nothing()))))),
-                                  promise: nil)
+            let nfsErrorReply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
+                                                             status: self.rpcReplySuccess),
+                                             nfsReply: .mount(.init(result: .fail(.errorSERVERFAULT,
+                                                                                  NFS3Nothing()))))
+            context.writeAndFlush(self.wrapOutboundOut(nfsErrorReply), promise: nil)
         }
     }
 
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let call = self.unwrapInboundIn(data)
+        // ! is safe here because it's set on `handlerAdded` (and unset in `handlerRemoved`). Calling this outside that
+        // is programmer error.
         self.invoker!.handleNFSCall(call)
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch error as? NFS3Error {
         case .unknownProgramOrProcedure(.call(let call)):
-            print("UNKNOWN CALL: \(call)")
-            context.writeAndFlush(self.wrapOutboundOut(.init(rpcReply: .init(xid: call.xid,
-                                                                             status: .messageAccepted(.init(verifier: .init(flavor: .noAuth, opaque: nil),
-                                                                                                            status: .procedureUnavailable))),
-                                                             nfsReply: .null)), promise: nil)
+            let acceptedReply = RPCAcceptedReply(verifier: RPCOpaqueAuth(flavor: .noAuth, opaque: nil),
+                                                 status: .procedureUnavailable)
+            let reply = RPCNFS3Reply(rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
+                                     nfsReply: .null)
+            context.writeAndFlush(self.wrapOutboundOut(reply), promise: nil)
             return
         default:
             ()

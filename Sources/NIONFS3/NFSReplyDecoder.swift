@@ -21,6 +21,12 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
     private var procedures: [UInt32: RPCNFSProcedureID]
     private let allowDuplicateReplies: Bool
 
+    /// Initialize the `NFS3ReplyDecoder`.
+    ///
+    /// - Parameters:
+    ///   - prepopulatedProcecedures: For testing and other more obscure purposes it might be useful to pre-seed the
+    ///                               decoder with some RPC numbers and their respective type.
+    ///   - allowDuplicateReplies: Whether to fail when receiving more than one response for a given call.
     public init(prepopulatedProcecedures: [UInt32: RPCNFSProcedureID]? = nil,
                 allowDuplicateReplies: Bool = false) {
         self.procedures = prepopulatedProcecedures ?? [:]

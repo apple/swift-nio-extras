@@ -68,10 +68,9 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch error as? NFS3Error {
         case .unknownProgramOrProcedure(.call(let call)):
-            print("UNKNOWN CALL: \(call)")
-            let reply = RPCNFS3Reply(rpcReply: .init(xid: call.xid,
-                                                    status: .messageAccepted(.init(verifier: .init(flavor: .noAuth, opaque: nil),
-                                                                                   status: .procedureUnavailable))),
+            let acceptedReply = RPCAcceptedReply(verifier: .init(flavor: .noAuth, opaque: nil),
+                                                 status: .procedureUnavailable)
+            let reply = RPCNFS3Reply(rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
                                     nfsReply: .null)
             self.writeBuffer.clear()
             self.writeBuffer.writeRPCNFSReply(reply)

@@ -71,14 +71,15 @@ extension ByteBuffer {
     }
 
     public mutating func readNFSReplyMount() throws -> MountReplyMount {
-        return MountReplyMount(result: try self.readNFSResult(readOkay: { buffer in
+        let result = try self.readNFSResult(readOkay: { buffer in
             let fileHandle = try buffer.readNFSFileHandle()
             let authFlavors = try buffer.readNFSList(readEntry: { buffer in
                 try buffer.readRPCAuthFlavor()
             })
-            return .init(fileHandle: fileHandle, authFlavors: authFlavors)
+            return MountReplyMount.Okay(fileHandle: fileHandle, authFlavors: authFlavors)
 
         },
-                                                            readFail: { _ in NFS3Nothing() }))
+                                            readFail: { _ in NFS3Nothing() })
+        return MountReplyMount(result: result)
     }
 }

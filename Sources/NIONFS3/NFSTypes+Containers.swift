@@ -25,6 +25,8 @@ public struct RPCNFSProcedureID: Equatable {
     public static let mountUnmountAll: Self = .init(program: 100005, procedure: 4) // unimplemented
     public static let mountExport: Self = .init(program: 100005, procedure: 5) // unimplemented
 
+    // The source of truth for the values in the NFS program (`1000003`) can be found in the NFS RFC at
+    // https://www.rfc-editor.org/rfc/rfc1813#page-28
     public static let nfsNull: Self = .init(program: 100003, procedure: 0)
     public static let nfsGetAttr: Self = .init(program: 100003, procedure: 1)
     public static let nfsSetAttr: Self = .init(program: 100003, procedure: 2)
@@ -151,8 +153,7 @@ internal func nfsStringFillBytes(_ byteCount: Int) -> Int {
 
 extension ByteBuffer {
     mutating func readRPCVerifier() throws -> RPCOpaqueAuth {
-        guard let flavor = self.readInteger(endianness: .big, as: UInt32.self),
-              let length = self.readInteger(endianness: .big, as: UInt32.self) else {
+        guard let (flavor, length) = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt32).self) else {
                   throw NFS3Error.illegalRPCTooShort
         }
         guard (flavor == RPCAuthFlavor.system.rawValue || flavor == RPCAuthFlavor.noAuth.rawValue) && length == 0 else {

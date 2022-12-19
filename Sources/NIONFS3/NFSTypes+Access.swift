@@ -71,8 +71,8 @@ extension ByteBuffer {
                 }
                 let rawValue = try buffer.readNFSInteger(as: UInt32.self)
                 return NFS3ReplyAccess.Okay(dirAttributes: attrs, access: NFS3Access(rawValue: rawValue))
-            }
-            , readFail: { buffer in
+            },
+            readFail: { buffer in
                 return NFS3ReplyAccess.Fail(dirAttributes: try buffer.readNFSOptional { buffer in
                     try buffer.readNFSFileAttr()
                 })

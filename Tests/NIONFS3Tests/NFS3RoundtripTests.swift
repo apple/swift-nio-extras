@@ -38,9 +38,9 @@ final class NFS3RoundtripTests: XCTestCase {
                                                  newAttributes: .init(mode: 0o146,
                                                                       uid: 1, gid: 2,
                                                                       size: 3,
-                                                                      atime: .init(seconds: 4, nanoSeconds: 5),
-                                                                      mtime: .init(seconds: 6, nanoSeconds: 7)),
-                                                 guard: .init(seconds: 8, nanoSeconds: 0)))
+                                                                      atime: .init(seconds: 4, nanoseconds: 5),
+                                                                      mtime: .init(seconds: 6, nanoseconds: 7)),
+                                                 guard: .init(seconds: 8, nanoseconds: 0)))
 
         var xid: UInt32 = 0
         func makeInputOutputPair(_ nfsCall: NFS3Call) -> (ByteBuffer, [RPCNFS3Call]) {
@@ -90,9 +90,9 @@ final class NFS3RoundtripTests: XCTestCase {
                                                   newAttributes: .init(mode: .max,
                                                                        uid: .max, gid: .max,
                                                                        size: .max,
-                                                                       atime: .init(seconds: .max, nanoSeconds: .max),
-                                                                       mtime: .init(seconds: .max, nanoSeconds: .max)),
-                                                  guard: .init(seconds: .max, nanoSeconds: .max)))
+                                                                       atime: .init(seconds: .max, nanoseconds: .max),
+                                                                       mtime: .init(seconds: .max, nanoseconds: .max)),
+                                                  guard: .init(seconds: .max, nanoseconds: .max)))
 
         var xid: UInt32 = 0
         func makeInputOutputPair(_ nfsCall: NFS3Call) -> (ByteBuffer, [RPCNFS3Call]) {
@@ -135,11 +135,11 @@ final class NFS3RoundtripTests: XCTestCase {
                          fsid: .random(in: .min ... .max),
                          fileid: .random(in: .min ... .max),
                          atime: .init(seconds: .random(in: .min ... .max),
-                                      nanoSeconds: .random(in: .min ... .max)),
+                                      nanoseconds: .random(in: .min ... .max)),
                          mtime: .init(seconds: .random(in: .min ... .max),
-                                      nanoSeconds: .random(in: .min ... .max)),
+                                      nanoseconds: .random(in: .min ... .max)),
                          ctime: .init(seconds: .random(in: .min ... .max),
-                                      nanoSeconds: .random(in: .min ... .max)))
+                                      nanoseconds: .random(in: .min ... .max)))
         }
         let mountNullReply1 = NFS3Reply.mountNull
         let mountReply1 = NFS3Reply.mount(MountReplyMount(result: .okay(.init(fileHandle: NFS3FileHandle(#line)))))
@@ -156,7 +156,7 @@ final class NFS3RoundtripTests: XCTestCase {
                                                                      dtpref: .random(in: .min ... .max),
                                                                      maxFileSize: .random(in: .min ... .max),
                                                                      timeDelta: .init(seconds: .random(in: .min ... .max),
-                                                                                      nanoSeconds: .random(in: .min ... .max)),
+                                                                                      nanoseconds: .random(in: .min ... .max)),
                                                                      properties: .init(rawValue: .random(in: .min ... .max))))))
         let fsStatReply1 = NFS3Reply.fsstat(.init(result: .okay(.init(attributes: makeRandomFileAttr(),
                                                                      tbytes: .random(in: .min ... .max),
@@ -200,9 +200,9 @@ final class NFS3RoundtripTests: XCTestCase {
                                                                           target: "he"))))
         let setattrReply1 = NFS3Reply.setattr(.init(result: .okay(.init(wcc: .init(before: .some(.init(size: .random(in: .min ... .max),
                                                                                                       mtime: .init(seconds: .random(in: .min ... .max),
-                                                                                                                   nanoSeconds: .random(in: .min ... .max)),
+                                                                                                                   nanoseconds: .random(in: .min ... .max)),
                                                                                                       ctime: .init(seconds: .random(in: .min ... .max),
-                                                                                                                   nanoSeconds: .random(in: .min ... .max)))),
+                                                                                                                   nanoseconds: .random(in: .min ... .max)))),
                                                                                   after: makeRandomFileAttr())))))
 
         var xid: UInt32 = 0
@@ -241,6 +241,4 @@ final class NFS3RoundtripTests: XCTestCase {
                                                                         decoderFactory: { NFS3ReplyDecoder(prepopulatedProcecedures: prepopulatedProcs,
                                                                                                            allowDuplicateReplies: true) }))
     }
-
-
 }

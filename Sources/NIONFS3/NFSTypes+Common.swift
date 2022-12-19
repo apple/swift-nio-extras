@@ -14,10 +14,7 @@
 
 import NIOCore
 
-// MARK: - SwiftNFS Specifics
-@available(*, deprecated, renamed: "RPCNFS3Call")
-public typealias RPCNFSCall = RPCNFS3Call
-
+// MARK: - NIONFS3 Specifics
 public struct RPCNFS3Call: Equatable {
     public init(rpcCall: RPCCall, nfsCall: NFS3Call) {
         self.rpcCall = rpcCall
@@ -87,9 +84,6 @@ extension RPCNFS3Call: Identifiable {
     }
 }
 
-@available(*, deprecated, renamed: "RPCNFS3Reply")
-public typealias RPCNFSReply = RPCNFS3Reply
-
 public struct RPCNFS3Reply: Equatable {
     public init(rpcReply: RPCReply, nfsReply: NFS3Reply) {
         self.rpcReply = rpcReply
@@ -144,6 +138,9 @@ public struct NFS3Nothing: Equatable {
     public init() {}
 }
 
+/// The status of an NFS3 operation.
+///
+/// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-16
 public enum NFS3Status: UInt32 {
    case ok = 0
    case errorPERM = 1
@@ -176,6 +173,9 @@ public enum NFS3Status: UInt32 {
    case errorJUKEBOX     = 10008
 }
 
+/// Check the access rights to a file.
+///
+/// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-40
 public struct NFS3Access: OptionSet {
     public typealias RawValue = UInt32
 
@@ -196,6 +196,9 @@ public struct NFS3Access: OptionSet {
     public static let allReadOnly: NFS3Access = [.read, .lookup, .execute]
 }
 
+/// The filetype as defined in NFS3.
+///
+/// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-20
 public enum NFS3FileType: UInt32 {
     case regular = 1
     case directory = 2
@@ -216,6 +219,11 @@ public struct NFS3FileHandle: Hashable, CustomStringConvertible {
         self._value = value
     }
 
+    /// Initialize an ``NFS3FileHandle`` with the raw representation.
+    ///
+    /// The spec requires the representation to take up 64 bytes or fewer.
+    ///
+    /// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-106
     public init(_ bytes: ByteBuffer) {
         precondition(bytes.readableBytes <= 64, "NFS3 mandates that file handles are NFS3_FHSIZE (64) bytes or less.")
         precondition(bytes.readableBytes == MemoryLayout<UInt64>.size,
@@ -230,7 +238,7 @@ public struct NFS3FileHandle: Hashable, CustomStringConvertible {
 }
 
 extension UInt64 {
-    // This initialiser is fallible because we're only _currently_ require that all file handles be exactly 8 bytes
+    // This initialiser is fallible because we only _currently_ require that all file handles be exactly 8 bytes
     // long. This limitation should be removed in the future.
     @inlinable
     public init?(_ fileHandle: NFS3FileHandle) {
@@ -251,13 +259,13 @@ extension UInt32 {
 
 
 public struct NFS3Time: Equatable {
-    public init(seconds: UInt32, nanoSeconds: UInt32) {
+    public init(seconds: UInt32, nanoseconds: UInt32) {
         self.seconds = seconds
-        self.nanoSeconds = nanoSeconds
+        self.nanoseconds = nanoseconds
     }
 
     public var seconds: UInt32
-    public var nanoSeconds: UInt32
+    public var nanoseconds: UInt32
 }
 
 public struct NFS3FileAttr: Equatable {
@@ -402,7 +410,7 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeNFSTime(_ time: NFS3Time) -> Int {
-        self.writeMultipleIntegers(time.seconds, time.nanoSeconds, endianness: .big)
+        self.writeMultipleIntegers(time.seconds, time.nanoseconds, endianness: .big)
     }
 
     public mutating func read3NFSTimes() throws -> (NFS3Time, NFS3Time, NFS3Time) {
@@ -410,15 +418,15 @@ extension ByteBuffer {
                                                       as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
-        return (NFS3Time(seconds: values.0, nanoSeconds: values.1),
-                NFS3Time(seconds: values.2, nanoSeconds: values.3),
-                NFS3Time(seconds: values.4, nanoSeconds: values.5))
+        return (NFS3Time(seconds: values.0, nanoseconds: values.1),
+                NFS3Time(seconds: values.2, nanoseconds: values.3),
+                NFS3Time(seconds: values.4, nanoseconds: values.5))
     }
 
     @discardableResult public mutating func write3NFSTimes(_ time1: NFS3Time, _ time2: NFS3Time, _ time3: NFS3Time) -> Int {
-        self.writeMultipleIntegers(time1.seconds, time1.nanoSeconds,
-                                   time2.seconds, time2.nanoSeconds,
-                                   time3.seconds, time3.nanoSeconds)
+        self.writeMultipleIntegers(time1.seconds, time1.nanoseconds,
+                                   time2.seconds, time2.nanoseconds,
+                                   time3.seconds, time3.nanoseconds)
     }
 
     public mutating func readNFSTime() throws -> NFS3Time {
@@ -426,7 +434,7 @@ extension ByteBuffer {
             throw NFS3Error.illegalRPCTooShort
         }
 
-        return .init(seconds: values.0, nanoSeconds: values.1)
+        return .init(seconds: values.0, nanoseconds: values.1)
     }
 
     public mutating func readNFSFileType() throws -> NFS3FileType {
@@ -455,9 +463,9 @@ extension ByteBuffer {
         let rdev = values.6
         let fsid = values.7
         let fileid = values.8
-        let atime = NFS3Time(seconds: values.9, nanoSeconds: values.10)
-        let mtime = NFS3Time(seconds: values.11, nanoSeconds: values.12)
-        let ctime = NFS3Time(seconds: values.13, nanoSeconds: values.14)
+        let atime = NFS3Time(seconds: values.9, nanoseconds: values.10)
+        let mtime = NFS3Time(seconds: values.11, nanoseconds: values.12)
+        let ctime = NFS3Time(seconds: values.13, nanoseconds: values.14)
 
         return .init(type: type, mode: mode, nlink: nlink,
                      uid: uid, gid: gid,
@@ -479,11 +487,11 @@ extension ByteBuffer {
             attributes.fsid,
             attributes.fileid,
             attributes.atime.seconds,
-            attributes.atime.nanoSeconds,
+            attributes.atime.nanoseconds,
             attributes.mtime.seconds,
-            attributes.mtime.nanoSeconds,
+            attributes.mtime.nanoseconds,
             attributes.ctime.seconds,
-            attributes.ctime.nanoSeconds,
+            attributes.ctime.nanoseconds,
             endianness: .big)
     }
 
