@@ -65,7 +65,7 @@ extension ByteBuffer {
         return NFS3CallPathConf(object: fileHandle)
     }
 
-    public mutating func writeNFSCallPathConf(_ call: NFS3CallPathConf) {
+    @discardableResult public mutating func writeNFSCallPathConf(_ call: NFS3CallPathConf) -> Int {
         self.writeNFSFileHandle(call.object)
     }
 
@@ -97,13 +97,13 @@ extension ByteBuffer {
         )
     }
 
-    public mutating func writeNFSReplyPathConf(_ pathconf: NFS3ReplyPathConf) {
-        self.writeNFSResultStatus(pathconf.result)
+    @discardableResult public mutating func writeNFSReplyPathConf(_ pathconf: NFS3ReplyPathConf) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(pathconf.result)
 
         switch pathconf.result {
         case .okay(let pathconf):
-            self.writeNFSOptional(pathconf.attributes, writer: { $0.writeNFSFileAttr($1) })
-            self.writeMultipleIntegers(
+            bytesWritten += self.writeNFSOptional(pathconf.attributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeMultipleIntegers(
                 pathconf.linkMax,
                 pathconf.nameMax,
                 pathconf.noTrunc ? UInt32(1) : 0,
@@ -112,7 +112,8 @@ extension ByteBuffer {
                 pathconf.casePreserving ? UInt32(1) : 0
             )
         case .fail(_, let fail):
-            self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
         }
+        return bytesWritten
     }
 }

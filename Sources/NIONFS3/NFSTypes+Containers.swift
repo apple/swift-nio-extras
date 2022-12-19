@@ -161,13 +161,14 @@ extension ByteBuffer {
         return RPCOpaqueAuth(flavor: .noAuth, opaque: nil)
     }
 
-    public mutating func writeRPCVerifier(_ verifier: RPCOpaqueAuth) {
-        self.writeInteger(verifier.flavor.rawValue, endianness: .big)
+    @discardableResult public mutating func writeRPCVerifier(_ verifier: RPCOpaqueAuth) -> Int {
+        var bytesWritten = self.writeInteger(verifier.flavor.rawValue, endianness: .big)
         if let opaqueBlob = verifier.opaque {
-            self.writeNFSBlob(opaqueBlob)
+            bytesWritten += self.writeNFSBlob(opaqueBlob)
         } else {
-            self.writeInteger(0, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
         }
+        return bytesWritten
     }
 
     public mutating func readRPCCredentials() throws -> RPCCredentials {
@@ -178,9 +179,9 @@ extension ByteBuffer {
         return RPCCredentials(flavor: flavor, length: UInt32(blob.readableBytes), otherBytes: blob)
     }
 
-    public mutating func writeRPCCredentials(_ credentials: RPCCredentials) {
-        self.writeInteger(credentials.flavor)
-        self.writeNFSBlob(credentials.otherBytes)
+    @discardableResult public mutating func writeRPCCredentials(_ credentials: RPCCredentials) -> Int {
+        return self.writeInteger(credentials.flavor)
+        + self.writeNFSBlob(credentials.otherBytes)
     }
 
     public mutating func readRPCFragmentHeader() throws -> RPCFragmentHeader? {
@@ -197,9 +198,10 @@ extension ByteBuffer {
         return self.setInteger(header.rawValue, at: index, endianness: .big)
     }
 
-    public mutating func writeRPCFragmentHeader(_ header: RPCFragmentHeader) {
+    @discardableResult public mutating func writeRPCFragmentHeader(_ header: RPCFragmentHeader) -> Int {
         let bytesWritten = self.setRPCFragmentHeader(header, at: self.writerIndex)
         self.moveWriterIndex(forwardBy: bytesWritten)
+        return bytesWritten
     }
 
     mutating func readRPCReply(xid: UInt32) throws -> RPCReply {
@@ -254,30 +256,31 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func writeRPCCall(_ call: RPCCall) {
-        self.writeMultipleIntegers(
+    @discardableResult public mutating func writeRPCCall(_ call: RPCCall) -> Int {
+        return self.writeMultipleIntegers(
             RPCMessageType.call.rawValue,
             call.rpcVersion,
             call.program,
             call.programVersion,
             call.procedure,
             endianness: .big)
-        self.writeRPCCredentials(call.credentials)
-        self.writeRPCVerifier(call.verifier)
+        + self.writeRPCCredentials(call.credentials)
+        + self.writeRPCVerifier(call.verifier)
     }
 
-    public mutating func writeRPCReply(_ reply: RPCReply) {
-        self.writeInteger(RPCMessageType.reply.rawValue, endianness: .big)
+    @discardableResult public mutating func writeRPCReply(_ reply: RPCReply) -> Int {
+        var bytesWritten = self.writeInteger(RPCMessageType.reply.rawValue, endianness: .big)
 
         switch reply.status {
         case .messageAccepted(_):
-            self.writeInteger(0 /* accepted */, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0 /* accepted */, endianness: .big, as: UInt32.self)
         case .messageDenied(_):
             // FIXME: MSG_DENIED (spec name) isn't actually handled correctly here.
-            self.writeInteger(1 /* denied */, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(1 /* denied */, endianness: .big, as: UInt32.self)
         }
-        self.writeInteger(0 /* verifier */, endianness: .big, as: UInt64.self)
-        self.writeInteger(0 /* executed successfully */, endianness: .big, as: UInt32.self)
+        bytesWritten += self.writeInteger(0 /* verifier */, endianness: .big, as: UInt64.self)
+        + self.writeInteger(0 /* executed successfully */, endianness: .big, as: UInt32.self)
+        return bytesWritten
     }
 
 
@@ -378,8 +381,7 @@ extension ByteBuffer {
         }
     }
 
-    @discardableResult
-    public mutating func writeRPCNFSCall(_ rpcNFSCall: RPCNFS3Call) -> Int {
+    @discardableResult public mutating func writeRPCNFSCall(_ rpcNFSCall: RPCNFS3Call) -> Int {
         let startWriterIndex = self.writerIndex
         self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
         self.writeInteger(rpcNFSCall.rpcCall.xid, endianness: .big)
@@ -428,7 +430,7 @@ extension ByteBuffer {
         return self.writerIndex - startWriterIndex
     }
 
-    public mutating func writeRPCNFSReplyPartially(_ rpcNFSReply: RPCNFS3Reply) -> (Int, NFS3PartialWriteNextStep) {
+    @discardableResult public mutating func writeRPCNFSReplyPartially(_ rpcNFSReply: RPCNFS3Reply) -> (Int, NFS3PartialWriteNextStep) {
         var nextStep: NFS3PartialWriteNextStep = .doNothing
 
         let startWriterIndex = self.writerIndex

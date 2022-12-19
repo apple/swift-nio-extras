@@ -67,9 +67,9 @@ extension ByteBuffer {
         return NFS3CallRead(fileHandle: fileHandle, offset: values.0, count: values.1)
     }
 
-    public mutating func writeNFSCallRead(_ call: NFS3CallRead) {
-        self.writeNFSFileHandle(call.fileHandle)
-        self.writeMultipleIntegers(call.offset, call.count, endianness: .big)
+    @discardableResult public mutating func writeNFSCallRead(_ call: NFS3CallRead) -> Int {
+        return self.writeNFSFileHandle(call.fileHandle)
+        + self.writeMultipleIntegers(call.offset, call.count, endianness: .big)
     }
 
     public mutating func readNFSReplyRead() throws -> NFS3ReplyRead {
@@ -116,13 +116,13 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func writeNFSReplyRead(_ read: NFS3ReplyRead) {
+    @discardableResult public mutating func writeNFSReplyRead(_ read: NFS3ReplyRead) -> Int {
         switch self.writeNFSReplyReadPartially(read) {
         case .doNothing:
-            ()
+            return 0
         case .writeBlob(let blob, numberOfFillBytes: let fillBytes):
-            self.writeImmutableBuffer(blob)
-            self.writeRepeatingByte(0x41, count: fillBytes)
+            return self.writeImmutableBuffer(blob)
+            + self.writeRepeatingByte(0x41, count: fillBytes)
         }
     }
 }

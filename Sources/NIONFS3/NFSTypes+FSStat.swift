@@ -70,7 +70,7 @@ extension ByteBuffer {
         return NFS3CallFSStat(fsroot: fileHandle)
     }
 
-    public mutating func writeNFSCallFSStat(_ call: NFS3CallFSStat) {
+    @discardableResult public mutating func writeNFSCallFSStat(_ call: NFS3CallFSStat) -> Int {
         self.writeNFSFileHandle(call.fsroot)
     }
 
@@ -104,13 +104,13 @@ extension ByteBuffer {
         )
     }
 
-    public mutating func writeNFSReplyFSStat(_ reply: NFS3ReplyFSStat) {
-        self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFSReplyFSStat(_ reply: NFS3ReplyFSStat) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            self.writeNFSOptional(okay.attributes, writer: { $0.writeNFSFileAttr($1) })
-            self.writeMultipleIntegers(
+            bytesWritten += self.writeNFSOptional(okay.attributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeMultipleIntegers(
                 okay.tbytes,
                 okay.fbytes,
                 okay.abytes,
@@ -120,7 +120,8 @@ extension ByteBuffer {
                 okay.invarsec,
                 endianness: .big)
         case .fail(_, let fail):
-            self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
         }
+        return bytesWritten
     }
 }

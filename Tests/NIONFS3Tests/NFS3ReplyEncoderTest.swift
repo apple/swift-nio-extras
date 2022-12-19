@@ -43,7 +43,8 @@ final class NFS3ReplyEncoderTest: XCTestCase {
             }
 
             var fullSerialisation = ByteBuffer()
-            fullSerialisation.writeRPCNFSReply(reply)
+            let bytesWruttenFull = fullSerialisation.writeRPCNFSReply(reply)
+            XCTAssertEqual(bytesWruttenFull, fullSerialisation.readableBytes)
 
             XCTAssert(fullSerialisation.readableBytesView.starts(with: partialSerialisation.readableBytesView))
             XCTAssert(fullSerialisation.readableBytesView
@@ -74,7 +75,8 @@ final class NFS3ReplyEncoderTest: XCTestCase {
                                                                                       data: expectedPayload)))))
 
             var fullSerialisation = ByteBuffer()
-            fullSerialisation.writeRPCNFSReply(expectedReply)
+            let bytesWrittenFull = fullSerialisation.writeRPCNFSReply(expectedReply)
+            XCTAssertEqual(bytesWrittenFull, fullSerialisation.readableBytes)
             guard var actualReply = try? fullSerialisation.readRPCMessage() else {
                 XCTFail("could not read RPC message")
                 return

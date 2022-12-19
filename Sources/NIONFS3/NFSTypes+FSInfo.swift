@@ -95,7 +95,7 @@ extension ByteBuffer {
         return NFS3CallFSInfo(fsroot: fileHandle)
     }
 
-    public mutating func writeNFSCallFSInfo(_ call: NFS3CallFSInfo) {
+    @discardableResult public mutating func writeNFSCallFSInfo(_ call: NFS3CallFSInfo) -> Int {
         self.writeNFSFileHandle(call.fsroot)
     }
 
@@ -104,13 +104,13 @@ extension ByteBuffer {
         return NFS3ReplyFSInfo.Properties(rawValue: rawValue)
     }
 
-    public mutating func writeNFSReplyFSInfo(_ reply: NFS3ReplyFSInfo) {
-        self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFSReplyFSInfo(_ reply: NFS3ReplyFSInfo) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let reply):
-            self.writeNFSOptional(reply.attributes, writer: { $0.writeNFSFileAttr($1) })
-            self.writeMultipleIntegers(
+            bytesWritten += self.writeNFSOptional(reply.attributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeMultipleIntegers(
                 reply.rtmax,
                 reply.rtpref,
                 reply.rtmult,
@@ -120,11 +120,12 @@ extension ByteBuffer {
                 reply.dtpref,
                 reply.maxFileSize,
                 endianness: .big)
-            self.writeNFSTime(reply.timeDelta)
-            self.writeInteger(reply.properties.rawValue, endianness: .big)
+            + self.writeNFSTime(reply.timeDelta)
+            + self.writeInteger(reply.properties.rawValue, endianness: .big)
         case .fail(_, let fail):
-            self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
         }
+        return bytesWritten
     }
 
     private mutating func readNFSReplyFSInfoOkay() throws -> NFS3ReplyFSInfo.Okay {

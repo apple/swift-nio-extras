@@ -60,9 +60,9 @@ extension ByteBuffer {
         return NFS3CallLookup(dir: dir, name: name)
     }
 
-    public mutating func writeNFSCallLookup(_ call: NFS3CallLookup) {
-        self.writeNFSFileHandle(call.dir)
-        self.writeNFSString(call.name)
+    @discardableResult public mutating func writeNFSCallLookup(_ call: NFS3CallLookup) -> Int {
+        return self.writeNFSFileHandle(call.dir)
+        + self.writeNFSString(call.name)
     }
 
     public mutating func readNFSReplyLookup() throws -> NFS3ReplyLookup {
@@ -88,32 +88,35 @@ extension ByteBuffer {
         )
     }
 
-    public mutating func writeNFSReplyLookup(_ lookupResult: NFS3ReplyLookup) {
+    @discardableResult public mutating func writeNFSReplyLookup(_ lookupResult: NFS3ReplyLookup) -> Int {
+        var bytesWritten = 0
+
         switch lookupResult.result {
         case .okay(let result):
-            self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
-            self.writeNFSFileHandle(result.fileHandle)
+            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
+            + self.writeNFSFileHandle(result.fileHandle)
             if let attrs = result.attributes {
-                self.writeInteger(1, endianness: .big, as: UInt32.self)
-                self.writeNFSFileAttr(attrs)
+                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                + self.writeNFSFileAttr(attrs)
             } else {
-                self.writeInteger(0, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
             if let attrs = result.dirAttributes {
-                self.writeInteger(1, endianness: .big, as: UInt32.self)
-                self.writeNFSFileAttr(attrs)
+                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                + self.writeNFSFileAttr(attrs)
             } else {
-                self.writeInteger(0, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
         case .fail(let status, let fail):
             precondition(status != .ok)
-            self.writeInteger(status.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
             if let attrs = fail.dirAttributes {
-                self.writeInteger(1, endianness: .big, as: UInt32.self)
-                self.writeNFSFileAttr(attrs)
+                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                + self.writeNFSFileAttr(attrs)
             } else {
-                self.writeInteger(0, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
         }
+        return bytesWritten
     }
 }

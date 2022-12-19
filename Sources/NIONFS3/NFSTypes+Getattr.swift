@@ -45,7 +45,7 @@ extension ByteBuffer {
         return NFS3CallGetAttr(fileHandle: fileHandle)
     }
 
-    public mutating func writeNFSCallGetattr(_ call: NFS3CallGetAttr) {
+    @discardableResult public mutating func writeNFSCallGetattr(_ call: NFS3CallGetAttr) -> Int {
         self.writeNFSFileHandle(call.fileHandle)
     }
 
@@ -61,14 +61,15 @@ extension ByteBuffer {
         )
     }
 
-    public mutating func writeNFSReplyGetAttr(_ reply: NFS3ReplyGetAttr) {
-        self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFSReplyGetAttr(_ reply: NFS3ReplyGetAttr) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            self.writeNFSFileAttr(okay.attributes)
+            bytesWritten += self.writeNFSFileAttr(okay.attributes)
         case .fail(_, _):
             ()
         }
+        return bytesWritten
     }
 }

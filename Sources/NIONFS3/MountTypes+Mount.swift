@@ -47,25 +47,27 @@ extension ByteBuffer {
         return MountCallMount(dirPath: dirPath)
     }
 
-    public mutating func writeNFSCallMount(_ call: MountCallMount) {
+    @discardableResult public mutating func writeNFSCallMount(_ call: MountCallMount) -> Int {
         self.writeNFSString(call.dirPath)
     }
 
-    public mutating func writeNFSReplyMount(_ reply: MountReplyMount) {
-        self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFSReplyMount(_ reply: MountReplyMount) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let reply):
-            self.writeNFSFileHandle(reply.fileHandle)
+            bytesWritten += self.writeNFSFileHandle(reply.fileHandle)
             precondition(reply.authFlavors == [.unix] || reply.authFlavors == [.noAuth],
                          "Sorry, anything but [.unix] / [.system] / [.noAuth] unimplemented.")
-            self.writeInteger(UInt32(reply.authFlavors.count), endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(UInt32(reply.authFlavors.count), endianness: .big, as: UInt32.self)
             for flavor in reply.authFlavors {
-                self.writeInteger(flavor.rawValue, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(flavor.rawValue, endianness: .big, as: UInt32.self)
             }
         case .fail(_, _):
             ()
         }
+
+        return bytesWritten
     }
 
     public mutating func readNFSReplyMount() throws -> MountReplyMount {

@@ -33,11 +33,12 @@ extension ByteBuffer {
         return MountCallUnmount(dirPath: dirPath)
     }
 
-    public mutating func writeNFSCallUnmount(_ call: MountCallUnmount) {
+    @discardableResult public mutating func writeNFSCallUnmount(_ call: MountCallUnmount) -> Int {
         self.writeNFSString(call.dirPath)
     }
 
-    public mutating func writeNFSReplyUnmount(_ reply: MountReplyUnmount) {
+    @discardableResult public mutating func writeNFSReplyUnmount(_ reply: MountReplyUnmount) -> Int {
+        return 0
     }
 
     public mutating func readNFSReplyUnmount() throws -> MountReplyUnmount {

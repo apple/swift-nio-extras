@@ -24,6 +24,7 @@ extension ByteBuffer {
         return MountCallNull()
     }
 
-    public mutating func writeMountCallNull(_ call: MountCallNull) {
+    @discardableResult public mutating func writeMountCallNull(_ call: MountCallNull) -> Int {
+        return 0
     }
 }

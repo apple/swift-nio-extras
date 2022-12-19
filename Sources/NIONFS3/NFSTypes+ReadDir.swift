@@ -84,9 +84,9 @@ extension ByteBuffer {
                                maxResultByteCount: maxResultByteCount)
     }
 
-    public mutating func writeNFSCallReadDir(_ call: NFS3CallReadDir) {
-        self.writeNFSFileHandle(call.fileHandle)
-        self.writeMultipleIntegers(
+    @discardableResult public mutating func writeNFSCallReadDir(_ call: NFS3CallReadDir) -> Int {
+        return self.writeNFSFileHandle(call.fileHandle)
+        + self.writeMultipleIntegers(
             call.cookie,
             call.cookieVerifier,
             call.maxResultByteCount
@@ -103,10 +103,10 @@ extension ByteBuffer {
                                       cookie: cookie)
     }
 
-    private mutating func writeReadDirEntry(_ entry: NFS3ReplyReadDir.Entry) {
-        self.writeNFSFileID(entry.fileID)
-        self.writeNFSString(entry.fileName)
-        self.writeNFSCookie(entry.cookie)
+    private mutating func writeReadDirEntry(_ entry: NFS3ReplyReadDir.Entry) -> Int {
+        return self.writeNFSFileID(entry.fileID)
+        + self.writeNFSString(entry.fileName)
+        + self.writeNFSCookie(entry.cookie)
     }
 
     public mutating func readNFSReplyReadDir() throws -> NFS3ReplyReadDir {
@@ -135,22 +135,24 @@ extension ByteBuffer {
         )
     }
 
-    public mutating func writeNFSReplyReadDir(_ rd: NFS3ReplyReadDir) {
+    @discardableResult public mutating func writeNFSReplyReadDir(_ rd: NFS3ReplyReadDir) -> Int {
+        var bytesWritten = 0
         switch rd.result {
         case .okay(let result):
-            self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
-            self.writeNFSOptional(result.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
-            self.writeNFSCookieVerifier(result.cookieVerifier)
+            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
+            + self.writeNFSOptional(result.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeNFSCookieVerifier(result.cookieVerifier)
             for entry in result.entries {
-                self.writeInteger(1, endianness: .big, as: UInt32.self)
-                self.writeReadDirEntry(entry)
+                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                + self.writeReadDirEntry(entry)
             }
-            self.writeInteger(0, endianness: .big, as: UInt32.self)
-            self.writeInteger(result.eof == true ? 1 : 0, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
+            + self.writeInteger(result.eof == true ? 1 : 0, endianness: .big, as: UInt32.self)
         case .fail(let status, let fail):
             precondition(status != .ok)
-            self.writeInteger(status.rawValue, endianness: .big)
-            self.writeNFSOptional(fail.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
+            + self.writeNFSOptional(fail.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
         }
+        return bytesWritten
     }
 }

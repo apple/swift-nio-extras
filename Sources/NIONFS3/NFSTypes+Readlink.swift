@@ -56,7 +56,7 @@ extension ByteBuffer {
         return .init(symlink: symlink)
     }
 
-    public mutating func writeNFSCallReadlink(_ call: NFS3CallReadlink) {
+    @discardableResult public mutating func writeNFSCallReadlink(_ call: NFS3CallReadlink) -> Int {
         self.writeNFSFileHandle(call.symlink)
     }
 
@@ -75,15 +75,16 @@ extension ByteBuffer {
                 }))
     }
 
-    public mutating func writeNFSReplyReadlink(_ reply: NFS3ReplyReadlink) {
-        self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFSReplyReadlink(_ reply: NFS3ReplyReadlink) -> Int {
+        var bytesWritten = self.writeNFSResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            self.writeNFSOptional(okay.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
-            self.writeNFSString(okay.target)
+            bytesWritten += self.writeNFSOptional(okay.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeNFSString(okay.target)
         case .fail(_, let fail):
-            self.writeNFSOptional(fail.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFSOptional(fail.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
         }
+        return bytesWritten
     }
 }

@@ -24,6 +24,7 @@ extension ByteBuffer {
         return NFS3CallNull()
     }
 
-    public mutating func writeNFSCallNull(_ call: NFS3CallNull) {
+    @discardableResult public mutating func writeNFSCallNull(_ call: NFS3CallNull) -> Int {
+        return 0
     }
 }

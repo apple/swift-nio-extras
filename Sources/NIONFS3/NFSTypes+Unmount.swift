@@ -33,11 +33,12 @@ extension ByteBuffer {
         return NFS3CallUnmount(dirPath: dirPath)
     }
 
-    public mutating func writeNFSCallUnmount(_ call: NFS3CallUnmount) {
+    @discardableResult public mutating func writeNFSCallUnmount(_ call: NFS3CallUnmount) -> Int {
         self.writeNFSString(call.dirPath)
     }
 
-    public mutating func writeNFSReplyUnmount(_ reply: NFS3ReplyUnmount) {
+    @discardableResult public mutating func writeNFSReplyUnmount(_ reply: NFS3ReplyUnmount) -> Int {
+        return 0
     }
 
     public mutating func readNFSReplyUnmount() throws -> NFS3ReplyUnmount {

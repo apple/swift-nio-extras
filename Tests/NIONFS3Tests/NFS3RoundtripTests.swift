@@ -47,7 +47,9 @@ final class NFS3RoundtripTests: XCTestCase {
             var buffer = ByteBuffer()
             xid += 1
             let rpcNFSCall = RPCNFS3Call(nfsCall: nfsCall, xid: xid)
-            buffer.writeRPCNFSCall(rpcNFSCall)
+            let oldReadableBytes = buffer.readableBytes
+            let bytesWritten = buffer.writeRPCNFSCall(rpcNFSCall)
+            XCTAssertEqual(oldReadableBytes + bytesWritten, buffer.readableBytes)
 
             return (buffer, [rpcNFSCall])
         }
@@ -97,7 +99,9 @@ final class NFS3RoundtripTests: XCTestCase {
             var buffer = ByteBuffer()
             xid += 1
             let rpcNFSCall = RPCNFS3Call(nfsCall: nfsCall, xid: xid)
-            buffer.writeRPCNFSCall(rpcNFSCall)
+            let oldReadableBytes = buffer.readableBytes
+            let bytesWritten = buffer.writeRPCNFSCall(rpcNFSCall)
+            XCTAssertEqual(oldReadableBytes + bytesWritten, buffer.readableBytes)
 
             return (buffer, [rpcNFSCall])
         }
@@ -209,7 +213,9 @@ final class NFS3RoundtripTests: XCTestCase {
             let rpcNFSReply = RPCNFS3Reply(rpcReply: .init(xid: xid, status: .messageAccepted(.init(verifier: .init(flavor: .noAuth, opaque: nil), status: .success))),
                                            nfsReply: nfsReply)
             prepopulatedProcs[xid] = .init(nfsReply)
-            buffer.writeRPCNFSReply(rpcNFSReply)
+            let oldReadableBytes = buffer.readableBytes
+            let writtenBytes = buffer.writeRPCNFSReply(rpcNFSReply)
+            XCTAssertEqual(oldReadableBytes + writtenBytes, buffer.readableBytes)
 
             return (buffer, [rpcNFSReply])
         }
