@@ -113,7 +113,6 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         context.leavePipeline(removalToken: removalToken)
     }
 
-
     public func handlerAdded(context: ChannelHandlerContext) {
         if context.channel.isActive {
             self.sendConnect(context: context)
@@ -139,7 +138,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     public func channelInactive(context: ChannelHandlerContext) {
         switch self.state {
         case .initialized:
-            preconditionFailure("How can we receive a channelInactive before a channelActive?")
+            self.failWithError(Error.channelUnexpectedlyInactive(), context: context, closeConnection: false)
         case .connectSent(let timeout), .headReceived(let timeout):
             timeout.cancel()
             self.failWithError(Error.remoteConnectionClosed(), context: context, closeConnection: false)
@@ -276,6 +275,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             case remoteConnectionClosed
             case httpProxyHandshakeTimeout
             case noResult
+            case channelUnexpectedlyInactive
         }
 
         final class Storage: Sendable {
@@ -326,6 +326,11 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             Error(error: .noResult, file: file, line: line)
         }
 
+        /// Handler became unexpectedly inactive before a connection was made
+        public static func channelUnexpectedlyInactive(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .channelUnexpectedlyInactive, file: file, line: line)
+        }
+
         fileprivate var errorCode: Int {
             switch self.store.details {
             case .proxyAuthenticationRequired:
@@ -340,6 +345,8 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 return 4
             case .noResult:
                 return 5
+            case .channelUnexpectedlyInactive:
+                return 6
             }
         }
     }
@@ -379,6 +386,8 @@ extension NIOHTTP1ProxyConnectHandler.Error.Details: CustomStringConvertible {
             return "HTTP Proxy Handshake Timeout"
         case .noResult:
             return "No Result"
+        case .channelUnexpectedlyInactive:
+            return "Channel Unexpectedly Inactive"
         }
     }
 }
