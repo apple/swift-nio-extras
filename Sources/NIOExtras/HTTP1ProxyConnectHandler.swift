@@ -92,22 +92,13 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             self.failWithError(.noResult(), context: context)
 
         case .completed:
-            let hadMark = self.bufferedWrittenMessages.hasMark
-            while self.bufferedWrittenMessages.hasMark {
-                // write until mark
-                let bufferedPart = self.bufferedWrittenMessages.removeFirst()
+            while let (bufferedPart, isMarked) = self.bufferedWrittenMessages.popFirstCheckMarked() {
                 context.write(bufferedPart.data, promise: bufferedPart.promise)
+                if isMarked {
+                    context.flush()
+                }
             }
-
-            // flush any messages up to the mark
-            if hadMark {
-                context.flush()
-            }
-
-            // write remainder
-            while let bufferedPart = self.bufferedWrittenMessages.popFirst() {
-                context.write(bufferedPart.data, promise: bufferedPart.promise)
-            }
+            
         }
 
         context.leavePipeline(removalToken: removalToken)
@@ -122,9 +113,12 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     public func handlerRemoved(context: ChannelHandlerContext) {
         switch self.state {
         case .failed, .completed:
-            // we don't expect there to be any buffered messages in these states
-            assert(self.bufferedWrittenMessages.isEmpty)
+            guard self.bufferedWrittenMessages.isEmpty else {
+                self.failWithError(Error.droppedWrites(), context: context)
+                return
+            }
             break
+
         case .initialized, .connectSent, .headReceived:
             self.failWithError(Error.noResult(), context: context)
         }
@@ -276,6 +270,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             case httpProxyHandshakeTimeout
             case noResult
             case channelUnexpectedlyInactive
+            case droppedWrites
         }
 
         final class Storage: Sendable {
@@ -331,6 +326,10 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             Error(error: .channelUnexpectedlyInactive, file: file, line: line)
         }
 
+        public static func droppedWrites(file: String = #file, line: UInt = #line) -> Error {
+            Error(error: .droppedWrites, file: file, line: line)
+        }
+
         fileprivate var errorCode: Int {
             switch self.store.details {
             case .proxyAuthenticationRequired:
@@ -347,6 +346,8 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                 return 5
             case .channelUnexpectedlyInactive:
                 return 6
+            case .droppedWrites:
+                return 7
             }
         }
     }
@@ -388,6 +389,8 @@ extension NIOHTTP1ProxyConnectHandler.Error.Details: CustomStringConvertible {
             return "No Result"
         case .channelUnexpectedlyInactive:
             return "Channel Unexpectedly Inactive"
+        case .droppedWrites:
+            return "Handler Was Removed with Writes Left in the Buffer"
         }
     }
 }
