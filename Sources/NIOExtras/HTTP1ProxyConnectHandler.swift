@@ -254,7 +254,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             if closeConnection {
                 context.close(mode: .all, promise: nil)
             }
-            for bufferedWrite in self.bufferedWrittenMessages {
+            while let bufferedWrite = self.bufferedWrittenMessages.popFirst() {
                 bufferedWrite.promise?.fail(error)
             }
         }
