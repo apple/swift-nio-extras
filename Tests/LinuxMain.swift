@@ -40,6 +40,7 @@ class LinuxMainRunner {
              testCase(DebugInboundEventsHandlerTest.allTests),
              testCase(DebugOutboundEventsHandlerTest.allTests),
              testCase(FixedLengthFrameDecoderTest.allTests),
+             testCase(HTTP1ProxyConnectHandlerTests.allTests),
              testCase(HTTPRequestCompressorTest.allTests),
              testCase(HTTPRequestDecompressorTest.allTests),
              testCase(HTTPResponseCompressorTest.allTests),

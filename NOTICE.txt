@@ -32,3 +32,14 @@ This product contains a derivation of the Tony Stone's 'process_test_files.rb'.
     * https://www.apache.org/licenses/LICENSE-2.0
   * HOMEPAGE:
     * https://codegists.com/snippet/ruby/generate_xctest_linux_runnerrb_tonystone_ruby
+
+---
+
+This product contains a derivation of "HTTP1ProxyConnectHandler.swift" and accompanying tests from AsyncHTTPClient.
+
+  * LICENSE (Apache License 2.0):
+    * https://www.apache.org/licenses/LICENSE-2.0
+  * HOMEPAGE:
+    * https://github.com/swift-server/async-http-client
+
+---
