@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Unmount
-public struct MountCallUnmount: Hashable {
+public struct MountCallUnmount: Hashable & Sendable {
     public init(dirPath: String) {
         self.dirPath = dirPath
     }
@@ -23,7 +23,7 @@ public struct MountCallUnmount: Hashable {
     public var dirPath: String
 }
 
-public struct MountReplyUnmount: Hashable {
+public struct MountReplyUnmount: Hashable & Sendable {
     public init() {}
 }
 

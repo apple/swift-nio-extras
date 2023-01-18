@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Getattr
-public struct NFS3CallGetAttr: Hashable {
+public struct NFS3CallGetAttr: Hashable & Sendable {
     public init(fileHandle: NFS3FileHandle) {
         self.fileHandle = fileHandle
     }
@@ -23,12 +23,12 @@ public struct NFS3CallGetAttr: Hashable {
     public var fileHandle: NFS3FileHandle
 }
 
-public struct NFS3ReplyGetAttr: Hashable {
+public struct NFS3ReplyGetAttr: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyGetAttr.Okay, NFS3Nothing>) {
         self.result = result
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(attributes: NFS3FileAttr) {
             self.attributes = attributes
         }

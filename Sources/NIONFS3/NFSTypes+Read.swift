@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Read
-public struct NFS3CallRead: Hashable {
+public struct NFS3CallRead: Hashable & Sendable {
     public init(fileHandle: NFS3FileHandle, offset: NFS3Offset, count: NFS3Count) {
         self.fileHandle = fileHandle
         self.offset = offset
@@ -27,12 +27,12 @@ public struct NFS3CallRead: Hashable {
     public var count: NFS3Count
 }
 
-public struct NFS3ReplyRead: Hashable {
+public struct NFS3ReplyRead: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyRead.Okay, NFS3ReplyRead.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(attributes: NFS3FileAttr? = nil, count: NFS3Count, eof: NFS3Bool, data: ByteBuffer) {
             self.attributes = attributes
             self.count = count
@@ -46,7 +46,7 @@ public struct NFS3ReplyRead: Hashable {
         public var data: ByteBuffer
     }
 
-    public struct Fail: Hashable {
+    public struct Fail: Hashable & Sendable {
         public init(attributes: NFS3FileAttr? = nil) {
             self.attributes = attributes
         }

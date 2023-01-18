@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - ReadDirPlus
-public struct NFS3CallReadDirPlus: Hashable {
+public struct NFS3CallReadDirPlus: Hashable & Sendable {
     public init(fileHandle: NFS3FileHandle, cookie: NFS3Cookie, cookieVerifier: NFS3CookieVerifier,
                 dirCount: NFS3Count, maxCount: NFS3Count) {
         self.fileHandle = fileHandle
@@ -32,12 +32,12 @@ public struct NFS3CallReadDirPlus: Hashable {
     public var maxCount: NFS3Count
 }
 
-public struct NFS3ReplyReadDirPlus: Hashable {
+public struct NFS3ReplyReadDirPlus: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyReadDirPlus.Okay, NFS3ReplyReadDirPlus.Fail>) {
         self.result = result
     }
 
-    public struct Entry: Hashable {
+    public struct Entry: Hashable & Sendable {
         public init(fileID: NFS3FileID, fileName: String, cookie: NFS3Cookie, nameAttributes: NFS3FileAttr? = nil, nameHandle: NFS3FileHandle? = nil) {
             self.fileID = fileID
             self.fileName = fileName
@@ -53,7 +53,7 @@ public struct NFS3ReplyReadDirPlus: Hashable {
         public var nameHandle: NFS3FileHandle?
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(dirAttributes: NFS3FileAttr? = nil, cookieVerifier: NFS3CookieVerifier, entries: [NFS3ReplyReadDirPlus.Entry], eof: NFS3Bool) {
             self.dirAttributes = dirAttributes
             self.cookieVerifier = cookieVerifier
@@ -67,7 +67,7 @@ public struct NFS3ReplyReadDirPlus: Hashable {
         public var eof: NFS3Bool
     }
 
-    public struct Fail: Hashable {
+    public struct Fail: Hashable & Sendable {
         public init(dirAttributes: NFS3FileAttr? = nil) {
             self.dirAttributes = dirAttributes
         }

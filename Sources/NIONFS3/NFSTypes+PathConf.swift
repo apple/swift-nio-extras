@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - PathConf
-public struct NFS3CallPathConf: Hashable {
+public struct NFS3CallPathConf: Hashable & Sendable {
     public init(object: NFS3FileHandle) {
         self.object = object
     }
@@ -23,12 +23,12 @@ public struct NFS3CallPathConf: Hashable {
     public var object: NFS3FileHandle
 }
 
-public struct NFS3ReplyPathConf: Hashable {
+public struct NFS3ReplyPathConf: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyPathConf.Okay, NFS3ReplyPathConf.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(attributes: NFS3FileAttr?, linkMax: UInt32, nameMax: UInt32, noTrunc: NFS3Bool, chownRestricted: NFS3Bool, caseInsensitive: NFS3Bool, casePreserving: NFS3Bool) {
             self.attributes = attributes
             self.linkMax = linkMax
@@ -48,7 +48,7 @@ public struct NFS3ReplyPathConf: Hashable {
         public var casePreserving: NFS3Bool
     }
 
-    public struct Fail: Hashable {
+    public struct Fail: Hashable & Sendable {
         public init(attributes: NFS3FileAttr?) {
             self.attributes = attributes
         }

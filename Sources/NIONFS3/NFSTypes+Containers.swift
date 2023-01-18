@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct RPCNFS3ProcedureID: Hashable {
+public struct RPCNFS3ProcedureID: Hashable & Sendable {
     public internal(set) var program: UInt32
     public internal(set) var procedure: UInt32
 
@@ -94,7 +94,7 @@ extension RPCNFS3ProcedureID {
     }
 }
 
-public enum NFS3Call: Hashable {
+public enum NFS3Call: Hashable & Sendable {
     case mountNull(MountCallNull)
     case mount(MountCallMount)
     case unmount(MountCallUnmount)
@@ -114,7 +114,7 @@ public enum NFS3Call: Hashable {
     case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
 }
 
-public enum NFS3Reply: Hashable {
+public enum NFS3Reply: Hashable & Sendable {
     case mountNull
     case mount(MountReplyMount)
     case unmount(MountReplyUnmount)

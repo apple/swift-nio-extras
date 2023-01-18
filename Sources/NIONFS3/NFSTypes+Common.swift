@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - NIONFS3 Specifics
-public struct RPCNFS3Call: Hashable {
+public struct RPCNFS3Call: Hashable & Sendable {
     public init(rpcCall: RPCCall, nfsCall: NFS3Call) {
         self.rpcCall = rpcCall
         self.nfsCall = nfsCall
@@ -84,7 +84,7 @@ extension RPCNFS3Call: Identifiable {
     }
 }
 
-public struct RPCNFS3Reply: Hashable {
+public struct RPCNFS3Reply: Hashable & Sendable {
     public init(rpcReply: RPCReply, nfsReply: NFS3Reply) {
         self.rpcReply = rpcReply
         self.nfsReply = nfsReply
@@ -420,7 +420,7 @@ extension ByteBuffer {
 }
 
 
-public struct NFS3Nothing: Hashable {
+public struct NFS3Nothing: Hashable & Sendable {
     public init() {}
 }
 
@@ -462,7 +462,7 @@ public enum NFS3Status: UInt32, Sendable {
 /// Check the access rights to a file.
 ///
 /// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-40
-public struct NFS3Access: OptionSet & Hashable {
+public struct NFS3Access: OptionSet & Hashable & Sendable {
     public typealias RawValue = UInt32
 
     public var rawValue: RawValue
@@ -495,7 +495,7 @@ extension ByteBuffer {
 /// The filetype as defined in NFS3.
 ///
 /// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-20
-public enum NFS3FileType: UInt32 {
+public enum NFS3FileType: UInt32, Sendable {
     case regular = 1
     case directory = 2
     case blockDevice = 3
@@ -507,7 +507,7 @@ public enum NFS3FileType: UInt32 {
 
 public typealias NFS3Bool = Bool
 
-public struct NFS3FileHandle: Hashable, CustomStringConvertible {
+public struct NFS3FileHandle: Hashable & Sendable & CustomStringConvertible {
     @usableFromInline
     internal var _value: UInt64
 
@@ -554,7 +554,7 @@ extension UInt32 {
 }
 
 
-public struct NFS3Time: Hashable {
+public struct NFS3Time: Hashable & Sendable {
     public init(seconds: UInt32, nanoseconds: UInt32) {
         self.seconds = seconds
         self.nanoseconds = nanoseconds
@@ -564,7 +564,7 @@ public struct NFS3Time: Hashable {
     public var nanoseconds: UInt32
 }
 
-public struct NFS3FileAttr: Hashable {
+public struct NFS3FileAttr: Hashable & Sendable {
     public init(type: NFS3FileType, mode: NFS3FileMode, nlink: UInt32, uid: NFS3UID, gid: NFS3GID, size: NFS3Size,
                 used: NFS3Size, rdev: NFS3SpecData, fsid: UInt64, fileid: NFS3FileID, atime: NFS3Time, mtime: NFS3Time,
                 ctime: NFS3Time) {
@@ -598,7 +598,7 @@ public struct NFS3FileAttr: Hashable {
     public var ctime: NFS3Time
 }
 
-public struct NFS3WeakCacheConsistencyAttr: Hashable {
+public struct NFS3WeakCacheConsistencyAttr: Hashable & Sendable {
     public init(size: NFS3Size, mtime: NFS3Time, ctime: NFS3Time) {
         self.size = size
         self.mtime = mtime
@@ -610,7 +610,7 @@ public struct NFS3WeakCacheConsistencyAttr: Hashable {
     public var ctime: NFS3Time
 }
 
-public struct NFS3WeakCacheConsistencyData: Hashable {
+public struct NFS3WeakCacheConsistencyData: Hashable & Sendable {
     public init(before: NFS3WeakCacheConsistencyAttr? = nil, after: NFS3FileAttr? = nil) {
         self.before = before
         self.after = after

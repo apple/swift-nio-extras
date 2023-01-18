@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Access
-public struct NFS3CallAccess: Hashable {
+public struct NFS3CallAccess: Hashable & Sendable {
     public init(object: NFS3FileHandle, access: NFS3Access) {
         self.object = object
         self.access = access
@@ -25,12 +25,12 @@ public struct NFS3CallAccess: Hashable {
     public var access: NFS3Access
 }
 
-public struct NFS3ReplyAccess: Hashable {
+public struct NFS3ReplyAccess: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyAccess.Okay, NFS3ReplyAccess.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(dirAttributes: NFS3FileAttr?, access: NFS3Access) {
             self.dirAttributes = dirAttributes
             self.access = access
@@ -40,7 +40,7 @@ public struct NFS3ReplyAccess: Hashable {
         public var access: NFS3Access
     }
 
-    public struct Fail: Hashable {
+    public struct Fail: Hashable & Sendable {
         public init(dirAttributes: NFS3FileAttr?) {
             self.dirAttributes = dirAttributes
         }

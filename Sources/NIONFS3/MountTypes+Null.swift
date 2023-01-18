@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Null
-public struct MountCallNull: Hashable {
+public struct MountCallNull: Hashable & Sendable {
     public init() {}
 }
 

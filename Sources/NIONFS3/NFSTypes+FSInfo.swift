@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - FSInfo
-public struct NFS3CallFSInfo: Hashable {
+public struct NFS3CallFSInfo: Hashable & Sendable {
     public init(fsroot: NFS3FileHandle) {
         self.fsroot = fsroot
     }
@@ -23,12 +23,12 @@ public struct NFS3CallFSInfo: Hashable {
     public var fsroot: NFS3FileHandle
 }
 
-public struct NFS3ReplyFSInfo: Hashable {
+public struct NFS3ReplyFSInfo: Hashable & Sendable {
     public init(result: NFS3Result<NFS3ReplyFSInfo.Okay, NFS3ReplyFSInfo.Fail>) {
         self.result = result
     }
 
-    public struct Properties: OptionSet & Hashable {
+    public struct Properties: OptionSet & Hashable & Sendable {
         public typealias RawValue = UInt32
 
         public var rawValue: RawValue
@@ -44,7 +44,7 @@ public struct NFS3ReplyFSInfo: Hashable {
         public static let `default`: Self = [.supportsSoftlinks, .supportsHardlinks, .isHomogenous, .canSetTime]
     }
 
-    public struct Okay: Hashable {
+    public struct Okay: Hashable & Sendable {
         public init(attributes: NFS3FileAttr?,
                     rtmax: UInt32, rtpref: UInt32, rtmult: UInt32,
                     wtmax: UInt32, wtpref: UInt32, wtmult: UInt32,
@@ -78,7 +78,7 @@ public struct NFS3ReplyFSInfo: Hashable {
         public var properties: Properties = .default
     }
 
-    public struct Fail: Hashable {
+    public struct Fail: Hashable & Sendable {
         public init(attributes: NFS3FileAttr?) {
             self.attributes = attributes
         }

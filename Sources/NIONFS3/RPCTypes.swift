@@ -70,7 +70,7 @@ public enum RPCMessage {
 }
 
 /// RFC 5531: struct call_body
-public struct RPCCall: Hashable {
+public struct RPCCall: Hashable & Sendable {
     public init(xid: UInt32, rpcVersion: UInt32, program: UInt32, programVersion: UInt32, procedure: UInt32, credentials: RPCCredentials, verifier: RPCOpaqueAuth) {
         self.xid = xid
         self.rpcVersion = rpcVersion
@@ -102,12 +102,12 @@ extension RPCCall {
     }
 }
 
-public enum RPCReplyStatus: Hashable {
+public enum RPCReplyStatus: Hashable & Sendable {
     case messageAccepted(RPCAcceptedReply)
     case messageDenied(RPCRejectedReply)
 }
 
-public struct RPCReply: Hashable {
+public struct RPCReply: Hashable & Sendable {
     public var xid: UInt32
     public var status: RPCReplyStatus
 
@@ -117,7 +117,7 @@ public struct RPCReply: Hashable {
     }
 }
 
-public enum RPCAcceptedReplyStatus: Hashable {
+public enum RPCAcceptedReplyStatus: Hashable & Sendable {
     case success
     case programUnavailable
     case programMismatch(low: UInt32, high: UInt32)
@@ -126,7 +126,7 @@ public enum RPCAcceptedReplyStatus: Hashable {
     case systemError
 }
 
-public struct RPCOpaqueAuth: Hashable {
+public struct RPCOpaqueAuth: Hashable & Sendable {
     public var flavor: RPCAuthFlavor
     public var opaque: ByteBuffer? = nil
 
@@ -136,7 +136,7 @@ public struct RPCOpaqueAuth: Hashable {
     }
 }
 
-public struct RPCAcceptedReply: Hashable {
+public struct RPCAcceptedReply: Hashable & Sendable {
     public var verifier: RPCOpaqueAuth
     public var status: RPCAcceptedReplyStatus
 
@@ -146,7 +146,7 @@ public struct RPCAcceptedReply: Hashable {
     }
 }
 
-public enum RPCAuthStatus: UInt32 {
+public enum RPCAuthStatus: UInt32, Sendable {
    case ok = 0  /* success                        */
    case badCredentials = 1  /* bad credential (seal broken)   */
    case rejectedCredentials = 2  /* client must begin new session  */
@@ -164,7 +164,7 @@ public enum RPCAuthStatus: UInt32 {
    case problemWithGSSContext = 14 /* problem with context */
 }
 
-public enum RPCRejectedReply: Hashable {
+public enum RPCRejectedReply: Hashable & Sendable {
     case rpcMismatch(low: UInt32, high: UInt32)
     case authError(RPCAuthStatus)
 }
@@ -182,7 +182,7 @@ public enum RPCErrors: Error {
     case illegalAuthStatus(UInt32)
 }
 
-public struct RPCCredentials: Hashable {
+public struct RPCCredentials: Hashable & Sendable {
     internal var flavor: UInt32
     internal var length: UInt32
     internal var otherBytes: ByteBuffer
@@ -194,7 +194,7 @@ public struct RPCCredentials: Hashable {
     }
 }
 
-public enum RPCAuthFlavor: UInt32 {
+public enum RPCAuthFlavor: UInt32, Sendable {
     case noAuth = 0
     case system = 1
     case short = 2
