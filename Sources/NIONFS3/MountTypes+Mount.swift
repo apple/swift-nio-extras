@@ -42,21 +42,21 @@ public struct MountReplyMount: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallMount() throws -> MountCallMount {
-        let dirPath = try self.readNFSString()
+    public mutating func readNFS3CallMount() throws -> MountCallMount {
+        let dirPath = try self.readNFS3String()
         return MountCallMount(dirPath: dirPath)
     }
 
-    @discardableResult public mutating func writeNFSCallMount(_ call: MountCallMount) -> Int {
-        self.writeNFSString(call.dirPath)
+    @discardableResult public mutating func writeNFS3CallMount(_ call: MountCallMount) -> Int {
+        self.writeNFS3String(call.dirPath)
     }
 
-    @discardableResult public mutating func writeNFSReplyMount(_ reply: MountReplyMount) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplyMount(_ reply: MountReplyMount) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let reply):
-            bytesWritten += self.writeNFSFileHandle(reply.fileHandle)
+            bytesWritten += self.writeNFS3FileHandle(reply.fileHandle)
             precondition(reply.authFlavors == [.unix] || reply.authFlavors == [.noAuth],
                          "Sorry, anything but [.unix] / [.system] / [.noAuth] unimplemented.")
             bytesWritten += self.writeInteger(UInt32(reply.authFlavors.count), endianness: .big, as: UInt32.self)
@@ -70,10 +70,10 @@ extension ByteBuffer {
         return bytesWritten
     }
 
-    public mutating func readNFSReplyMount() throws -> MountReplyMount {
-        let result = try self.readNFSResult(readOkay: { buffer -> MountReplyMount.Okay in
-            let fileHandle = try buffer.readNFSFileHandle()
-            let authFlavors = try buffer.readNFSList(readEntry: { buffer in
+    public mutating func readNFS3ReplyMount() throws -> MountReplyMount {
+        let result = try self.readNFS3Result(readOkay: { buffer -> MountReplyMount.Okay in
+            let fileHandle = try buffer.readNFS3FileHandle()
+            let authFlavors = try buffer.readNFS3List(readEntry: { buffer in
                 try buffer.readRPCAuthFlavor()
             })
             return MountReplyMount.Okay(fileHandle: fileHandle, authFlavors: authFlavors)

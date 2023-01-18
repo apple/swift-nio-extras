@@ -56,7 +56,7 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
 
         do {
             try self.b2md.process(buffer: data) { nfsCall in
-                self.invoker?.handleNFSCall(nfsCall)
+                self.invoker?.handleNFS3Call(nfsCall)
             }
         } catch {
             self.error = error
@@ -73,7 +73,7 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
             let reply = RPCNFS3Reply(rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
                                     nfsReply: .null)
             self.writeBuffer.clear()
-            self.writeBuffer.writeRPCNFSReply(reply)
+            self.writeBuffer.writeRPCNFS3Reply(reply)
             return
         default:
             ()
@@ -90,7 +90,7 @@ extension NFS3FileSystemServerHandler: NFS3FileSystemResponder {
                                     nfsReply: reply)
 
             self.writeBuffer.clear()
-            switch self.writeBuffer.writeRPCNFSReplyPartially(reply).1 {
+            switch self.writeBuffer.writeRPCNFS3ReplyPartially(reply).1 {
             case .doNothing:
                 context.writeAndFlush(self.wrapOutboundOut(self.writeBuffer), promise: nil)
             case .writeBlob(let buffer, numberOfFillBytes: let fillBytes):
@@ -113,7 +113,7 @@ extension NFS3FileSystemServerHandler: NFS3FileSystemResponder {
                                                                          NFS3Nothing()))))
 
             self.writeBuffer.clear()
-            self.writeBuffer.writeRPCNFSReply(reply)
+            self.writeBuffer.writeRPCNFS3Reply(reply)
 
             context.fireErrorCaught(error)
             context.writeAndFlush(self.wrapOutboundOut(self.writeBuffer), promise: nil)

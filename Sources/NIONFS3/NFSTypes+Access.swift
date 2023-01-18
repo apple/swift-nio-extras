@@ -52,34 +52,34 @@ public struct NFS3ReplyAccess: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallAccess() throws -> NFS3CallAccess {
-        let fileHandle = try self.readNFSFileHandle()
-        let access = try self.readNFSInteger(as: UInt32.self)
-        return NFS3CallAccess(object: fileHandle, access: .init(rawValue: access))
+    public mutating func readNFS3CallAccess() throws -> NFS3CallAccess {
+        let fileHandle = try self.readNFS3FileHandle()
+        let access = try self.readNFS3Access()
+        return NFS3CallAccess(object: fileHandle, access: access)
     }
 
-    @discardableResult public mutating func writeNFSCallAccess(_ call: NFS3CallAccess) -> Int {
-        return self.writeNFSFileHandle(call.object)
+    @discardableResult public mutating func writeNFS3CallAccess(_ call: NFS3CallAccess) -> Int {
+        return self.writeNFS3FileHandle(call.object)
         + self.writeInteger(call.access.rawValue, endianness: .big)
     }
 
-    public mutating func readNFSReplyAccess() throws -> NFS3ReplyAccess {
-        return NFS3ReplyAccess(result: try self.readNFSResult(
+    public mutating func readNFS3ReplyAccess() throws -> NFS3ReplyAccess {
+        return NFS3ReplyAccess(result: try self.readNFS3Result(
             readOkay: { buffer in
-                let attrs = try buffer.readNFSOptional { buffer in
-                    try buffer.readNFSFileAttr()
+                let attrs = try buffer.readNFS3Optional { buffer in
+                    try buffer.readNFS3FileAttr()
                 }
-                let rawValue = try buffer.readNFSInteger(as: UInt32.self)
-                return NFS3ReplyAccess.Okay(dirAttributes: attrs, access: NFS3Access(rawValue: rawValue))
+                let access = try buffer.readNFS3Access()
+                return NFS3ReplyAccess.Okay(dirAttributes: attrs, access: access)
             },
             readFail: { buffer in
-                return NFS3ReplyAccess.Fail(dirAttributes: try buffer.readNFSOptional { buffer in
-                    try buffer.readNFSFileAttr()
+                return NFS3ReplyAccess.Fail(dirAttributes: try buffer.readNFS3Optional { buffer in
+                    try buffer.readNFS3FileAttr()
                 })
             }))
     }
 
-    @discardableResult public mutating func writeNFSReplyAccess(_ accessResult: NFS3ReplyAccess) -> Int {
+    @discardableResult public mutating func writeNFS3ReplyAccess(_ accessResult: NFS3ReplyAccess) -> Int {
         var bytesWritten = 0
 
         switch accessResult.result {
@@ -87,7 +87,7 @@ extension ByteBuffer {
             bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
             if let attrs = result.dirAttributes {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
-                + self.writeNFSFileAttr(attrs)
+                + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
@@ -97,7 +97,7 @@ extension ByteBuffer {
             bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
             if let attrs = fail.dirAttributes {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
-                + self.writeNFSFileAttr(attrs)
+                + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }

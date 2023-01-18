@@ -113,6 +113,9 @@ extension NFS3Result: Hashable where Okay: Hashable, Fail: Hashable {
 extension NFS3Result: Equatable where Okay: Equatable, Fail: Equatable {
 }
 
+extension NFS3Result: Sendable where Okay: Sendable, Fail: Sendable {
+}
+
 extension NFS3Result {
     public var status: NFS3Status {
         switch self {
@@ -126,16 +129,296 @@ extension NFS3Result {
 }
 
 // MARK: - General
-public typealias NFS3FileMode = UInt32
-public typealias NFS3UID = UInt32
-public typealias NFS3GID = UInt32
-public typealias NFS3Size = UInt64
-public typealias NFS3SpecData = UInt64
-public typealias NFS3FileID = UInt64
-public typealias NFS3Cookie = UInt64
-public typealias NFS3CookieVerifier = UInt64
-public typealias NFS3Offset = UInt64
-public typealias NFS3Count = UInt32
+public struct NFS3FileMode: Hashable & Sendable {
+    public typealias RawValue = UInt32
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3FileMode.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3FileMode: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3FileMode() throws -> NFS3FileMode {
+        return NFS3FileMode(rawValue: try self.readNFS3Integer(as: NFS3FileMode.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3FileMode(_ value: NFS3FileMode) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3UID: Hashable & Sendable {
+    public typealias RawValue = UInt32
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3UID.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3UID: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3UID() throws -> NFS3UID {
+        return NFS3UID(rawValue: try self.readNFS3Integer(as: NFS3UID.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3UID(_ value: NFS3UID) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3GID: Hashable & Sendable {
+    public typealias RawValue = UInt32
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3GID.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3GID: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3GID() throws -> NFS3GID {
+        return NFS3GID(rawValue: try self.readNFS3Integer(as: NFS3GID.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3GID(_ value: NFS3GID) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3Size: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3Size.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3Size: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3Size() throws -> NFS3Size {
+        return NFS3Size(rawValue: try self.readNFS3Integer(as: NFS3Size.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3Size(_ value: NFS3Size) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3SpecData: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3SpecData.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3SpecData: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3SpecData() throws -> NFS3SpecData {
+        return NFS3SpecData(rawValue: try self.readNFS3Integer(as: NFS3SpecData.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3SpecData(_ value: NFS3SpecData) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3FileID: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3FileID.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3FileID: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3FileID() throws -> NFS3FileID {
+        return NFS3FileID(rawValue: try self.readNFS3Integer(as: NFS3FileID.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3FileID(_ value: NFS3FileID) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3Cookie: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3Cookie.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3Cookie: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3Cookie() throws -> NFS3Cookie {
+        return NFS3Cookie(rawValue: try self.readNFS3Integer(as: NFS3Cookie.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3Cookie(_ value: NFS3Cookie) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3CookieVerifier: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3CookieVerifier.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3CookieVerifier: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3CookieVerifier() throws -> NFS3CookieVerifier {
+        return NFS3CookieVerifier(rawValue: try self.readNFS3Integer(as: NFS3CookieVerifier.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3CookieVerifier(_ value: NFS3CookieVerifier) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3Offset: Hashable & Sendable {
+    public typealias RawValue = UInt64
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3Offset.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3Offset: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3Offset() throws -> NFS3Offset {
+        return NFS3Offset(rawValue: try self.readNFS3Integer(as: NFS3Offset.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3Offset(_ value: NFS3Offset) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
+public struct NFS3Count: Hashable & Sendable {
+    public typealias RawValue = UInt32
+
+    public var rawValue: RawValue
+
+    public init(rawValue: NFS3Count.RawValue) {
+        self.rawValue = rawValue
+    }
+}
+
+extension NFS3Count: ExpressibleByIntegerLiteral {
+    public typealias IntegerLiteralType = RawValue
+
+    public init(integerLiteral value: RawValue) {
+        self = .init(rawValue: value)
+    }
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3Count() throws -> NFS3Count {
+        return NFS3Count(rawValue: try self.readNFS3Integer(as: NFS3Count.RawValue.self))
+    }
+
+    @discardableResult
+    public mutating func writeNFS3Count(_ value: NFS3Count) -> Int {
+        return self.writeInteger(value.rawValue)
+    }
+}
+
 
 public struct NFS3Nothing: Hashable {
     public init() {}
@@ -144,36 +427,36 @@ public struct NFS3Nothing: Hashable {
 /// The status of an NFS3 operation.
 ///
 /// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-16
-public enum NFS3Status: UInt32 {
-   case ok = 0
-   case errorPERM = 1
-   case errorNOENT       = 2
-   case errorIO          = 5
-   case errorNXIO        = 6
-   case errorACCES       = 13
-   case errorEXIST       = 17
-   case errorXDEV        = 18
-   case errorNODEV       = 19
-   case errorNOTDIR      = 20
-   case errorISDIR       = 21
-   case errorINVAL       = 22
-   case errorFBIG        = 27
-   case errorNOSPC       = 28
-   case errorROFS        = 30
-   case errorMLINK       = 31
-   case errorNAMETOOLONG = 63
-   case errorNOTEMPTY    = 66
-   case errorDQUOT       = 69
-   case errorSTALE       = 70
-   case errorREMOTE      = 71
-   case errorBADHANDLE   = 10001
-   case errorNOT_SYNC    = 10002
-   case errorBAD_COOKIE  = 10003
-   case errorNOTSUPP     = 10004
-   case errorTOOSMALL    = 10005
-   case errorSERVERFAULT = 10006
-   case errorBADTYPE     = 10007
-   case errorJUKEBOX     = 10008
+public enum NFS3Status: UInt32, Sendable {
+    case ok = 0
+    case errorPERM = 1
+    case errorNOENT       = 2
+    case errorIO          = 5
+    case errorNXIO        = 6
+    case errorACCES       = 13
+    case errorEXIST       = 17
+    case errorXDEV        = 18
+    case errorNODEV       = 19
+    case errorNOTDIR      = 20
+    case errorISDIR       = 21
+    case errorINVAL       = 22
+    case errorFBIG        = 27
+    case errorNOSPC       = 28
+    case errorROFS        = 30
+    case errorMLINK       = 31
+    case errorNAMETOOLONG = 63
+    case errorNOTEMPTY    = 66
+    case errorDQUOT       = 69
+    case errorSTALE       = 70
+    case errorREMOTE      = 71
+    case errorBADHANDLE   = 10001
+    case errorNOT_SYNC    = 10002
+    case errorBAD_COOKIE  = 10003
+    case errorNOTSUPP     = 10004
+    case errorTOOSMALL    = 10005
+    case errorSERVERFAULT = 10006
+    case errorBADTYPE     = 10007
+    case errorJUKEBOX     = 10008
 }
 
 /// Check the access rights to a file.
@@ -182,7 +465,7 @@ public enum NFS3Status: UInt32 {
 public struct NFS3Access: OptionSet & Hashable {
     public typealias RawValue = UInt32
 
-    public var rawValue: UInt32
+    public var rawValue: RawValue
 
     public init(rawValue: UInt32) {
         self.rawValue = rawValue
@@ -197,6 +480,16 @@ public struct NFS3Access: OptionSet & Hashable {
 
     public static let all: NFS3Access = [.read, .lookup, .modify, .extend, .delete, .execute]
     public static let allReadOnly: NFS3Access = [.read, .lookup, .execute]
+}
+
+extension ByteBuffer {
+    public mutating func readNFS3Access() throws -> NFS3Access {
+        return NFS3Access(rawValue: try self.readNFS3Integer(as: UInt32.self))
+    }
+
+    public mutating func writeNFS3Access(_ access: NFS3Access) {
+        self.writeInteger(access.rawValue)
+    }
 }
 
 /// The filetype as defined in NFS3.
@@ -272,7 +565,9 @@ public struct NFS3Time: Hashable {
 }
 
 public struct NFS3FileAttr: Hashable {
-    public init(type: NFS3FileType, mode: NFS3FileMode, nlink: UInt32, uid: NFS3UID, gid: NFS3GID, size: NFS3Size, used: NFS3Size, rdev: NFS3SpecData, fsid: UInt64, fileid: NFS3FileID, atime: NFS3Time, mtime: NFS3Time, ctime: NFS3Time) {
+    public init(type: NFS3FileType, mode: NFS3FileMode, nlink: UInt32, uid: NFS3UID, gid: NFS3GID, size: NFS3Size,
+                used: NFS3Size, rdev: NFS3SpecData, fsid: UInt64, fileid: NFS3FileID, atime: NFS3Time, mtime: NFS3Time,
+                ctime: NFS3Time) {
         self.type = type
         self.mode = mode
         self.nlink = nlink
@@ -326,33 +621,33 @@ public struct NFS3WeakCacheConsistencyData: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSWeakCacheConsistencyAttr() throws -> NFS3WeakCacheConsistencyAttr {
-        let size = try self.readNFSInteger(as: NFS3Size.self)
-        let mtime = try self.readNFSTime()
-        let ctime = try self.readNFSTime()
+    public mutating func readNFS3WeakCacheConsistencyAttr() throws -> NFS3WeakCacheConsistencyAttr {
+        let size = try self.readNFS3Size()
+        let mtime = try self.readNFS3Time()
+        let ctime = try self.readNFS3Time()
 
         return .init(size: size, mtime: mtime, ctime: ctime)
     }
 
-    @discardableResult public mutating func writeNFSWeakCacheConsistencyAttr(_ wccAttr: NFS3WeakCacheConsistencyAttr) -> Int {
-        return self.writeInteger(wccAttr.size, endianness: .big)
-        + self.writeNFSTime(wccAttr.mtime)
-        + self.writeNFSTime(wccAttr.ctime)
+    @discardableResult public mutating func writeNFS3WeakCacheConsistencyAttr(_ wccAttr: NFS3WeakCacheConsistencyAttr) -> Int {
+        return self.writeNFS3Size(wccAttr.size)
+        + self.writeNFS3Time(wccAttr.mtime)
+        + self.writeNFS3Time(wccAttr.ctime)
     }
 
-    public mutating func readNFSWeakCacheConsistencyData() throws -> NFS3WeakCacheConsistencyData {
-        let before = try self.readNFSOptional { try $0.readNFSWeakCacheConsistencyAttr() }
-        let after = try self.readNFSOptional { try $0.readNFSFileAttr() }
+    public mutating func readNFS3WeakCacheConsistencyData() throws -> NFS3WeakCacheConsistencyData {
+        let before = try self.readNFS3Optional { try $0.readNFS3WeakCacheConsistencyAttr() }
+        let after = try self.readNFS3Optional { try $0.readNFS3FileAttr() }
 
         return .init(before: before, after: after)
     }
 
-    @discardableResult public mutating func writeNFSWeakCacheConsistencyData(_ wccData: NFS3WeakCacheConsistencyData) -> Int {
-        return self.writeNFSOptional(wccData.before, writer: { $0.writeNFSWeakCacheConsistencyAttr($1) })
-        + self.writeNFSOptional(wccData.after, writer: { $0.writeNFSFileAttr($1) })
+    @discardableResult public mutating func writeNFS3WeakCacheConsistencyData(_ wccData: NFS3WeakCacheConsistencyData) -> Int {
+        return self.writeNFS3Optional(wccData.before, writer: { $0.writeNFS3WeakCacheConsistencyAttr($1) })
+        + self.writeNFS3Optional(wccData.after, writer: { $0.writeNFS3FileAttr($1) })
     }
 
-    public mutating func readNFSInteger<I: FixedWidthInteger>(as: I.Type = I.self) throws -> I {
+    public mutating func readNFS3Integer<I: FixedWidthInteger>(as: I.Type = I.self) throws -> I {
         if let value = self.readInteger(endianness: .big, as: I.self) {
             return value
         } else {
@@ -360,35 +655,35 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func readNFSBlob() throws -> ByteBuffer {
-        let length = try self.readNFSInteger(as: UInt32.self)
+    public mutating func readNFS3Blob() throws -> ByteBuffer {
+        let length = try self.readNFS3Integer(as: UInt32.self)
         guard let blob = self.readSlice(length: Int(length)),
               let _ = self.readSlice(length: nfsStringFillBytes(Int(length))) else {
-                  throw NFS3Error.illegalRPCTooShort
-              }
+            throw NFS3Error.illegalRPCTooShort
+        }
         return blob
     }
 
-    @discardableResult public mutating func writeNFSBlob(_ blob: ByteBuffer) -> Int {
+    @discardableResult public mutating func writeNFS3Blob(_ blob: ByteBuffer) -> Int {
         let byteCount = blob.readableBytes
         return self.writeInteger(UInt32(byteCount), endianness: .big)
         + self.writeImmutableBuffer(blob)
         + self.writeRepeatingByte(0x42, count: nfsStringFillBytes(byteCount))
     }
 
-    public mutating func readNFSString() throws -> String {
-        let blob = try self.readNFSBlob()
+    public mutating func readNFS3String() throws -> String {
+        let blob = try self.readNFS3Blob()
         return String(buffer: blob)
     }
 
-    @discardableResult public mutating func writeNFSString(_ string: String) -> Int {
+    @discardableResult public mutating func writeNFS3String(_ string: String) -> Int {
         let byteCount = string.utf8.count
         return self.writeInteger(UInt32(byteCount), endianness: .big)
         + self.writeString(string)
         + self.writeRepeatingByte(0x42, count: nfsStringFillBytes(byteCount))
     }
 
-    public mutating func readNFSFileHandle() throws -> NFS3FileHandle {
+    public mutating func readNFS3FileHandle() throws -> NFS3FileHandle {
         guard let values = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt64).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
@@ -402,23 +697,23 @@ extension ByteBuffer {
         return NFS3FileHandle(id)
     }
 
-    @discardableResult public mutating func writeNFSFileHandle(_ fileHandle: NFS3FileHandle) -> Int {
+    @discardableResult public mutating func writeNFS3FileHandle(_ fileHandle: NFS3FileHandle) -> Int {
         // TODO: This ! is safe at the moment until the file handle == 64 bits limitation is lifted
         let id = UInt64(fileHandle)!
         return self.writeMultipleIntegers(UInt32(MemoryLayout.size(ofValue: id)), id, endianness: .big)
     }
 
-    @discardableResult public mutating func writeNFSFileType(_ fileType: NFS3FileType) -> Int {
+    @discardableResult public mutating func writeNFS3FileType(_ fileType: NFS3FileType) -> Int {
         self.writeInteger(fileType.rawValue, endianness: .big)
     }
 
-    @discardableResult public mutating func writeNFSTime(_ time: NFS3Time) -> Int {
+    @discardableResult public mutating func writeNFS3Time(_ time: NFS3Time) -> Int {
         self.writeMultipleIntegers(time.seconds, time.nanoseconds, endianness: .big)
     }
 
-    public mutating func read3NFSTimes() throws -> (NFS3Time, NFS3Time, NFS3Time) {
+    public mutating func read3NFS3Times() throws -> (NFS3Time, NFS3Time, NFS3Time) {
         guard let values = self.readMultipleIntegers(endianness: .big,
-                                                      as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+                                                     as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         return (NFS3Time(seconds: values.0, nanoseconds: values.1),
@@ -426,13 +721,13 @@ extension ByteBuffer {
                 NFS3Time(seconds: values.4, nanoseconds: values.5))
     }
 
-    @discardableResult public mutating func write3NFSTimes(_ time1: NFS3Time, _ time2: NFS3Time, _ time3: NFS3Time) -> Int {
+    @discardableResult public mutating func write3NFS3Times(_ time1: NFS3Time, _ time2: NFS3Time, _ time3: NFS3Time) -> Int {
         self.writeMultipleIntegers(time1.seconds, time1.nanoseconds,
                                    time2.seconds, time2.nanoseconds,
                                    time3.seconds, time3.nanoseconds)
     }
 
-    public mutating func readNFSTime() throws -> NFS3Time {
+    public mutating func readNFS3Time() throws -> NFS3Time {
         guard let values = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
@@ -440,8 +735,8 @@ extension ByteBuffer {
         return .init(seconds: values.0, nanoseconds: values.1)
     }
 
-    public mutating func readNFSFileType() throws -> NFS3FileType {
-        let typeRaw = try self.readNFSInteger(as: UInt32.self)
+    public mutating func readNFS3FileType() throws -> NFS3FileType {
+        let typeRaw = try self.readNFS3Integer(as: UInt32.self)
         if let type = NFS3FileType(rawValue: typeRaw) {
             return type
         } else {
@@ -449,12 +744,12 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func readNFSFileAttr() throws -> NFS3FileAttr {
-        let type = try self.readNFSFileType()
+    public mutating func readNFS3FileAttr() throws -> NFS3FileAttr {
+        let type = try self.readNFS3FileType()
         guard let values = self.readMultipleIntegers(endianness: .big,
-                                                      as: (UInt32, UInt32, UInt32, UInt32, NFS3Size,
-                                                           NFS3Size, UInt64, UInt64, NFS3FileID,
-                                                           UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+                                                     as: (UInt32, UInt32, UInt32, UInt32, NFS3Size.RawValue,
+                                                          NFS3Size.RawValue, UInt64, UInt64, NFS3FileID.RawValue,
+                                                          UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         let mode = values.0
@@ -470,25 +765,25 @@ extension ByteBuffer {
         let mtime = NFS3Time(seconds: values.11, nanoseconds: values.12)
         let ctime = NFS3Time(seconds: values.13, nanoseconds: values.14)
 
-        return .init(type: type, mode: mode, nlink: nlink,
-                     uid: uid, gid: gid,
-                     size: size, used: used,
-                     rdev: rdev, fsid: fsid, fileid: fileid,
+        return .init(type: type, mode: NFS3FileMode(rawValue: mode), nlink: nlink,
+                     uid: NFS3UID(rawValue: uid), gid: NFS3GID(rawValue: gid),
+                     size: NFS3Size(rawValue: size), used: NFS3Size(rawValue: used),
+                     rdev: NFS3SpecData(rawValue: rdev), fsid: fsid, fileid: NFS3FileID(rawValue: fileid),
                      atime: atime, mtime: mtime, ctime: ctime)
     }
 
-    @discardableResult public mutating func writeNFSFileAttr(_ attributes: NFS3FileAttr) -> Int {
-        return self.writeNFSFileType(attributes.type)
+    @discardableResult public mutating func writeNFS3FileAttr(_ attributes: NFS3FileAttr) -> Int {
+        return self.writeNFS3FileType(attributes.type)
         + self.writeMultipleIntegers(
-            attributes.mode,
+            attributes.mode.rawValue,
             attributes.nlink,
-            attributes.uid,
-            attributes.gid,
-            attributes.size,
-            attributes.used,
-            attributes.rdev,
+            attributes.uid.rawValue,
+            attributes.gid.rawValue,
+            attributes.size.rawValue,
+            attributes.used.rawValue,
+            attributes.rdev.rawValue,
             attributes.fsid,
-            attributes.fileid,
+            attributes.fileid.rawValue,
             attributes.atime.seconds,
             attributes.atime.nanoseconds,
             attributes.mtime.seconds,
@@ -498,16 +793,16 @@ extension ByteBuffer {
             endianness: .big)
     }
 
-    @discardableResult public mutating func writeNFSBool(_ bool: NFS3Bool) -> Int {
+    @discardableResult public mutating func writeNFS3Bool(_ bool: NFS3Bool) -> Int {
         self.writeInteger(bool == true ? 1 : 0, endianness: .big, as: UInt32.self)
     }
 
-    public mutating func readNFSBool() throws -> Bool {
-        let rawValue = try self.readNFSInteger(as: UInt32.self)
+    public mutating func readNFS3Bool() throws -> Bool {
+        let rawValue = try self.readNFS3Integer(as: UInt32.self)
         return rawValue != 0
     }
 
-    public mutating func readNFSOptional<T>(_ reader: (inout ByteBuffer) throws -> T) rethrows -> T? {
+    public mutating func readNFS3Optional<T>(_ reader: (inout ByteBuffer) throws -> T) rethrows -> T? {
         if self.readInteger(endianness: .big, as: UInt32.self) == 1 {
             return try reader(&self)
         } else {
@@ -515,7 +810,7 @@ extension ByteBuffer {
         }
     }
 
-    @discardableResult public mutating func writeNFSOptional<T>(_ value: T?, writer: (inout ByteBuffer, T) -> Int) -> Int {
+    @discardableResult public mutating func writeNFS3Optional<T>(_ value: T?, writer: (inout ByteBuffer, T) -> Int) -> Int {
         if let value = value {
             return self.writeInteger(1, endianness: .big, as: UInt32.self)
             + writer(&self, value)
@@ -524,12 +819,8 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func readNFSCount() throws -> NFS3Count {
-        return try self.readNFSInteger(as: NFS3Count.self)
-    }
-
-    public mutating func readNFSList<Element>(readEntry: (inout ByteBuffer) throws -> Element) throws -> [Element] {
-        let count = try self.readNFSCount()
+    public mutating func readNFS3List<Element>(readEntry: (inout ByteBuffer) throws -> Element) throws -> [Element] {
+        let count = try self.readNFS3Count().rawValue
         var result: [Element] = []
         result.reserveCapacity(Int(count))
 
@@ -540,24 +831,12 @@ extension ByteBuffer {
         return result
     }
 
-    @discardableResult public mutating func writeNFSCookieVerifier(_ verifier: NFS3CookieVerifier) -> Int {
-        self.writeInteger(verifier, endianness: .big)
-    }
-
-    @discardableResult public mutating func writeNFSCookie(_ cookie: NFS3Cookie) -> Int {
-        self.writeInteger(cookie, endianness: .big)
-    }
-
-    @discardableResult public mutating func writeNFSFileID(_ fileID: NFS3FileID) -> Int {
-        self.writeInteger(fileID, endianness: .big)
-    }
-
-    @discardableResult public mutating func writeNFSResultStatus<O, F>(_ result: NFS3Result<O, F>) -> Int {
+    @discardableResult public mutating func writeNFS3ResultStatus<O, F>(_ result: NFS3Result<O, F>) -> Int {
         self.writeInteger(result.status.rawValue, endianness: .big, as: UInt32.self)
     }
 
-    public mutating func readNFSStatus() throws -> NFS3Status {
-        let rawValue = try self.readNFSInteger(as: UInt32.self)
+    public mutating func readNFS3Status() throws -> NFS3Status {
+        let rawValue = try self.readNFS3Integer(as: UInt32.self)
         if let status = NFS3Status(rawValue: rawValue) {
             return status
         } else {
@@ -566,7 +845,7 @@ extension ByteBuffer {
     }
 
     public mutating func readRPCAuthFlavor() throws -> RPCAuthFlavor {
-        let rawValue = try self.readNFSInteger(as: UInt32.self)
+        let rawValue = try self.readNFS3Integer(as: UInt32.self)
         if let flavor = RPCAuthFlavor(rawValue: rawValue) {
             return flavor
         } else {
@@ -574,23 +853,15 @@ extension ByteBuffer {
         }
     }
 
-    public mutating func readNFSResult<O, F>(readOkay: (inout ByteBuffer) throws -> O,
+    public mutating func readNFS3Result<O, F>(readOkay: (inout ByteBuffer) throws -> O,
                                              readFail: (inout ByteBuffer) throws -> F) throws -> NFS3Result<O, F> {
-        let status = try self.readNFSStatus()
+        let status = try self.readNFS3Status()
         switch status {
         case .ok:
             return .okay(try readOkay(&self))
         default:
             return .fail(status, try readFail(&self))
         }
-    }
-
-    @discardableResult public mutating func writeNFSSize(_ size: NFS3Size) -> Int {
-        self.writeInteger(size, endianness: .big)
-    }
-
-    public mutating func readNFSSize() throws -> NFS3Size {
-        return try self.readNFSInteger()
     }
 }
 

@@ -54,56 +54,56 @@ public struct NFS3ReplyLookup: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallLookup() throws -> NFS3CallLookup {
-        let dir = try self.readNFSFileHandle()
-        let name = try self.readNFSString()
+    public mutating func readNFS3CallLookup() throws -> NFS3CallLookup {
+        let dir = try self.readNFS3FileHandle()
+        let name = try self.readNFS3String()
         return NFS3CallLookup(dir: dir, name: name)
     }
 
-    @discardableResult public mutating func writeNFSCallLookup(_ call: NFS3CallLookup) -> Int {
-        return self.writeNFSFileHandle(call.dir)
-        + self.writeNFSString(call.name)
+    @discardableResult public mutating func writeNFS3CallLookup(_ call: NFS3CallLookup) -> Int {
+        return self.writeNFS3FileHandle(call.dir)
+        + self.writeNFS3String(call.name)
     }
 
-    public mutating func readNFSReplyLookup() throws -> NFS3ReplyLookup {
+    public mutating func readNFS3ReplyLookup() throws -> NFS3ReplyLookup {
         return NFS3ReplyLookup(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    let fileHandle = try buffer.readNFSFileHandle()
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let fileHandle = try buffer.readNFS3FileHandle()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
-                    let dirAttrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let dirAttrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
 
                     return NFS3ReplyLookup.Okay(fileHandle: fileHandle, attributes: attrs, dirAttributes: dirAttrs)
                 },
                 readFail: { buffer in
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
                     return NFS3ReplyLookup.Fail(dirAttributes: attrs)
                 })
         )
     }
 
-    @discardableResult public mutating func writeNFSReplyLookup(_ lookupResult: NFS3ReplyLookup) -> Int {
+    @discardableResult public mutating func writeNFS3ReplyLookup(_ lookupResult: NFS3ReplyLookup) -> Int {
         var bytesWritten = 0
 
         switch lookupResult.result {
         case .okay(let result):
             bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
-            + self.writeNFSFileHandle(result.fileHandle)
+            + self.writeNFS3FileHandle(result.fileHandle)
             if let attrs = result.attributes {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
-                + self.writeNFSFileAttr(attrs)
+                + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
             if let attrs = result.dirAttributes {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
-                + self.writeNFSFileAttr(attrs)
+                + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }
@@ -112,7 +112,7 @@ extension ByteBuffer {
             bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
             if let attrs = fail.dirAttributes {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
-                + self.writeNFSFileAttr(attrs)
+                + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
             }

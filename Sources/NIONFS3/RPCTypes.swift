@@ -91,9 +91,9 @@ public struct RPCCall: Hashable {
 }
 
 extension RPCCall {
-    public var programAndProcedure: RPCNFSProcedureID {
+    public var programAndProcedure: RPCNFS3ProcedureID {
         get {
-            return RPCNFSProcedureID(program: self.program, procedure: self.procedure)
+            return RPCNFS3ProcedureID(program: self.program, procedure: self.procedure)
         }
         set {
             self.program = newValue.program

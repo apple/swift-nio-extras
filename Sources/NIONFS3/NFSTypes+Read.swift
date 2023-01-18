@@ -58,52 +58,54 @@ public struct NFS3ReplyRead: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallRead() throws -> NFS3CallRead {
-        let fileHandle = try self.readNFSFileHandle()
-        guard let values = self.readMultipleIntegers(as: (NFS3Offset, NFS3Count).self) else {
+    public mutating func readNFS3CallRead() throws -> NFS3CallRead {
+        let fileHandle = try self.readNFS3FileHandle()
+        guard let values = self.readMultipleIntegers(as: (NFS3Offset.RawValue, NFS3Count.RawValue).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
 
-        return NFS3CallRead(fileHandle: fileHandle, offset: values.0, count: values.1)
+        return NFS3CallRead(fileHandle: fileHandle,
+                            offset: .init(rawValue: values.0),
+                            count: .init(rawValue: values.1))
     }
 
-    @discardableResult public mutating func writeNFSCallRead(_ call: NFS3CallRead) -> Int {
-        return self.writeNFSFileHandle(call.fileHandle)
-        + self.writeMultipleIntegers(call.offset, call.count, endianness: .big)
+    @discardableResult public mutating func writeNFS3CallRead(_ call: NFS3CallRead) -> Int {
+        return self.writeNFS3FileHandle(call.fileHandle)
+        + self.writeMultipleIntegers(call.offset.rawValue, call.count.rawValue, endianness: .big)
     }
 
-    public mutating func readNFSReplyRead() throws -> NFS3ReplyRead {
+    public mutating func readNFS3ReplyRead() throws -> NFS3ReplyRead {
         return NFS3ReplyRead(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
                     guard let values = buffer.readMultipleIntegers(as: (UInt32, UInt32).self) else {
                         throw NFS3Error.illegalRPCTooShort
                     }
-                    let bytes = try buffer.readNFSBlob()
+                    let bytes = try buffer.readNFS3Blob()
                     return NFS3ReplyRead.Okay(attributes: attrs,
-                                             count: values.0,
+                                              count: NFS3Count(rawValue: values.0),
                                              eof: values.1 == 0 ? false : true,
                                              data: bytes)
                 },
                 readFail: { buffer in
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
                     return NFS3ReplyRead.Fail(attributes: attrs)
                 })
         )
     }
 
-    public mutating func writeNFSReplyReadPartially(_ read: NFS3ReplyRead) -> NFS3PartialWriteNextStep {
+    public mutating func writeNFS3ReplyReadPartially(_ read: NFS3ReplyRead) -> NFS3PartialWriteNextStep {
         switch read.result {
         case .okay(let result):
             self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
-            self.writeNFSOptional(result.attributes, writer: { $0.writeNFSFileAttr($1) })
+            self.writeNFS3Optional(result.attributes, writer: { $0.writeNFS3FileAttr($1) })
             self.writeMultipleIntegers(
-                result.count,
+                result.count.rawValue,
                 result.eof ? UInt32(1) : 0,
                 UInt32(result.data.readableBytes)
             )
@@ -111,13 +113,13 @@ extension ByteBuffer {
         case .fail(let status, let fail):
             precondition(status != .ok)
             self.writeInteger(status.rawValue, endianness: .big)
-            self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
             return .doNothing
         }
     }
 
-    @discardableResult public mutating func writeNFSReplyRead(_ read: NFS3ReplyRead) -> Int {
-        switch self.writeNFSReplyReadPartially(read) {
+    @discardableResult public mutating func writeNFS3ReplyRead(_ read: NFS3ReplyRead) -> Int {
+        switch self.writeNFS3ReplyReadPartially(read) {
         case .doNothing:
             return 0
         case .writeBlob(let blob, numberOfFillBytes: let fillBytes):

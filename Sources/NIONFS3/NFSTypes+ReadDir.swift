@@ -16,7 +16,8 @@ import NIOCore
 
 // MARK: - ReadDir
 public struct NFS3CallReadDir: Hashable {
-    public init(fileHandle: NFS3FileHandle, cookie: NFS3Cookie, cookieVerifier: NFS3CookieVerifier, maxResultByteCount: UInt32) {
+    public init(fileHandle: NFS3FileHandle, cookie: NFS3Cookie, cookieVerifier: NFS3CookieVerifier,
+                maxResultByteCount: NFS3Count) {
         self.fileHandle = fileHandle
         self.cookie = cookie
         self.cookieVerifier = cookieVerifier
@@ -72,11 +73,11 @@ public struct NFS3ReplyReadDir: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallReadDir() throws -> NFS3CallReadDir {
-        let dir = try self.readNFSFileHandle()
-        let cookie = try self.readNFSInteger(as: NFS3Cookie.self)
-        let cookieVerifier = try self.readNFSInteger(as: NFS3CookieVerifier.self)
-        let maxResultByteCount = try self.readNFSInteger(as: NFS3Count.self)
+    public mutating func readNFS3CallReadDir() throws -> NFS3CallReadDir {
+        let dir = try self.readNFS3FileHandle()
+        let cookie = try self.readNFS3Cookie()
+        let cookieVerifier = try self.readNFS3CookieVerifier()
+        let maxResultByteCount = try self.readNFS3Count()
 
         return NFS3CallReadDir(fileHandle: dir,
                                cookie: cookie,
@@ -84,19 +85,19 @@ extension ByteBuffer {
                                maxResultByteCount: maxResultByteCount)
     }
 
-    @discardableResult public mutating func writeNFSCallReadDir(_ call: NFS3CallReadDir) -> Int {
-        return self.writeNFSFileHandle(call.fileHandle)
+    @discardableResult public mutating func writeNFS3CallReadDir(_ call: NFS3CallReadDir) -> Int {
+        return self.writeNFS3FileHandle(call.fileHandle)
         + self.writeMultipleIntegers(
-            call.cookie,
-            call.cookieVerifier,
-            call.maxResultByteCount
+            call.cookie.rawValue,
+            call.cookieVerifier.rawValue,
+            call.maxResultByteCount.rawValue
         )
     }
 
     private mutating func readReadDirEntry() throws -> NFS3ReplyReadDir.Entry {
-        let fileID = try self.readNFSInteger(as: NFS3FileID.self)
-        let fileName = try self.readNFSString()
-        let cookie = try self.readNFSInteger(as: NFS3Cookie.self)
+        let fileID = try self.readNFS3FileID()
+        let fileName = try self.readNFS3String()
+        let cookie = try self.readNFS3Cookie()
 
         return NFS3ReplyReadDir.Entry(fileID: fileID,
                                       fileName: fileName,
@@ -104,23 +105,23 @@ extension ByteBuffer {
     }
 
     private mutating func writeReadDirEntry(_ entry: NFS3ReplyReadDir.Entry) -> Int {
-        return self.writeNFSFileID(entry.fileID)
-        + self.writeNFSString(entry.fileName)
-        + self.writeNFSCookie(entry.cookie)
+        return self.writeNFS3FileID(entry.fileID)
+        + self.writeNFS3String(entry.fileName)
+        + self.writeNFS3Cookie(entry.cookie)
     }
 
-    public mutating func readNFSReplyReadDir() throws -> NFS3ReplyReadDir {
+    public mutating func readNFS3ReplyReadDir() throws -> NFS3ReplyReadDir {
         return NFS3ReplyReadDir(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    let dirAttributes = try buffer.readNFSOptional { try $0.readNFSFileAttr() }
-                    let cookieVerifier = try buffer.readNFSInteger(as: NFS3CookieVerifier.self)
+                    let dirAttributes = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
+                    let cookieVerifier = try buffer.readNFS3CookieVerifier()
 
                     var entries: [NFS3ReplyReadDir.Entry] = []
-                    while let entry = try buffer.readNFSOptional({ try $0.readReadDirEntry() }) {
+                    while let entry = try buffer.readNFS3Optional({ try $0.readReadDirEntry() }) {
                         entries.append(entry)
                     }
-                    let eof = try buffer.readNFSBool()
+                    let eof = try buffer.readNFS3Bool()
 
                     return NFS3ReplyReadDir.Okay(dirAttributes: dirAttributes,
                                                  cookieVerifier: cookieVerifier,
@@ -128,20 +129,20 @@ extension ByteBuffer {
                                                  eof: eof)
                 },
                 readFail: { buffer in
-                    let attrs = try buffer.readNFSOptional { try $0.readNFSFileAttr() }
+                    let attrs = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
 
                     return NFS3ReplyReadDir.Fail(dirAttributes: attrs)
                 })
         )
     }
 
-    @discardableResult public mutating func writeNFSReplyReadDir(_ rd: NFS3ReplyReadDir) -> Int {
+    @discardableResult public mutating func writeNFS3ReplyReadDir(_ rd: NFS3ReplyReadDir) -> Int {
         var bytesWritten = 0
         switch rd.result {
         case .okay(let result):
             bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
-            + self.writeNFSOptional(result.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
-            + self.writeNFSCookieVerifier(result.cookieVerifier)
+            + self.writeNFS3Optional(result.dirAttributes, writer: { $0.writeNFS3FileAttr($1) })
+            + self.writeNFS3CookieVerifier(result.cookieVerifier)
             for entry in result.entries {
                 bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
                 + self.writeReadDirEntry(entry)
@@ -151,7 +152,7 @@ extension ByteBuffer {
         case .fail(let status, let fail):
             precondition(status != .ok)
             bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
-            + self.writeNFSOptional(fail.dirAttributes, writer: { $0.writeNFSFileAttr($1) })
+            + self.writeNFS3Optional(fail.dirAttributes, writer: { $0.writeNFS3FileAttr($1) })
         }
         return bytesWritten
     }

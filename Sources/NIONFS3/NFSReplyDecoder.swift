@@ -18,7 +18,7 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
     public typealias OutboundIn = RPCNFS3Call
     public typealias InboundOut = RPCNFS3Reply
 
-    private var procedures: [UInt32: RPCNFSProcedureID]
+    private var procedures: [UInt32: RPCNFS3ProcedureID]
     private let allowDuplicateReplies: Bool
 
     /// Initialize the `NFS3ReplyDecoder`.
@@ -27,7 +27,7 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
     ///   - prepopulatedProcecedures: For testing and other more obscure purposes it might be useful to pre-seed the
     ///                               decoder with some RPC numbers and their respective type.
     ///   - allowDuplicateReplies: Whether to fail when receiving more than one response for a given call.
-    public init(prepopulatedProcecedures: [UInt32: RPCNFSProcedureID]? = nil,
+    public init(prepopulatedProcecedures: [UInt32: RPCNFS3ProcedureID]? = nil,
                 allowDuplicateReplies: Bool = false) {
         self.procedures = prepopulatedProcecedures ?? [:]
         self.allowDuplicateReplies = allowDuplicateReplies
@@ -42,7 +42,7 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
             throw NFS3Error.wrongMessageType(message.0)
         }
 
-        let progAndProc: RPCNFSProcedureID
+        let progAndProc: RPCNFS3ProcedureID
         if allowDuplicateReplies {
             // for tests mainly
             guard let p = self.procedures[reply.xid] else {
@@ -56,7 +56,7 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
             progAndProc = p
         }
 
-        let nfsReply = try body.readNFSReply(programAndProcedure: progAndProc, rpcReply: reply)
+        let nfsReply = try body.readNFS3Reply(programAndProcedure: progAndProc, rpcReply: reply)
         context.fireChannelRead(self.wrapInboundOut(nfsReply))
         return .continue
     }

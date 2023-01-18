@@ -25,10 +25,10 @@ final class NFS3FileSystemTests: XCTestCase {
             }
 
             func readdirplus(_ call: NFS3CallReadDirPlus, promise: EventLoopPromise<NFS3ReplyReadDirPlus>) {
-                promise.succeed(.init(result: .okay(.init(cookieVerifier: 11111,
-                                                          entries: [.init(fileID: 22222,
+                promise.succeed(.init(result: .okay(.init(cookieVerifier: .init(rawValue: 11111),
+                                                          entries: [.init(fileID: .init(rawValue: 22222),
                                                                           fileName: "file",
-                                                                          cookie: 33333)],
+                                                                          cookie: .init(rawValue: 33333))],
                                                           eof: true))))
             }
 
@@ -84,15 +84,15 @@ final class NFS3FileSystemTests: XCTestCase {
         let fs = MyOnlyReadDirPlusFS()
         let promise = eventLoop.makePromise(of: NFS3ReplyReadDir.self)
         fs.readdir(.init(fileHandle: .init(123),
-                         cookie: 234,
-                         cookieVerifier: 345,
-                         maxResultByteCount: 456),
+                         cookie: .init(rawValue: 234),
+                         cookieVerifier: .init(rawValue: 345),
+                         maxResultByteCount: .init(rawValue: 456)),
                    promise: promise)
         let actualResult = try promise.futureResult.wait()
-        let expectedResult = NFS3ReplyReadDir(result: .okay(.init(cookieVerifier: 11111,
-                                                                  entries: [.init(fileID: 22222,
+        let expectedResult = NFS3ReplyReadDir(result: .okay(.init(cookieVerifier: .init(rawValue: 11111),
+                                                                  entries: [.init(fileID: .init(rawValue: 22222),
                                                                                   fileName: "file",
-                                                                                  cookie: 33333)],
+                                                                                  cookie: .init(rawValue: 33333))],
                                                                   eof: true)))
         XCTAssertEqual(expectedResult, actualResult)
     }

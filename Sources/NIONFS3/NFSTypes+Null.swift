@@ -20,11 +20,11 @@ public struct NFS3CallNull: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallNull() throws -> NFS3CallNull {
+    public mutating func readNFS3CallNull() throws -> NFS3CallNull {
         return NFS3CallNull()
     }
 
-    @discardableResult public mutating func writeNFSCallNull(_ call: NFS3CallNull) -> Int {
+    @discardableResult public mutating func writeNFS3CallNull(_ call: NFS3CallNull) -> Int {
         return 0
     }
 }

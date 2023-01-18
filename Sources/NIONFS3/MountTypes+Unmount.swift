@@ -28,20 +28,20 @@ public struct MountReplyUnmount: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallUnmount() throws -> MountCallUnmount {
-        let dirPath = try self.readNFSString()
+    public mutating func readNFS3CallUnmount() throws -> MountCallUnmount {
+        let dirPath = try self.readNFS3String()
         return MountCallUnmount(dirPath: dirPath)
     }
 
-    @discardableResult public mutating func writeNFSCallUnmount(_ call: MountCallUnmount) -> Int {
-        self.writeNFSString(call.dirPath)
+    @discardableResult public mutating func writeNFS3CallUnmount(_ call: MountCallUnmount) -> Int {
+        self.writeNFS3String(call.dirPath)
     }
 
-    @discardableResult public mutating func writeNFSReplyUnmount(_ reply: MountReplyUnmount) -> Int {
+    @discardableResult public mutating func writeNFS3ReplyUnmount(_ reply: MountReplyUnmount) -> Int {
         return 0
     }
 
-    public mutating func readNFSReplyUnmount() throws -> MountReplyUnmount {
+    public mutating func readNFS3ReplyUnmount() throws -> MountReplyUnmount {
         return MountReplyUnmount()
     }
 }

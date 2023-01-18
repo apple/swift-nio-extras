@@ -38,7 +38,7 @@ extension NFS3FileSystemNoAuth {
         self.readdirplus(NFS3CallReadDirPlus(fileHandle: call.fileHandle,
                                              cookie: call.cookie,
                                              cookieVerifier: call.cookieVerifier,
-                                             dirCount: .max,
+                                             dirCount: NFS3Count(rawValue: .max),
                                              maxCount: call.maxResultByteCount),
 
                          promise: promise)

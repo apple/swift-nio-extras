@@ -70,59 +70,59 @@ public struct NFS3ReplySetattr: Hashable {
 }
 
 extension ByteBuffer {
-    private mutating func readNFSCallSetattrAttributes() throws -> NFS3CallSetattr.Attributes {
-        let mode = try self.readNFSOptional { try $0.readNFSInteger(as: UInt32.self) }
-        let uid = try self.readNFSOptional { try $0.readNFSInteger(as: UInt32.self) }
-        let gid = try self.readNFSOptional { try $0.readNFSInteger(as: UInt32.self) }
-        let size = try self.readNFSOptional { try $0.readNFSInteger(as: UInt64.self) }
-        let atime = try self.readNFSOptional { try $0.readNFSTime() }
-        let mtime = try self.readNFSOptional { try $0.readNFSTime() }
+    private mutating func readNFS3CallSetattrAttributes() throws -> NFS3CallSetattr.Attributes {
+        let mode = try self.readNFS3Optional { try $0.readNFS3FileMode() }
+        let uid = try self.readNFS3Optional { try $0.readNFS3UID() }
+        let gid = try self.readNFS3Optional { try $0.readNFS3GID() }
+        let size = try self.readNFS3Optional { try $0.readNFS3Size() }
+        let atime = try self.readNFS3Optional { try $0.readNFS3Time() }
+        let mtime = try self.readNFS3Optional { try $0.readNFS3Time() }
 
         return .init(mode: mode, uid: uid, gid: gid, size: size, atime: atime, mtime: mtime)
     }
 
-    private mutating func writeNFSCallSetattrAttributes(_ attrs: NFS3CallSetattr.Attributes) -> Int {
-        return self.writeNFSOptional(attrs.mode, writer: { $0.writeInteger($1, endianness: .big) })
-        + self.writeNFSOptional(attrs.uid, writer: { $0.writeInteger($1, endianness: .big) })
-        + self.writeNFSOptional(attrs.gid, writer: { $0.writeInteger($1, endianness: .big) })
-        + self.writeNFSOptional(attrs.size, writer: { $0.writeInteger($1, endianness: .big) })
-        + self.writeNFSOptional(attrs.atime, writer: { $0.writeNFSTime($1) })
-        + self.writeNFSOptional(attrs.mtime, writer: { $0.writeNFSTime($1) })
+    private mutating func writeNFS3CallSetattrAttributes(_ attrs: NFS3CallSetattr.Attributes) -> Int {
+        return self.writeNFS3Optional(attrs.mode, writer: { $0.writeNFS3FileMode($1) })
+        + self.writeNFS3Optional(attrs.uid, writer: { $0.writeNFS3UID($1) })
+        + self.writeNFS3Optional(attrs.gid, writer: { $0.writeNFS3GID($1) })
+        + self.writeNFS3Optional(attrs.size, writer: { $0.writeNFS3Size($1) })
+        + self.writeNFS3Optional(attrs.atime, writer: { $0.writeNFS3Time($1) })
+        + self.writeNFS3Optional(attrs.mtime, writer: { $0.writeNFS3Time($1) })
     }
 
-    public mutating func readNFSCallSetattr() throws -> NFS3CallSetattr {
-        let object = try self.readNFSFileHandle()
-        let attributes = try self.readNFSCallSetattrAttributes()
-        let `guard` = try self.readNFSOptional { try $0.readNFSTime() }
+    public mutating func readNFS3CallSetattr() throws -> NFS3CallSetattr {
+        let object = try self.readNFS3FileHandle()
+        let attributes = try self.readNFS3CallSetattrAttributes()
+        let `guard` = try self.readNFS3Optional { try $0.readNFS3Time() }
 
         return .init(object: object, newAttributes: attributes, guard: `guard`)
     }
 
-    @discardableResult public mutating func writeNFSCallSetattr(_ call: NFS3CallSetattr) -> Int {
-        return self.writeNFSFileHandle(call.object)
-        + self.writeNFSCallSetattrAttributes(call.newAttributes)
-        + self.writeNFSOptional(call.guard, writer: { $0.writeNFSTime($1) })
+    @discardableResult public mutating func writeNFS3CallSetattr(_ call: NFS3CallSetattr) -> Int {
+        return self.writeNFS3FileHandle(call.object)
+        + self.writeNFS3CallSetattrAttributes(call.newAttributes)
+        + self.writeNFS3Optional(call.guard, writer: { $0.writeNFS3Time($1) })
     }
 
-    public mutating func readNFSReplySetattr() throws -> NFS3ReplySetattr {
+    public mutating func readNFS3ReplySetattr() throws -> NFS3ReplySetattr {
         return NFS3ReplySetattr(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    return NFS3ReplySetattr.Okay(wcc: try buffer.readNFSWeakCacheConsistencyData())
+                    return NFS3ReplySetattr.Okay(wcc: try buffer.readNFS3WeakCacheConsistencyData())
                 },
                 readFail: { buffer in
-                    return NFS3ReplySetattr.Fail(wcc: try buffer.readNFSWeakCacheConsistencyData())
+                    return NFS3ReplySetattr.Fail(wcc: try buffer.readNFS3WeakCacheConsistencyData())
                 }))
     }
 
-    @discardableResult public mutating func writeNFSReplySetattr(_ reply: NFS3ReplySetattr) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplySetattr(_ reply: NFS3ReplySetattr) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            bytesWritten += self.writeNFSWeakCacheConsistencyData(okay.wcc)
+            bytesWritten += self.writeNFS3WeakCacheConsistencyData(okay.wcc)
         case .fail(_, let fail):
-            bytesWritten += self.writeNFSWeakCacheConsistencyData(fail.wcc)
+            bytesWritten += self.writeNFS3WeakCacheConsistencyData(fail.wcc)
         }
         return bytesWritten
     }

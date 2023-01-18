@@ -90,26 +90,26 @@ public struct NFS3ReplyFSInfo: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallFSInfo() throws -> NFS3CallFSInfo {
-        let fileHandle = try self.readNFSFileHandle()
+    public mutating func readNFS3CallFSInfo() throws -> NFS3CallFSInfo {
+        let fileHandle = try self.readNFS3FileHandle()
         return NFS3CallFSInfo(fsroot: fileHandle)
     }
 
-    @discardableResult public mutating func writeNFSCallFSInfo(_ call: NFS3CallFSInfo) -> Int {
-        self.writeNFSFileHandle(call.fsroot)
+    @discardableResult public mutating func writeNFS3CallFSInfo(_ call: NFS3CallFSInfo) -> Int {
+        self.writeNFS3FileHandle(call.fsroot)
     }
 
-    private mutating func readNFSCallFSInfoProperties() throws -> NFS3ReplyFSInfo.Properties {
-        let rawValue = try self.readNFSInteger(as: UInt32.self)
+    private mutating func readNFS3CallFSInfoProperties() throws -> NFS3ReplyFSInfo.Properties {
+        let rawValue = try self.readNFS3Integer(as: UInt32.self)
         return NFS3ReplyFSInfo.Properties(rawValue: rawValue)
     }
 
-    @discardableResult public mutating func writeNFSReplyFSInfo(_ reply: NFS3ReplyFSInfo) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplyFSInfo(_ reply: NFS3ReplyFSInfo) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let reply):
-            bytesWritten += self.writeNFSOptional(reply.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(reply.attributes, writer: { $0.writeNFS3FileAttr($1) })
             + self.writeMultipleIntegers(
                 reply.rtmax,
                 reply.rtpref,
@@ -118,18 +118,18 @@ extension ByteBuffer {
                 reply.wtpref,
                 reply.wtmult,
                 reply.dtpref,
-                reply.maxFileSize,
+                reply.maxFileSize.rawValue,
                 endianness: .big)
-            + self.writeNFSTime(reply.timeDelta)
+            + self.writeNFS3Time(reply.timeDelta)
             + self.writeInteger(reply.properties.rawValue, endianness: .big)
         case .fail(_, let fail):
-            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }
         return bytesWritten
     }
 
-    private mutating func readNFSReplyFSInfoOkay() throws -> NFS3ReplyFSInfo.Okay {
-        let fileAttr = try self.readNFSOptional { try $0.readNFSFileAttr() }
+    private mutating func readNFS3ReplyFSInfoOkay() throws -> NFS3ReplyFSInfo.Okay {
+        let fileAttr = try self.readNFS3Optional { try $0.readNFS3FileAttr() }
         guard let values = self.readMultipleIntegers(endianness: .big,
                                                       as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
@@ -141,9 +141,9 @@ extension ByteBuffer {
         let wtpref = values.4
         let wtmult = values.5
         let dtpref = values.6
-        let maxFileSize = try self.readNFSSize()
-        let timeDelta = try self.readNFSTime()
-        let properties = try self.readNFSCallFSInfoProperties()
+        let maxFileSize = try self.readNFS3Size()
+        let timeDelta = try self.readNFS3Time()
+        let properties = try self.readNFS3CallFSInfoProperties()
 
         return .init(attributes: fileAttr,
                      rtmax: rtmax, rtpref: rtpref, rtmult: rtmult,
@@ -152,10 +152,10 @@ extension ByteBuffer {
                      maxFileSize: maxFileSize, timeDelta: timeDelta, properties: properties)
     }
 
-    public mutating func readNFSReplyFSInfo() throws -> NFS3ReplyFSInfo {
-        return NFS3ReplyFSInfo(result: try self.readNFSResult(
-            readOkay: { try $0.readNFSReplyFSInfoOkay() },
-            readFail: { NFS3ReplyFSInfo.Fail(attributes: try $0.readNFSFileAttr()) }
+    public mutating func readNFS3ReplyFSInfo() throws -> NFS3ReplyFSInfo {
+        return NFS3ReplyFSInfo(result: try self.readNFS3Result(
+            readOkay: { try $0.readNFS3ReplyFSInfoOkay() },
+            readFail: { NFS3ReplyFSInfo.Fail(attributes: try $0.readNFS3FileAttr()) }
         ))
     }
 }

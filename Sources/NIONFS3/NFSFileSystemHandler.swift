@@ -76,7 +76,7 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
         let call = self.unwrapInboundIn(data)
         // ! is safe here because it's set on `handlerAdded` (and unset in `handlerRemoved`). Calling this outside that
         // is programmer error.
-        self.invoker!.handleNFSCall(call)
+        self.invoker!.handleNFS3Call(call)
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {

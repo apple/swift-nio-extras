@@ -40,20 +40,20 @@ public struct NFS3ReplyGetAttr: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallGetattr() throws -> NFS3CallGetAttr {
-        let fileHandle = try self.readNFSFileHandle()
+    public mutating func readNFS3CallGetattr() throws -> NFS3CallGetAttr {
+        let fileHandle = try self.readNFS3FileHandle()
         return NFS3CallGetAttr(fileHandle: fileHandle)
     }
 
-    @discardableResult public mutating func writeNFSCallGetattr(_ call: NFS3CallGetAttr) -> Int {
-        self.writeNFSFileHandle(call.fileHandle)
+    @discardableResult public mutating func writeNFS3CallGetattr(_ call: NFS3CallGetAttr) -> Int {
+        self.writeNFS3FileHandle(call.fileHandle)
     }
 
-    public mutating func readNFSReplyGetAttr() throws -> NFS3ReplyGetAttr {
+    public mutating func readNFS3ReplyGetAttr() throws -> NFS3ReplyGetAttr {
         return NFS3ReplyGetAttr(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    return NFS3ReplyGetAttr.Okay(attributes: try buffer.readNFSFileAttr())
+                    return NFS3ReplyGetAttr.Okay(attributes: try buffer.readNFS3FileAttr())
                 },
                 readFail: { _ in
                     return NFS3Nothing()
@@ -61,12 +61,12 @@ extension ByteBuffer {
         )
     }
 
-    @discardableResult public mutating func writeNFSReplyGetAttr(_ reply: NFS3ReplyGetAttr) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplyGetAttr(_ reply: NFS3ReplyGetAttr) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            bytesWritten += self.writeNFSFileAttr(okay.attributes)
+            bytesWritten += self.writeNFS3FileAttr(okay.attributes)
         case .fail(_, _):
             ()
         }

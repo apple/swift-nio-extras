@@ -50,40 +50,40 @@ public struct NFS3ReplyReadlink: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallReadlink() throws -> NFS3CallReadlink {
-        let symlink = try self.readNFSFileHandle()
+    public mutating func readNFS3CallReadlink() throws -> NFS3CallReadlink {
+        let symlink = try self.readNFS3FileHandle()
 
         return .init(symlink: symlink)
     }
 
-    @discardableResult public mutating func writeNFSCallReadlink(_ call: NFS3CallReadlink) -> Int {
-        self.writeNFSFileHandle(call.symlink)
+    @discardableResult public mutating func writeNFS3CallReadlink(_ call: NFS3CallReadlink) -> Int {
+        self.writeNFS3FileHandle(call.symlink)
     }
 
-    public mutating func readNFSReplyReadlink() throws -> NFS3ReplyReadlink {
+    public mutating func readNFS3ReplyReadlink() throws -> NFS3ReplyReadlink {
         return NFS3ReplyReadlink(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    let attrs = try buffer.readNFSOptional { try $0.readNFSFileAttr() }
-                    let target = try buffer.readNFSString()
+                    let attrs = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
+                    let target = try buffer.readNFS3String()
 
                     return NFS3ReplyReadlink.Okay(symlinkAttributes: attrs, target: target)
                 },
                 readFail: { buffer in
-                    let attrs = try buffer.readNFSOptional { try $0.readNFSFileAttr() }
+                    let attrs = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
                     return NFS3ReplyReadlink.Fail(symlinkAttributes: attrs)
                 }))
     }
 
-    @discardableResult public mutating func writeNFSReplyReadlink(_ reply: NFS3ReplyReadlink) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplyReadlink(_ reply: NFS3ReplyReadlink) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            bytesWritten += self.writeNFSOptional(okay.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
-            + self.writeNFSString(okay.target)
+            bytesWritten += self.writeNFS3Optional(okay.symlinkAttributes, writer: { $0.writeNFS3FileAttr($1) })
+            + self.writeNFS3String(okay.target)
         case .fail(_, let fail):
-            bytesWritten += self.writeNFSOptional(fail.symlinkAttributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(fail.symlinkAttributes, writer: { $0.writeNFS3FileAttr($1) })
         }
         return bytesWritten
     }

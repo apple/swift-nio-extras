@@ -27,12 +27,12 @@ final class NFS3ReplyEncoderTest: XCTestCase {
                                                                                                       opaque: nil),
                                                                                       status: .success))),
                                     nfsReply: .read(.init(result: .okay(.init(attributes: nil,
-                                                                              count: 7,
+                                                                              count: .init(rawValue: 7),
                                                                               eof: false,
                                                                               data: expectedPayload)))))
 
             var partialSerialisation = ByteBuffer()
-            let (bytesWritten, nextStep) = partialSerialisation.writeRPCNFSReplyPartially(reply)
+            let (bytesWritten, nextStep) = partialSerialisation.writeRPCNFS3ReplyPartially(reply)
             XCTAssertEqual(partialSerialisation.readableBytes, bytesWritten)
             switch nextStep {
             case .doNothing:
@@ -43,7 +43,7 @@ final class NFS3ReplyEncoderTest: XCTestCase {
             }
 
             var fullSerialisation = ByteBuffer()
-            let bytesWruttenFull = fullSerialisation.writeRPCNFSReply(reply)
+            let bytesWruttenFull = fullSerialisation.writeRPCNFS3Reply(reply)
             XCTAssertEqual(bytesWruttenFull, fullSerialisation.readableBytes)
 
             XCTAssert(fullSerialisation.readableBytesView.starts(with: partialSerialisation.readableBytesView))
@@ -70,23 +70,23 @@ final class NFS3ReplyEncoderTest: XCTestCase {
                                                                                                               opaque: nil),
                                                                                               status: .success))),
                                             nfsReply: .read(.init(result: .okay(.init(attributes: nil,
-                                                                                      count: 7,
+                                                                                      count: .init(rawValue: 7),
                                                                                       eof: false,
                                                                                       data: expectedPayload)))))
 
             var fullSerialisation = ByteBuffer()
-            let bytesWrittenFull = fullSerialisation.writeRPCNFSReply(expectedReply)
+            let bytesWrittenFull = fullSerialisation.writeRPCNFS3Reply(expectedReply)
             XCTAssertEqual(bytesWrittenFull, fullSerialisation.readableBytes)
             guard var actualReply = try? fullSerialisation.readRPCMessage() else {
                 XCTFail("could not read RPC message")
                 return
             }
             XCTAssertEqual(0, fullSerialisation.readableBytes)
-            var actualNFSReply: NFS3ReplyRead? = nil
-            XCTAssertNoThrow(actualNFSReply = try actualReply.1.readNFSReplyRead())
+            var actualNFS3Reply: NFS3ReplyRead? = nil
+            XCTAssertNoThrow(actualNFS3Reply = try actualReply.1.readNFS3ReplyRead())
             XCTAssertEqual(0, actualReply.1.readableBytes)
             XCTAssertEqual(expectedReply.nfsReply,
-                           actualNFSReply.map { .read($0) },
+                           actualNFS3Reply.map { NFS3Reply.read($0) },
                            "parsing failed for payload length \(payloadLength)")
         }
     }

@@ -20,6 +20,6 @@ public struct NFS3CallEncoder: MessageToByteEncoder {
     public init() {}
 
     public func encode(data: RPCNFS3Call, out: inout ByteBuffer) throws {
-        out.writeRPCNFSCall(data)
+        out.writeRPCNFS3Call(data)
     }
 }

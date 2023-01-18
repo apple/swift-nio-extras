@@ -28,7 +28,7 @@ public struct NFS3CallDecoder: NIOSingleStepByteToMessageDecoder {
             throw NFS3Error.wrongMessageType(message.0)
         }
 
-        return try body.readNFSCall(rpc: call)
+        return try body.readNFS3Call(rpc: call)
     }
 
     public mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> RPCNFS3Call? {

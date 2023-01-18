@@ -65,62 +65,66 @@ public struct NFS3ReplyFSStat: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallFSStat() throws -> NFS3CallFSStat {
-        let fileHandle = try self.readNFSFileHandle()
+    public mutating func readNFS3CallFSStat() throws -> NFS3CallFSStat {
+        let fileHandle = try self.readNFS3FileHandle()
         return NFS3CallFSStat(fsroot: fileHandle)
     }
 
-    @discardableResult public mutating func writeNFSCallFSStat(_ call: NFS3CallFSStat) -> Int {
-        self.writeNFSFileHandle(call.fsroot)
+    @discardableResult public mutating func writeNFS3CallFSStat(_ call: NFS3CallFSStat) -> Int {
+        self.writeNFS3FileHandle(call.fsroot)
     }
 
-    private mutating func readNFSReplyFSStatOkay() throws -> NFS3ReplyFSStat.Okay {
-        let attrs = try self.readNFSOptional { buffer in
-            try buffer.readNFSFileAttr()
+    private mutating func readNFS3ReplyFSStatOkay() throws -> NFS3ReplyFSStat.Okay {
+        let attrs = try self.readNFS3Optional { buffer in
+            try buffer.readNFS3FileAttr()
         }
-        if let values = self.readMultipleIntegers(as: (NFS3Size, NFS3Size, NFS3Size, NFS3Size, NFS3Size, NFS3Size, UInt32).self) {
+        if let values = self.readMultipleIntegers(as: (UInt64, UInt64, UInt64, UInt64, UInt64, UInt64, UInt32).self) {
             return .init(attributes: attrs,
-                         tbytes: values.0, fbytes: values.1, abytes: values.2,
-                         tfiles: values.3, ffiles: values.4, afiles: values.5,
+                         tbytes: NFS3Size(rawValue: values.0),
+                         fbytes: NFS3Size(rawValue: values.1),
+                         abytes: NFS3Size(rawValue: values.2),
+                         tfiles: NFS3Size(rawValue: values.3),
+                         ffiles: NFS3Size(rawValue: values.4),
+                         afiles: NFS3Size(rawValue: values.5),
                          invarsec: values.6)
         } else {
             throw NFS3Error.illegalRPCTooShort
         }
     }
 
-    public mutating func readNFSReplyFSStat() throws -> NFS3ReplyFSStat {
+    public mutating func readNFS3ReplyFSStat() throws -> NFS3ReplyFSStat {
         return NFS3ReplyFSStat(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    try buffer.readNFSReplyFSStatOkay()
+                    try buffer.readNFS3ReplyFSStatOkay()
                 },
                 readFail: { buffer in
                     NFS3ReplyFSStat.Fail(
-                        attributes: try buffer.readNFSOptional { buffer in
-                            try buffer.readNFSFileAttr()
+                        attributes: try buffer.readNFS3Optional { buffer in
+                            try buffer.readNFS3FileAttr()
                         }
                     )
                 })
         )
     }
 
-    @discardableResult public mutating func writeNFSReplyFSStat(_ reply: NFS3ReplyFSStat) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(reply.result)
+    @discardableResult public mutating func writeNFS3ReplyFSStat(_ reply: NFS3ReplyFSStat) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(reply.result)
 
         switch reply.result {
         case .okay(let okay):
-            bytesWritten += self.writeNFSOptional(okay.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(okay.attributes, writer: { $0.writeNFS3FileAttr($1) })
             + self.writeMultipleIntegers(
-                okay.tbytes,
-                okay.fbytes,
-                okay.abytes,
-                okay.tfiles,
-                okay.ffiles,
-                okay.afiles,
+                okay.tbytes.rawValue,
+                okay.fbytes.rawValue,
+                okay.abytes.rawValue,
+                okay.tfiles.rawValue,
+                okay.ffiles.rawValue,
+                okay.afiles.rawValue,
                 okay.invarsec,
                 endianness: .big)
         case .fail(_, let fail):
-            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }
         return bytesWritten
     }

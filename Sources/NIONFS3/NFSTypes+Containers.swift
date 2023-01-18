@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct RPCNFSProcedureID: Hashable {
+public struct RPCNFS3ProcedureID: Hashable {
     public internal(set) var program: UInt32
     public internal(set) var procedure: UInt32
 
@@ -54,7 +54,7 @@ public struct RPCNFSProcedureID: Hashable {
     public static let nfsCommit: Self = .init(program: 100003, procedure: 21) // unimplemented
 }
 
-extension RPCNFSProcedureID {
+extension RPCNFS3ProcedureID {
     public init(_ nfsReply: NFS3Reply) {
         switch nfsReply {
         case .mountNull:
@@ -165,7 +165,7 @@ extension ByteBuffer {
     @discardableResult public mutating func writeRPCVerifier(_ verifier: RPCOpaqueAuth) -> Int {
         var bytesWritten = self.writeInteger(verifier.flavor.rawValue, endianness: .big)
         if let opaqueBlob = verifier.opaque {
-            bytesWritten += self.writeNFSBlob(opaqueBlob)
+            bytesWritten += self.writeNFS3Blob(opaqueBlob)
         } else {
             bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
         }
@@ -176,13 +176,13 @@ extension ByteBuffer {
         guard let flavor = self.readInteger(endianness: .big, as: UInt32.self) else {
             throw NFS3Error.illegalRPCTooShort
         }
-        let blob = try self.readNFSBlob()
+        let blob = try self.readNFS3Blob()
         return RPCCredentials(flavor: flavor, length: UInt32(blob.readableBytes), otherBytes: blob)
     }
 
     @discardableResult public mutating func writeRPCCredentials(_ credentials: RPCCredentials) -> Int {
         return self.writeInteger(credentials.flavor)
-        + self.writeNFSBlob(credentials.otherBytes)
+        + self.writeNFS3Blob(credentials.otherBytes)
     }
 
     public mutating func readRPCFragmentHeader() throws -> RPCFragmentHeader? {
@@ -206,11 +206,11 @@ extension ByteBuffer {
     }
 
     mutating func readRPCReply(xid: UInt32) throws -> RPCReply {
-        let acceptedOrDenied = try self.readNFSInteger(as: UInt32.self)
+        let acceptedOrDenied = try self.readNFS3Integer(as: UInt32.self)
         switch acceptedOrDenied {
         case 0: // MSG_ACCEPTED
             let verifier = try self.readRPCVerifier()
-            let status = try self.readNFSInteger(as: UInt32.self)
+            let status = try self.readNFS3Integer(as: UInt32.self)
             let acceptedReplyStatus: RPCAcceptedReplyStatus
 
             switch status {
@@ -235,7 +235,7 @@ extension ByteBuffer {
             return RPCReply(xid: xid, status: .messageAccepted(.init(verifier: verifier,
                                                                      status: acceptedReplyStatus)))
         case 1: // MSG_DENIED
-            let rejectionKind = try self.readNFSInteger(as: UInt32.self)
+            let rejectionKind = try self.readNFS3Integer(as: UInt32.self)
             switch rejectionKind {
             case 0: // RPC_MISMATCH: RPC version number != 2
                 guard let values = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
@@ -243,7 +243,7 @@ extension ByteBuffer {
                 }
                 return RPCReply(xid: xid, status: .messageDenied(.rpcMismatch(low: values.0, high: values.1)))
             case 1: // AUTH_ERROR
-                let rawValue = try self.readNFSInteger(as: UInt32.self)
+                let rawValue = try self.readNFS3Integer(as: UInt32.self)
                 if let value = RPCAuthStatus(rawValue: rawValue) {
                     return RPCReply(xid: xid, status: .messageDenied(.authError(value)))
                 } else {
@@ -308,118 +308,118 @@ extension ByteBuffer {
                        verifier: verifier)
     }
 
-    public mutating func readNFSReply(programAndProcedure: RPCNFSProcedureID, rpcReply: RPCReply) throws -> RPCNFS3Reply {
+    public mutating func readNFS3Reply(programAndProcedure: RPCNFS3ProcedureID, rpcReply: RPCReply) throws -> RPCNFS3Reply {
         switch programAndProcedure {
         case .mountNull:
             return .init(rpcReply: rpcReply, nfsReply: .mountNull)
         case .mountMount:
-            return .init(rpcReply: rpcReply, nfsReply: .mount(try self.readNFSReplyMount()))
+            return .init(rpcReply: rpcReply, nfsReply: .mount(try self.readNFS3ReplyMount()))
         case .mountUnmount:
-            return .init(rpcReply: rpcReply, nfsReply: .unmount(try self.readNFSReplyUnmount()))
+            return .init(rpcReply: rpcReply, nfsReply: .unmount(try self.readNFS3ReplyUnmount()))
         case .nfsNull:
             return .init(rpcReply: rpcReply, nfsReply: .null)
         case .nfsGetAttr:
-            return .init(rpcReply: rpcReply, nfsReply: .getattr(try self.readNFSReplyGetAttr()))
+            return .init(rpcReply: rpcReply, nfsReply: .getattr(try self.readNFS3ReplyGetAttr()))
         case .nfsFSInfo:
-            return .init(rpcReply: rpcReply, nfsReply: .fsinfo(try self.readNFSReplyFSInfo()))
+            return .init(rpcReply: rpcReply, nfsReply: .fsinfo(try self.readNFS3ReplyFSInfo()))
         case .nfsPathConf:
-            return .init(rpcReply: rpcReply, nfsReply: .pathconf(try self.readNFSReplyPathConf()))
+            return .init(rpcReply: rpcReply, nfsReply: .pathconf(try self.readNFS3ReplyPathConf()))
         case .nfsFSStat:
-            return .init(rpcReply: rpcReply, nfsReply: .fsstat(try self.readNFSReplyFSStat()))
+            return .init(rpcReply: rpcReply, nfsReply: .fsstat(try self.readNFS3ReplyFSStat()))
         case .nfsAccess:
-            return .init(rpcReply: rpcReply, nfsReply: .access(try self.readNFSReplyAccess()))
+            return .init(rpcReply: rpcReply, nfsReply: .access(try self.readNFS3ReplyAccess()))
         case .nfsLookup:
-            return .init(rpcReply: rpcReply, nfsReply: .lookup(try self.readNFSReplyLookup()))
+            return .init(rpcReply: rpcReply, nfsReply: .lookup(try self.readNFS3ReplyLookup()))
         case .nfsReadDirPlus:
-            return .init(rpcReply: rpcReply, nfsReply: .readdirplus(try self.readNFSReplyReadDirPlus()))
+            return .init(rpcReply: rpcReply, nfsReply: .readdirplus(try self.readNFS3ReplyReadDirPlus()))
         case .nfsReadDir:
-            return .init(rpcReply: rpcReply, nfsReply: .readdir(try self.readNFSReplyReadDir()))
+            return .init(rpcReply: rpcReply, nfsReply: .readdir(try self.readNFS3ReplyReadDir()))
         case .nfsRead:
-            return .init(rpcReply: rpcReply, nfsReply: .read(try self.readNFSReplyRead()))
+            return .init(rpcReply: rpcReply, nfsReply: .read(try self.readNFS3ReplyRead()))
         case .nfsReadLink:
-            return .init(rpcReply: rpcReply, nfsReply: .readlink(try self.readNFSReplyReadlink()))
+            return .init(rpcReply: rpcReply, nfsReply: .readlink(try self.readNFS3ReplyReadlink()))
         case .nfsSetAttr:
-            return .init(rpcReply: rpcReply, nfsReply: .setattr(try self.readNFSReplySetattr()))
+            return .init(rpcReply: rpcReply, nfsReply: .setattr(try self.readNFS3ReplySetattr()))
         default:
             throw NFS3Error.unknownProgramOrProcedure(.reply(rpcReply))
         }
     }
 
-    mutating func readNFSCall(rpc: RPCCall) throws -> RPCNFS3Call {
-        switch RPCNFSProcedureID(program: rpc.program, procedure: rpc.procedure) {
+    mutating func readNFS3Call(rpc: RPCCall) throws -> RPCNFS3Call {
+        switch RPCNFS3ProcedureID(program: rpc.program, procedure: rpc.procedure) {
         case .mountNull:
             return .init(rpcCall: rpc, nfsCall: .mountNull(try self.readMountCallNull()))
         case .mountMount:
-            return .init(rpcCall: rpc, nfsCall: .mount(try self.readNFSCallMount()))
+            return .init(rpcCall: rpc, nfsCall: .mount(try self.readNFS3CallMount()))
         case .mountUnmount:
-            return .init(rpcCall: rpc, nfsCall: .unmount(try self.readNFSCallUnmount()))
+            return .init(rpcCall: rpc, nfsCall: .unmount(try self.readNFS3CallUnmount()))
         case .nfsNull:
-            return .init(rpcCall: rpc, nfsCall: .null(try self.readNFSCallNull()))
+            return .init(rpcCall: rpc, nfsCall: .null(try self.readNFS3CallNull()))
         case .nfsGetAttr:
-            return .init(rpcCall: rpc, nfsCall: .getattr(try self.readNFSCallGetattr()))
+            return .init(rpcCall: rpc, nfsCall: .getattr(try self.readNFS3CallGetattr()))
         case .nfsFSInfo:
-            return .init(rpcCall: rpc, nfsCall: .fsinfo(try self.readNFSCallFSInfo()))
+            return .init(rpcCall: rpc, nfsCall: .fsinfo(try self.readNFS3CallFSInfo()))
         case .nfsPathConf:
-            return .init(rpcCall: rpc, nfsCall: .pathconf(try self.readNFSCallPathConf()))
+            return .init(rpcCall: rpc, nfsCall: .pathconf(try self.readNFS3CallPathConf()))
         case .nfsFSStat:
-            return .init(rpcCall: rpc, nfsCall: .fsstat(try self.readNFSCallFSStat()))
+            return .init(rpcCall: rpc, nfsCall: .fsstat(try self.readNFS3CallFSStat()))
         case .nfsAccess:
-            return .init(rpcCall: rpc, nfsCall: .access(try self.readNFSCallAccess()))
+            return .init(rpcCall: rpc, nfsCall: .access(try self.readNFS3CallAccess()))
         case .nfsLookup:
-            return .init(rpcCall: rpc, nfsCall: .lookup(try self.readNFSCallLookup()))
+            return .init(rpcCall: rpc, nfsCall: .lookup(try self.readNFS3CallLookup()))
         case .nfsReadDirPlus:
-            return .init(rpcCall: rpc, nfsCall: .readdirplus(try self.readNFSCallReadDirPlus()))
+            return .init(rpcCall: rpc, nfsCall: .readdirplus(try self.readNFS3CallReadDirPlus()))
         case .nfsReadDir:
-            return .init(rpcCall: rpc, nfsCall: .readdir(try self.readNFSCallReadDir()))
+            return .init(rpcCall: rpc, nfsCall: .readdir(try self.readNFS3CallReadDir()))
         case .nfsRead:
-            return .init(rpcCall: rpc, nfsCall: .read(try self.readNFSCallRead()))
+            return .init(rpcCall: rpc, nfsCall: .read(try self.readNFS3CallRead()))
         case .nfsReadLink:
-            return .init(rpcCall: rpc, nfsCall: .readlink(try self.readNFSCallReadlink()))
+            return .init(rpcCall: rpc, nfsCall: .readlink(try self.readNFS3CallReadlink()))
         case .nfsSetAttr:
-            return .init(rpcCall: rpc, nfsCall: .setattr(try self.readNFSCallSetattr()))
+            return .init(rpcCall: rpc, nfsCall: .setattr(try self.readNFS3CallSetattr()))
         default:
             throw NFS3Error.unknownProgramOrProcedure(.call(rpc))
         }
     }
 
-    @discardableResult public mutating func writeRPCNFSCall(_ rpcNFSCall: RPCNFS3Call) -> Int {
+    @discardableResult public mutating func writeRPCNFS3Call(_ rpcNFS3Call: RPCNFS3Call) -> Int {
         let startWriterIndex = self.writerIndex
         self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
-        self.writeInteger(rpcNFSCall.rpcCall.xid, endianness: .big)
+        self.writeInteger(rpcNFS3Call.rpcCall.xid, endianness: .big)
 
-        self.writeRPCCall(rpcNFSCall.rpcCall)
+        self.writeRPCCall(rpcNFS3Call.rpcCall)
 
-        switch rpcNFSCall.nfsCall {
+        switch rpcNFS3Call.nfsCall {
         case .mountNull:
             () // noop
         case .mount(let nfsCallMount):
-            self.writeNFSCallMount(nfsCallMount)
+            self.writeNFS3CallMount(nfsCallMount)
         case .unmount(let nfsCallUnmount):
-            self.writeNFSCallUnmount(nfsCallUnmount)
+            self.writeNFS3CallUnmount(nfsCallUnmount)
         case .null:
             () // noop
         case .getattr(let nfsCallGetAttr):
-            self.writeNFSCallGetattr(nfsCallGetAttr)
+            self.writeNFS3CallGetattr(nfsCallGetAttr)
         case .fsinfo(let nfsCallFSInfo):
-            self.writeNFSCallFSInfo(nfsCallFSInfo)
+            self.writeNFS3CallFSInfo(nfsCallFSInfo)
         case .pathconf(let nfsCallPathConf):
-            self.writeNFSCallPathConf(nfsCallPathConf)
+            self.writeNFS3CallPathConf(nfsCallPathConf)
         case .fsstat(let nfsCallFSStat):
-            self.writeNFSCallFSStat(nfsCallFSStat)
+            self.writeNFS3CallFSStat(nfsCallFSStat)
         case .access(let nfsCallAccess):
-            self.writeNFSCallAccess(nfsCallAccess)
+            self.writeNFS3CallAccess(nfsCallAccess)
         case .lookup(let nfsCallLookup):
-            self.writeNFSCallLookup(nfsCallLookup)
+            self.writeNFS3CallLookup(nfsCallLookup)
         case .readdirplus(let nfsCallReadDirPlus):
-            self.writeNFSCallReadDirPlus(nfsCallReadDirPlus)
+            self.writeNFS3CallReadDirPlus(nfsCallReadDirPlus)
         case .readdir(let nfsCallReadDir):
-            self.writeNFSCallReadDir(nfsCallReadDir)
+            self.writeNFS3CallReadDir(nfsCallReadDir)
         case .read(let nfsCallRead):
-            self.writeNFSCallRead(nfsCallRead)
+            self.writeNFS3CallRead(nfsCallRead)
         case .readlink(let nfsCallReadlink):
-            self.writeNFSCallReadlink(nfsCallReadlink)
+            self.writeNFS3CallReadlink(nfsCallReadlink)
         case .setattr(let nfsCallSetattr):
-            self.writeNFSCallSetattr(nfsCallSetattr)
+            self.writeNFS3CallSetattr(nfsCallSetattr)
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
             // inside the module, matching exhaustively is okay
             preconditionFailure("unknown NFS3 call, this should never happen. Please report a bug.")
@@ -431,46 +431,46 @@ extension ByteBuffer {
         return self.writerIndex - startWriterIndex
     }
 
-    @discardableResult public mutating func writeRPCNFSReplyPartially(_ rpcNFSReply: RPCNFS3Reply) -> (Int, NFS3PartialWriteNextStep) {
+    @discardableResult public mutating func writeRPCNFS3ReplyPartially(_ rpcNFS3Reply: RPCNFS3Reply) -> (Int, NFS3PartialWriteNextStep) {
         var nextStep: NFS3PartialWriteNextStep = .doNothing
 
         let startWriterIndex = self.writerIndex
         self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
-        self.writeInteger(rpcNFSReply.rpcReply.xid, endianness: .big)
+        self.writeInteger(rpcNFS3Reply.rpcReply.xid, endianness: .big)
 
-        self.writeRPCReply(rpcNFSReply.rpcReply)
+        self.writeRPCReply(rpcNFS3Reply.rpcReply)
 
-        switch rpcNFSReply.nfsReply {
+        switch rpcNFS3Reply.nfsReply {
         case .mountNull:
             () // noop
         case .mount(let nfsReplyMount):
-            self.writeNFSReplyMount(nfsReplyMount)
+            self.writeNFS3ReplyMount(nfsReplyMount)
         case .unmount(let nfsReplyUnmount):
-            self.writeNFSReplyUnmount(nfsReplyUnmount)
+            self.writeNFS3ReplyUnmount(nfsReplyUnmount)
         case .null:
             () // noop
         case .getattr(let nfsReplyGetAttr):
-            self.writeNFSReplyGetAttr(nfsReplyGetAttr)
+            self.writeNFS3ReplyGetAttr(nfsReplyGetAttr)
         case .fsinfo(let nfsReplyFSInfo):
-            self.writeNFSReplyFSInfo(nfsReplyFSInfo)
+            self.writeNFS3ReplyFSInfo(nfsReplyFSInfo)
         case .pathconf(let nfsReplyPathConf):
-            self.writeNFSReplyPathConf(nfsReplyPathConf)
+            self.writeNFS3ReplyPathConf(nfsReplyPathConf)
         case .fsstat(let nfsReplyFSStat):
-            self.writeNFSReplyFSStat(nfsReplyFSStat)
+            self.writeNFS3ReplyFSStat(nfsReplyFSStat)
         case .access(let nfsReplyAccess):
-            self.writeNFSReplyAccess(nfsReplyAccess)
+            self.writeNFS3ReplyAccess(nfsReplyAccess)
         case .lookup(let nfsReplyLookup):
-            self.writeNFSReplyLookup(nfsReplyLookup)
+            self.writeNFS3ReplyLookup(nfsReplyLookup)
         case .readdirplus(let nfsReplyReadDirPlus):
-            self.writeNFSReplyReadDirPlus(nfsReplyReadDirPlus)
+            self.writeNFS3ReplyReadDirPlus(nfsReplyReadDirPlus)
         case .readdir(let nfsReplyReadDir):
-            self.writeNFSReplyReadDir(nfsReplyReadDir)
+            self.writeNFS3ReplyReadDir(nfsReplyReadDir)
         case .read(let nfsReplyRead):
-            nextStep = self.writeNFSReplyReadPartially(nfsReplyRead)
+            nextStep = self.writeNFS3ReplyReadPartially(nfsReplyRead)
         case .readlink(let nfsReplyReadlink):
-            self.writeNFSReplyReadlink(nfsReplyReadlink)
+            self.writeNFS3ReplyReadlink(nfsReplyReadlink)
         case .setattr(let nfsReplySetattr):
-            self.writeNFSReplySetattr(nfsReplySetattr)
+            self.writeNFS3ReplySetattr(nfsReplySetattr)
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:
             // inside the module, matching exhaustively is okay
             preconditionFailure("unknown NFS3 reply, this should never happen. Please report a bug.")
@@ -483,8 +483,8 @@ extension ByteBuffer {
     }
 
     @discardableResult
-    public mutating func writeRPCNFSReply(_ reply: RPCNFS3Reply) -> Int {
-        let (bytesWritten, nextStep) = self.writeRPCNFSReplyPartially(reply)
+    public mutating func writeRPCNFS3Reply(_ reply: RPCNFS3Reply) -> Int {
+        let (bytesWritten, nextStep) = self.writeRPCNFS3ReplyPartially(reply)
         switch nextStep {
         case .doNothing:
             return bytesWritten

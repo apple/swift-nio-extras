@@ -60,21 +60,21 @@ public struct NFS3ReplyPathConf: Hashable {
 }
 
 extension ByteBuffer {
-    public mutating func readNFSCallPathConf() throws -> NFS3CallPathConf {
-        let fileHandle = try self.readNFSFileHandle()
+    public mutating func readNFS3CallPathConf() throws -> NFS3CallPathConf {
+        let fileHandle = try self.readNFS3FileHandle()
         return NFS3CallPathConf(object: fileHandle)
     }
 
-    @discardableResult public mutating func writeNFSCallPathConf(_ call: NFS3CallPathConf) -> Int {
-        self.writeNFSFileHandle(call.object)
+    @discardableResult public mutating func writeNFS3CallPathConf(_ call: NFS3CallPathConf) -> Int {
+        self.writeNFS3FileHandle(call.object)
     }
 
-    public mutating func readNFSReplyPathConf() throws -> NFS3ReplyPathConf {
+    public mutating func readNFS3ReplyPathConf() throws -> NFS3ReplyPathConf {
         return NFS3ReplyPathConf(
-            result: try self.readNFSResult(
+            result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
                     guard let values = buffer.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
                         throw NFS3Error.illegalRPCTooShort
@@ -89,20 +89,20 @@ extension ByteBuffer {
                                                  casePreserving: values.5 == 0 ? false : true)
                 },
                 readFail: { buffer in
-                    let attrs = try buffer.readNFSOptional { buffer in
-                        try buffer.readNFSFileAttr()
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
                     }
                     return NFS3ReplyPathConf.Fail(attributes: attrs)
                 })
         )
     }
 
-    @discardableResult public mutating func writeNFSReplyPathConf(_ pathconf: NFS3ReplyPathConf) -> Int {
-        var bytesWritten = self.writeNFSResultStatus(pathconf.result)
+    @discardableResult public mutating func writeNFS3ReplyPathConf(_ pathconf: NFS3ReplyPathConf) -> Int {
+        var bytesWritten = self.writeNFS3ResultStatus(pathconf.result)
 
         switch pathconf.result {
         case .okay(let pathconf):
-            bytesWritten += self.writeNFSOptional(pathconf.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(pathconf.attributes, writer: { $0.writeNFS3FileAttr($1) })
             + self.writeMultipleIntegers(
                 pathconf.linkMax,
                 pathconf.nameMax,
@@ -112,7 +112,7 @@ extension ByteBuffer {
                 pathconf.casePreserving ? UInt32(1) : 0
             )
         case .fail(_, let fail):
-            bytesWritten += self.writeNFSOptional(fail.attributes, writer: { $0.writeNFSFileAttr($1) })
+            bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }
         return bytesWritten
     }
