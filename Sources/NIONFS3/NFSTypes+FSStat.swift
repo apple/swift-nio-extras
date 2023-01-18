@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - FSStat
-public struct NFS3CallFSStat: Equatable {
+public struct NFS3CallFSStat: Hashable {
     public init(fsroot: NFS3FileHandle) {
         self.fsroot = fsroot
     }
@@ -23,12 +23,12 @@ public struct NFS3CallFSStat: Equatable {
     public var fsroot: NFS3FileHandle
 }
 
-public struct NFS3ReplyFSStat: Equatable {
+public struct NFS3ReplyFSStat: Hashable {
     public init(result: NFS3Result<NFS3ReplyFSStat.Okay, NFS3ReplyFSStat.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Equatable {
+    public struct Okay: Hashable {
         public init(attributes: NFS3FileAttr?,
                     tbytes: NFS3Size, fbytes: NFS3Size, abytes: NFS3Size,
                     tfiles: NFS3Size, ffiles: NFS3Size, afiles: NFS3Size,
@@ -53,7 +53,7 @@ public struct NFS3ReplyFSStat: Equatable {
         public var invarsec: UInt32
     }
 
-    public struct Fail: Equatable {
+    public struct Fail: Hashable {
         public init(attributes: NFS3FileAttr?) {
             self.attributes = attributes
         }

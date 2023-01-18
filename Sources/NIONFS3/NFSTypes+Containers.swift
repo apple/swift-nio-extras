@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct RPCNFSProcedureID: Equatable {
+public struct RPCNFSProcedureID: Hashable {
     public internal(set) var program: UInt32
     public internal(set) var procedure: UInt32
 
@@ -94,7 +94,7 @@ extension RPCNFSProcedureID {
     }
 }
 
-public enum NFS3Call: Equatable {
+public enum NFS3Call: Hashable {
     case mountNull(MountCallNull)
     case mount(MountCallMount)
     case unmount(MountCallUnmount)
@@ -114,7 +114,7 @@ public enum NFS3Call: Equatable {
     case _PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE
 }
 
-public enum NFS3Reply: Equatable {
+public enum NFS3Reply: Hashable {
     case mountNull
     case mount(MountReplyMount)
     case unmount(MountReplyUnmount)
@@ -286,12 +286,12 @@ extension ByteBuffer {
 
 
     public mutating func readRPCCall(xid: UInt32) throws -> RPCCall {
-        guard let version = self.readInteger(endianness: .big, as: UInt32.self),
-              let program = self.readInteger(endianness: .big, as: UInt32.self),
-              let programVersion = self.readInteger(endianness: .big, as: UInt32.self),
-              let procedure = self.readInteger(endianness: .big, as: UInt32.self) else {
-                  throw NFS3Error.illegalRPCTooShort
-              }
+        guard let values = self.readMultipleIntegers(endianness: .big,
+                                                     as: (UInt32, UInt32, UInt32, UInt32).self) else {
+            throw NFS3Error.illegalRPCTooShort
+        }
+
+        let (version, program, programVersion, procedure) = values
         let credentials = try self.readRPCCredentials()
         let verifier = try self.readRPCVerifier()
 

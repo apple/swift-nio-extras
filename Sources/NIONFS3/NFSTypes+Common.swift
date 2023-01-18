@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - NIONFS3 Specifics
-public struct RPCNFS3Call: Equatable {
+public struct RPCNFS3Call: Hashable {
     public init(rpcCall: RPCCall, nfsCall: NFS3Call) {
         self.rpcCall = rpcCall
         self.nfsCall = nfsCall
@@ -84,7 +84,7 @@ extension RPCNFS3Call: Identifiable {
     }
 }
 
-public struct RPCNFS3Reply: Equatable {
+public struct RPCNFS3Reply: Hashable {
     public init(rpcReply: RPCReply, nfsReply: NFS3Reply) {
         self.rpcReply = rpcReply
         self.nfsReply = nfsReply
@@ -105,6 +105,9 @@ extension RPCNFS3Reply: Identifiable {
 public enum NFS3Result<Okay, Fail> {
     case okay(Okay)
     case fail(NFS3Status, Fail)
+}
+
+extension NFS3Result: Hashable where Okay: Hashable, Fail: Hashable {
 }
 
 extension NFS3Result: Equatable where Okay: Equatable, Fail: Equatable {
@@ -134,7 +137,7 @@ public typealias NFS3CookieVerifier = UInt64
 public typealias NFS3Offset = UInt64
 public typealias NFS3Count = UInt32
 
-public struct NFS3Nothing: Equatable {
+public struct NFS3Nothing: Hashable {
     public init() {}
 }
 
@@ -176,7 +179,7 @@ public enum NFS3Status: UInt32 {
 /// Check the access rights to a file.
 ///
 /// - seealso: https://www.rfc-editor.org/rfc/rfc1813#page-40
-public struct NFS3Access: OptionSet {
+public struct NFS3Access: OptionSet & Hashable {
     public typealias RawValue = UInt32
 
     public var rawValue: UInt32
@@ -258,7 +261,7 @@ extension UInt32 {
 }
 
 
-public struct NFS3Time: Equatable {
+public struct NFS3Time: Hashable {
     public init(seconds: UInt32, nanoseconds: UInt32) {
         self.seconds = seconds
         self.nanoseconds = nanoseconds
@@ -268,7 +271,7 @@ public struct NFS3Time: Equatable {
     public var nanoseconds: UInt32
 }
 
-public struct NFS3FileAttr: Equatable {
+public struct NFS3FileAttr: Hashable {
     public init(type: NFS3FileType, mode: NFS3FileMode, nlink: UInt32, uid: NFS3UID, gid: NFS3GID, size: NFS3Size, used: NFS3Size, rdev: NFS3SpecData, fsid: UInt64, fileid: NFS3FileID, atime: NFS3Time, mtime: NFS3Time, ctime: NFS3Time) {
         self.type = type
         self.mode = mode
@@ -300,7 +303,7 @@ public struct NFS3FileAttr: Equatable {
     public var ctime: NFS3Time
 }
 
-public struct NFS3WeakCacheConsistencyAttr: Equatable {
+public struct NFS3WeakCacheConsistencyAttr: Hashable {
     public init(size: NFS3Size, mtime: NFS3Time, ctime: NFS3Time) {
         self.size = size
         self.mtime = mtime
@@ -312,7 +315,7 @@ public struct NFS3WeakCacheConsistencyAttr: Equatable {
     public var ctime: NFS3Time
 }
 
-public struct NFS3WeakCacheConsistencyData: Equatable {
+public struct NFS3WeakCacheConsistencyData: Hashable {
     public init(before: NFS3WeakCacheConsistencyAttr? = nil, after: NFS3FileAttr? = nil) {
         self.before = before
         self.after = after

@@ -70,7 +70,7 @@ public enum RPCMessage {
 }
 
 /// RFC 5531: struct call_body
-public struct RPCCall: Equatable {
+public struct RPCCall: Hashable {
     public init(xid: UInt32, rpcVersion: UInt32, program: UInt32, programVersion: UInt32, procedure: UInt32, credentials: RPCCredentials, verifier: RPCOpaqueAuth) {
         self.xid = xid
         self.rpcVersion = rpcVersion
@@ -102,12 +102,12 @@ extension RPCCall {
     }
 }
 
-public enum RPCReplyStatus: Equatable {
+public enum RPCReplyStatus: Hashable {
     case messageAccepted(RPCAcceptedReply)
     case messageDenied(RPCRejectedReply)
 }
 
-public struct RPCReply: Equatable {
+public struct RPCReply: Hashable {
     public var xid: UInt32
     public var status: RPCReplyStatus
 
@@ -117,7 +117,7 @@ public struct RPCReply: Equatable {
     }
 }
 
-public enum RPCAcceptedReplyStatus: Equatable {
+public enum RPCAcceptedReplyStatus: Hashable {
     case success
     case programUnavailable
     case programMismatch(low: UInt32, high: UInt32)
@@ -126,7 +126,7 @@ public enum RPCAcceptedReplyStatus: Equatable {
     case systemError
 }
 
-public struct RPCOpaqueAuth: Equatable {
+public struct RPCOpaqueAuth: Hashable {
     public var flavor: RPCAuthFlavor
     public var opaque: ByteBuffer? = nil
 
@@ -136,7 +136,7 @@ public struct RPCOpaqueAuth: Equatable {
     }
 }
 
-public struct RPCAcceptedReply: Equatable {
+public struct RPCAcceptedReply: Hashable {
     public var verifier: RPCOpaqueAuth
     public var status: RPCAcceptedReplyStatus
 
@@ -164,7 +164,7 @@ public enum RPCAuthStatus: UInt32 {
    case problemWithGSSContext = 14 /* problem with context */
 }
 
-public enum RPCRejectedReply: Equatable {
+public enum RPCRejectedReply: Hashable {
     case rpcMismatch(low: UInt32, high: UInt32)
     case authError(RPCAuthStatus)
 }
@@ -182,7 +182,7 @@ public enum RPCErrors: Error {
     case illegalAuthStatus(UInt32)
 }
 
-public struct RPCCredentials: Equatable {
+public struct RPCCredentials: Hashable {
     internal var flavor: UInt32
     internal var length: UInt32
     internal var otherBytes: ByteBuffer

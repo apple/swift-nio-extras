@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Null
-public struct NFS3CallNull: Equatable {
+public struct NFS3CallNull: Hashable {
     public init() {}
 }
 

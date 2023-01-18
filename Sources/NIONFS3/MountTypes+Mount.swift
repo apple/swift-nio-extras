@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Mount
-public struct MountCallMount: Equatable {
+public struct MountCallMount: Hashable {
     public init(dirPath: String) {
         self.dirPath = dirPath
     }
@@ -23,12 +23,12 @@ public struct MountCallMount: Equatable {
     public var dirPath: String
 }
 
-public struct MountReplyMount: Equatable {
+public struct MountReplyMount: Hashable {
     public init(result: NFS3Result<MountReplyMount.Okay, NFS3Nothing>) {
         self.result = result
     }
 
-    public struct Okay: Equatable {
+    public struct Okay: Hashable {
         public init(fileHandle: NFS3FileHandle, authFlavors: [RPCAuthFlavor] = [.unix]) {
             self.fileHandle = fileHandle
             self.authFlavors = authFlavors

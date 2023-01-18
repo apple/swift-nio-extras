@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Null
-public struct MountCallNull: Equatable {
+public struct MountCallNull: Hashable {
     public init() {}
 }
 

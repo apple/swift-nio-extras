@@ -15,14 +15,14 @@
 import NIOCore
 
 // MARK: - Setattr
-public struct NFS3CallSetattr: Equatable {
+public struct NFS3CallSetattr: Hashable {
     public init(object: NFS3FileHandle, newAttributes: NFS3CallSetattr.Attributes, guard: NFS3Time? = nil) {
         self.object = object
         self.newAttributes = newAttributes
         self.guard = `guard`
     }
 
-    public struct Attributes: Equatable {
+    public struct Attributes: Hashable {
         public init(mode: NFS3FileMode? = nil, uid: NFS3UID? = nil, gid: NFS3GID? = nil, size: NFS3Size? = nil, atime: NFS3Time? = nil, mtime: NFS3Time? = nil) {
             self.mode = mode
             self.uid = uid
@@ -45,12 +45,12 @@ public struct NFS3CallSetattr: Equatable {
     public var `guard`: NFS3Time?
 }
 
-public struct NFS3ReplySetattr: Equatable {
+public struct NFS3ReplySetattr: Hashable {
     public init(result: NFS3Result<NFS3ReplySetattr.Okay, NFS3ReplySetattr.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Equatable {
+    public struct Okay: Hashable {
         public init(wcc: NFS3WeakCacheConsistencyData) {
             self.wcc = wcc
         }
@@ -58,7 +58,7 @@ public struct NFS3ReplySetattr: Equatable {
         public var wcc: NFS3WeakCacheConsistencyData
     }
 
-    public struct Fail: Equatable {
+    public struct Fail: Hashable {
         public init(wcc: NFS3WeakCacheConsistencyData) {
             self.wcc = wcc
         }

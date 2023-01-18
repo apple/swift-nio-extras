@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Readlink
-public struct NFS3CallReadlink: Equatable {
+public struct NFS3CallReadlink: Hashable {
     public init(symlink: NFS3FileHandle) {
         self.symlink = symlink
     }
@@ -23,12 +23,12 @@ public struct NFS3CallReadlink: Equatable {
     public var symlink: NFS3FileHandle
 }
 
-public struct NFS3ReplyReadlink: Equatable {
+public struct NFS3ReplyReadlink: Hashable {
     public init(result: NFS3Result<NFS3ReplyReadlink.Okay, NFS3ReplyReadlink.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Equatable {
+    public struct Okay: Hashable {
         public init(symlinkAttributes: NFS3FileAttr? = nil, target: String) {
             self.symlinkAttributes = symlinkAttributes
             self.target = target
@@ -38,7 +38,7 @@ public struct NFS3ReplyReadlink: Equatable {
         public var target: String
     }
 
-    public struct Fail: Equatable {
+    public struct Fail: Hashable {
         public init(symlinkAttributes: NFS3FileAttr? = nil) {
             self.symlinkAttributes = symlinkAttributes
         }

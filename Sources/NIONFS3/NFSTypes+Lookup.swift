@@ -15,7 +15,7 @@
 import NIOCore
 
 // MARK: - Lookup
-public struct NFS3CallLookup: Equatable {
+public struct NFS3CallLookup: Hashable {
     public init(dir: NFS3FileHandle, name: String) {
         self.dir = dir
         self.name = name
@@ -25,12 +25,12 @@ public struct NFS3CallLookup: Equatable {
     public var name: String
 }
 
-public struct NFS3ReplyLookup: Equatable {
+public struct NFS3ReplyLookup: Hashable {
     public init(result: NFS3Result<NFS3ReplyLookup.Okay, NFS3ReplyLookup.Fail>) {
         self.result = result
     }
 
-    public struct Okay: Equatable {
+    public struct Okay: Hashable {
         public init(fileHandle: NFS3FileHandle, attributes: NFS3FileAttr?, dirAttributes: NFS3FileAttr?) {
             self.fileHandle = fileHandle
             self.attributes = attributes
@@ -42,7 +42,7 @@ public struct NFS3ReplyLookup: Equatable {
         public var dirAttributes: NFS3FileAttr?
     }
 
-    public struct Fail: Equatable {
+    public struct Fail: Hashable {
         public init(dirAttributes: NFS3FileAttr? = nil) {
             self.dirAttributes = dirAttributes
         }
