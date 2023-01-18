@@ -56,7 +56,6 @@ final class NFS3ReplyEncoderTest: XCTestCase {
                            fullSerialisation.readableBytes)
             XCTAssertEqual(UInt32(payloadLength),
                            partialSerialisation.getInteger(at: partialSerialisation.writerIndex - 4,
-                                                           endianness: .big,
                                                            as: UInt32.self))
         }
     }

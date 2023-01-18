@@ -153,7 +153,7 @@ internal func nfsStringFillBytes(_ byteCount: Int) -> Int {
 
 extension ByteBuffer {
     mutating func readRPCVerifier() throws -> RPCOpaqueAuth {
-        guard let (flavor, length) = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt32).self) else {
+        guard let (flavor, length) = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
                   throw NFS3Error.illegalRPCTooShort
         }
         guard (flavor == RPCAuthFlavor.system.rawValue || flavor == RPCAuthFlavor.noAuth.rawValue) && length == 0 else {
@@ -163,17 +163,17 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeRPCVerifier(_ verifier: RPCOpaqueAuth) -> Int {
-        var bytesWritten = self.writeInteger(verifier.flavor.rawValue, endianness: .big)
+        var bytesWritten = self.writeInteger(verifier.flavor.rawValue)
         if let opaqueBlob = verifier.opaque {
             bytesWritten += self.writeNFS3Blob(opaqueBlob)
         } else {
-            bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0, as: UInt32.self)
         }
         return bytesWritten
     }
 
     public mutating func readRPCCredentials() throws -> RPCCredentials {
-        guard let flavor = self.readInteger(endianness: .big, as: UInt32.self) else {
+        guard let flavor = self.readInteger(as: UInt32.self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         let blob = try self.readNFS3Blob()
@@ -187,7 +187,7 @@ extension ByteBuffer {
 
     public mutating func readRPCFragmentHeader() throws -> RPCFragmentHeader? {
         let save = self
-        guard let lastAndLength = self.readInteger(endianness: .big, as: UInt32.self) else {
+        guard let lastAndLength = self.readInteger(as: UInt32.self) else {
             self = save
             return nil
         }
@@ -196,7 +196,7 @@ extension ByteBuffer {
 
     @discardableResult
     public mutating func setRPCFragmentHeader(_ header: RPCFragmentHeader, at index: Int) -> Int {
-        return self.setInteger(header.rawValue, at: index, endianness: .big)
+        return self.setInteger(header.rawValue, at: index)
     }
 
     @discardableResult public mutating func writeRPCFragmentHeader(_ header: RPCFragmentHeader) -> Int {
@@ -263,31 +263,29 @@ extension ByteBuffer {
             call.rpcVersion,
             call.program,
             call.programVersion,
-            call.procedure,
-            endianness: .big)
+            call.procedure)
         + self.writeRPCCredentials(call.credentials)
         + self.writeRPCVerifier(call.verifier)
     }
 
     @discardableResult public mutating func writeRPCReply(_ reply: RPCReply) -> Int {
-        var bytesWritten = self.writeInteger(RPCMessageType.reply.rawValue, endianness: .big)
+        var bytesWritten = self.writeInteger(RPCMessageType.reply.rawValue)
 
         switch reply.status {
         case .messageAccepted(_):
-            bytesWritten += self.writeInteger(0 /* accepted */, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0 /* accepted */, as: UInt32.self)
         case .messageDenied(_):
             // FIXME: MSG_DENIED (spec name) isn't actually handled correctly here.
-            bytesWritten += self.writeInteger(1 /* denied */, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(1 /* denied */, as: UInt32.self)
         }
-        bytesWritten += self.writeInteger(0 /* verifier */, endianness: .big, as: UInt64.self)
-        + self.writeInteger(0 /* executed successfully */, endianness: .big, as: UInt32.self)
+        bytesWritten += self.writeInteger(0 /* verifier */, as: UInt64.self)
+        + self.writeInteger(0 /* executed successfully */, as: UInt32.self)
         return bytesWritten
     }
 
 
     public mutating func readRPCCall(xid: UInt32) throws -> RPCCall {
-        guard let values = self.readMultipleIntegers(endianness: .big,
-                                                     as: (UInt32, UInt32, UInt32, UInt32).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
 
@@ -385,7 +383,7 @@ extension ByteBuffer {
     @discardableResult public mutating func writeRPCNFS3Call(_ rpcNFS3Call: RPCNFS3Call) -> Int {
         let startWriterIndex = self.writerIndex
         self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
-        self.writeInteger(rpcNFS3Call.rpcCall.xid, endianness: .big)
+        self.writeInteger(rpcNFS3Call.rpcCall.xid)
 
         self.writeRPCCall(rpcNFS3Call.rpcCall)
 
@@ -436,7 +434,7 @@ extension ByteBuffer {
 
         let startWriterIndex = self.writerIndex
         self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
-        self.writeInteger(rpcNFS3Reply.rpcReply.xid, endianness: .big)
+        self.writeInteger(rpcNFS3Reply.rpcReply.xid)
 
         self.writeRPCReply(rpcNFS3Reply.rpcReply)
 
@@ -498,8 +496,8 @@ extension ByteBuffer {
     public mutating func readRPCMessage() throws -> (RPCMessage, ByteBuffer)? {
         let save = self
         guard let fragmentHeader = try self.readRPCFragmentHeader(),
-              let xid = self.readInteger(endianness: .big, as: UInt32.self),
-              let messageType = self.readInteger(endianness: .big, as: UInt32.self) else {
+              let xid = self.readInteger(as: UInt32.self),
+              let messageType = self.readInteger(as: UInt32.self) else {
             self = save
             return nil
         }

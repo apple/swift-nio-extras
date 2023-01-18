@@ -525,7 +525,7 @@ public struct NFS3FileHandle: Hashable & Sendable & CustomStringConvertible {
         precondition(bytes.readableBytes == MemoryLayout<UInt64>.size,
                      "Sorry, at the moment only file handles with exactly 8 bytes are implemented.")
         var bytes = bytes
-        self = NFS3FileHandle(bytes.readInteger(endianness: .big, as: UInt64.self)!)
+        self = NFS3FileHandle(bytes.readInteger(as: UInt64.self)!)
     }
 
     public var description: String {
@@ -648,7 +648,7 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3Integer<I: FixedWidthInteger>(as: I.Type = I.self) throws -> I {
-        if let value = self.readInteger(endianness: .big, as: I.self) {
+        if let value = self.readInteger(as: I.self) {
             return value
         } else {
             throw NFS3Error.illegalRPCTooShort
@@ -666,7 +666,7 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeNFS3Blob(_ blob: ByteBuffer) -> Int {
         let byteCount = blob.readableBytes
-        return self.writeInteger(UInt32(byteCount), endianness: .big)
+        return self.writeInteger(UInt32(byteCount))
         + self.writeImmutableBuffer(blob)
         + self.writeRepeatingByte(0x42, count: nfsStringFillBytes(byteCount))
     }
@@ -678,13 +678,13 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeNFS3String(_ string: String) -> Int {
         let byteCount = string.utf8.count
-        return self.writeInteger(UInt32(byteCount), endianness: .big)
+        return self.writeInteger(UInt32(byteCount))
         + self.writeString(string)
         + self.writeRepeatingByte(0x42, count: nfsStringFillBytes(byteCount))
     }
 
     public mutating func readNFS3FileHandle() throws -> NFS3FileHandle {
-        guard let values = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt64).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt64).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         let length = values.0
@@ -700,20 +700,19 @@ extension ByteBuffer {
     @discardableResult public mutating func writeNFS3FileHandle(_ fileHandle: NFS3FileHandle) -> Int {
         // TODO: This ! is safe at the moment until the file handle == 64 bits limitation is lifted
         let id = UInt64(fileHandle)!
-        return self.writeMultipleIntegers(UInt32(MemoryLayout.size(ofValue: id)), id, endianness: .big)
+        return self.writeMultipleIntegers(UInt32(MemoryLayout.size(ofValue: id)), id)
     }
 
     @discardableResult public mutating func writeNFS3FileType(_ fileType: NFS3FileType) -> Int {
-        self.writeInteger(fileType.rawValue, endianness: .big)
+        self.writeInteger(fileType.rawValue)
     }
 
     @discardableResult public mutating func writeNFS3Time(_ time: NFS3Time) -> Int {
-        self.writeMultipleIntegers(time.seconds, time.nanoseconds, endianness: .big)
+        self.writeMultipleIntegers(time.seconds, time.nanoseconds)
     }
 
     public mutating func read3NFS3Times() throws -> (NFS3Time, NFS3Time, NFS3Time) {
-        guard let values = self.readMultipleIntegers(endianness: .big,
-                                                     as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         return (NFS3Time(seconds: values.0, nanoseconds: values.1),
@@ -728,7 +727,7 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3Time() throws -> NFS3Time {
-        guard let values = self.readMultipleIntegers(endianness: .big, as: (UInt32, UInt32).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
 
@@ -746,8 +745,7 @@ extension ByteBuffer {
 
     public mutating func readNFS3FileAttr() throws -> NFS3FileAttr {
         let type = try self.readNFS3FileType()
-        guard let values = self.readMultipleIntegers(endianness: .big,
-                                                     as: (UInt32, UInt32, UInt32, UInt32, NFS3Size.RawValue,
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, NFS3Size.RawValue,
                                                           NFS3Size.RawValue, UInt64, UInt64, NFS3FileID.RawValue,
                                                           UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
@@ -789,12 +787,11 @@ extension ByteBuffer {
             attributes.mtime.seconds,
             attributes.mtime.nanoseconds,
             attributes.ctime.seconds,
-            attributes.ctime.nanoseconds,
-            endianness: .big)
+            attributes.ctime.nanoseconds)
     }
 
     @discardableResult public mutating func writeNFS3Bool(_ bool: NFS3Bool) -> Int {
-        self.writeInteger(bool == true ? 1 : 0, endianness: .big, as: UInt32.self)
+        self.writeInteger(bool == true ? 1 : 0, as: UInt32.self)
     }
 
     public mutating func readNFS3Bool() throws -> Bool {
@@ -803,7 +800,7 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3Optional<T>(_ reader: (inout ByteBuffer) throws -> T) rethrows -> T? {
-        if self.readInteger(endianness: .big, as: UInt32.self) == 1 {
+        if self.readInteger(as: UInt32.self) == 1 {
             return try reader(&self)
         } else {
             return nil
@@ -812,10 +809,10 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeNFS3Optional<T>(_ value: T?, writer: (inout ByteBuffer, T) -> Int) -> Int {
         if let value = value {
-            return self.writeInteger(1, endianness: .big, as: UInt32.self)
+            return self.writeInteger(1, as: UInt32.self)
             + writer(&self, value)
         } else {
-            return self.writeInteger(0, endianness: .big, as: UInt32.self)
+            return self.writeInteger(0, as: UInt32.self)
         }
     }
 
@@ -832,7 +829,7 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeNFS3ResultStatus<O, F>(_ result: NFS3Result<O, F>) -> Int {
-        self.writeInteger(result.status.rawValue, endianness: .big, as: UInt32.self)
+        self.writeInteger(result.status.rawValue, as: UInt32.self)
     }
 
     public mutating func readNFS3Status() throws -> NFS3Status {

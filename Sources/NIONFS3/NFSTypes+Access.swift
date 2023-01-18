@@ -60,7 +60,7 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeNFS3CallAccess(_ call: NFS3CallAccess) -> Int {
         return self.writeNFS3FileHandle(call.object)
-        + self.writeInteger(call.access.rawValue, endianness: .big)
+        + self.writeInteger(call.access.rawValue)
     }
 
     public mutating func readNFS3ReplyAccess() throws -> NFS3ReplyAccess {
@@ -84,22 +84,22 @@ extension ByteBuffer {
 
         switch accessResult.result {
         case .okay(let result):
-            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue)
             if let attrs = result.dirAttributes {
-                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(1, as: UInt32.self)
                 + self.writeNFS3FileAttr(attrs)
             } else {
-                bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(0, as: UInt32.self)
             }
-            bytesWritten += self.writeInteger(result.access.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(result.access.rawValue)
         case .fail(let status, let fail):
             precondition(status != .ok)
-            bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(status.rawValue)
             if let attrs = fail.dirAttributes {
-                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(1, as: UInt32.self)
                 + self.writeNFS3FileAttr(attrs)
             } else {
-                bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(0, as: UInt32.self)
             }
         }
         return bytesWritten

@@ -121,8 +121,7 @@ extension ByteBuffer {
                 okay.tfiles.rawValue,
                 okay.ffiles.rawValue,
                 okay.afiles.rawValue,
-                okay.invarsec,
-                endianness: .big)
+                okay.invarsec)
         case .fail(_, let fail):
             bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }

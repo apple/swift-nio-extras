@@ -118,10 +118,9 @@ extension ByteBuffer {
                 reply.wtpref,
                 reply.wtmult,
                 reply.dtpref,
-                reply.maxFileSize.rawValue,
-                endianness: .big)
+                reply.maxFileSize.rawValue)
             + self.writeNFS3Time(reply.timeDelta)
-            + self.writeInteger(reply.properties.rawValue, endianness: .big)
+            + self.writeInteger(reply.properties.rawValue)
         case .fail(_, let fail):
             bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }
@@ -130,8 +129,7 @@ extension ByteBuffer {
 
     private mutating func readNFS3ReplyFSInfoOkay() throws -> NFS3ReplyFSInfo.Okay {
         let fileAttr = try self.readNFS3Optional { try $0.readNFS3FileAttr() }
-        guard let values = self.readMultipleIntegers(endianness: .big,
-                                                      as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
             throw NFS3Error.illegalRPCTooShort
         }
         let rtmax = values.0

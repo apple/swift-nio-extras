@@ -59,9 +59,9 @@ extension ByteBuffer {
             bytesWritten += self.writeNFS3FileHandle(reply.fileHandle)
             precondition(reply.authFlavors == [.unix] || reply.authFlavors == [.noAuth],
                          "Sorry, anything but [.unix] / [.system] / [.noAuth] unimplemented.")
-            bytesWritten += self.writeInteger(UInt32(reply.authFlavors.count), endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(UInt32(reply.authFlavors.count), as: UInt32.self)
             for flavor in reply.authFlavors {
-                bytesWritten += self.writeInteger(flavor.rawValue, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(flavor.rawValue, as: UInt32.self)
             }
         case .fail(_, _):
             ()

@@ -71,7 +71,7 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeNFS3CallRead(_ call: NFS3CallRead) -> Int {
         return self.writeNFS3FileHandle(call.fileHandle)
-        + self.writeMultipleIntegers(call.offset.rawValue, call.count.rawValue, endianness: .big)
+        + self.writeMultipleIntegers(call.offset.rawValue, call.count.rawValue)
     }
 
     public mutating func readNFS3ReplyRead() throws -> NFS3ReplyRead {
@@ -102,7 +102,7 @@ extension ByteBuffer {
     public mutating func writeNFS3ReplyReadPartially(_ read: NFS3ReplyRead) -> NFS3PartialWriteNextStep {
         switch read.result {
         case .okay(let result):
-            self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
+            self.writeInteger(NFS3Status.ok.rawValue)
             self.writeNFS3Optional(result.attributes, writer: { $0.writeNFS3FileAttr($1) })
             self.writeMultipleIntegers(
                 result.count.rawValue,
@@ -112,7 +112,7 @@ extension ByteBuffer {
             return .writeBlob(result.data, numberOfFillBytes: nfsStringFillBytes(result.data.readableBytes))
         case .fail(let status, let fail):
             precondition(status != .ok)
-            self.writeInteger(status.rawValue, endianness: .big)
+            self.writeInteger(status.rawValue)
             self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
             return .doNothing
         }

@@ -156,18 +156,18 @@ extension ByteBuffer {
 
         switch rdp.result {
         case .okay(let result):
-            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(NFS3Status.ok.rawValue)
             + self.writeNFS3Optional(result.dirAttributes, writer: { $0.writeNFS3FileAttr($1) })
             + self.writeNFS3CookieVerifier(result.cookieVerifier)
             for entry in result.entries {
-                bytesWritten += self.writeInteger(1, endianness: .big, as: UInt32.self)
+                bytesWritten += self.writeInteger(1, as: UInt32.self)
                 + self.writeReadDirPlusEntry(entry)
             }
-            bytesWritten += self.writeInteger(0, endianness: .big, as: UInt32.self)
-            + self.writeInteger(result.eof == true ? 1 : 0, endianness: .big, as: UInt32.self)
+            bytesWritten += self.writeInteger(0, as: UInt32.self)
+            + self.writeInteger(result.eof == true ? 1 : 0, as: UInt32.self)
         case .fail(let status, let fail):
             precondition(status != .ok)
-            bytesWritten += self.writeInteger(status.rawValue, endianness: .big)
+            bytesWritten += self.writeInteger(status.rawValue)
             + self.writeNFS3Optional(fail.dirAttributes, writer: { $0.writeNFS3FileAttr($1) })
         }
 
