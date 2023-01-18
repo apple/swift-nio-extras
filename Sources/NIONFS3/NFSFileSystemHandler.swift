@@ -62,12 +62,12 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
 
     func sendError(_ error: Error, call: RPCNFS3Call) {
         if let context = self.context {
-            context.fireErrorCaught(error)
             let nfsErrorReply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
                                                              status: self.rpcReplySuccess),
                                              nfsReply: .mount(.init(result: .fail(.errorSERVERFAULT,
                                                                                   NFS3Nothing()))))
             context.writeAndFlush(self.wrapOutboundOut(nfsErrorReply), promise: nil)
+            context.fireErrorCaught(error)
         }
     }
 
