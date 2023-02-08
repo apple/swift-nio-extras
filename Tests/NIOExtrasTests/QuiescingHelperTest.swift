@@ -136,4 +136,19 @@ public class QuiescingHelperTest: XCTestCase {
             XCTAssert(error is DummyError)
         }
     }
+
+    ///verifying that the promise fails when goes out of scope for shutdown
+    func testShutdownIsImmediateWhenPromiseDoesNotSucceed() throws {
+        let el = EmbeddedEventLoop()
+
+        let p: EventLoopPromise<Void> = el.makePromise()
+
+        do {
+            let quiesce = ServerQuiescingHelper(group: el)
+            quiesce.initiateShutdown(promise: p)
+        }
+        XCTAssertThrowsError(try p.futureResult.wait()) { error in
+            XCTAssertTrue(error is ServerQuiescingHelper.UnusedQuiescingHelperError)
+        }
+    }
 }
