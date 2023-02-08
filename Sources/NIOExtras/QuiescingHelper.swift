@@ -216,6 +216,7 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
 ///     try fullyShutdownPromise.futureResult.wait()
 ///
 public final class ServerQuiescingHelper {
+    /// The `ServerQuiescingHelper` was never used to create a channel handler.
     public struct UnusedQuiescingHelperError: Error {}
     private let channelCollectorPromise: EventLoopPromise<ChannelCollector>
 
@@ -227,7 +228,6 @@ public final class ServerQuiescingHelper {
         self.channelCollectorPromise = group.next().makePromise()
     }
 
-    /// Deinitilaize the `channelCollectorPromise` with failure when promise never succeeded
     deinit {
         self.channelCollectorPromise.fail(UnusedQuiescingHelperError())
     }
