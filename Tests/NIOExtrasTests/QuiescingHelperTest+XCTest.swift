@@ -30,6 +30,7 @@ extension QuiescingHelperTest {
                 ("testShutdownIsImmediateWhenNoChannelsCollected", testShutdownIsImmediateWhenNoChannelsCollected),
                 ("testQuiesceUserEventReceivedOnShutdown", testQuiesceUserEventReceivedOnShutdown),
                 ("testQuiescingDoesNotSwallowCloseErrorsFromAcceptHandler", testQuiescingDoesNotSwallowCloseErrorsFromAcceptHandler),
+                ("testShutdownIsImmediateWhenPromiseDoesNotSucceed", testShutdownIsImmediateWhenPromiseDoesNotSucceed),
            ]
    }
 }
