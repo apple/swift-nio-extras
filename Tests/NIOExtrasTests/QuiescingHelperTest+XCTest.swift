@@ -31,6 +31,11 @@ extension QuiescingHelperTest {
                 ("testQuiesceUserEventReceivedOnShutdown", testQuiesceUserEventReceivedOnShutdown),
                 ("testQuiescingDoesNotSwallowCloseErrorsFromAcceptHandler", testQuiescingDoesNotSwallowCloseErrorsFromAcceptHandler),
                 ("testShutdownIsImmediateWhenPromiseDoesNotSucceed", testShutdownIsImmediateWhenPromiseDoesNotSucceed),
+                ("testShutdown_whenAlreadyShutdown", testShutdown_whenAlreadyShutdown),
+                ("testShutdown_whenNoOpenChild", testShutdown_whenNoOpenChild),
+                ("testChannelClose_whenRunning", testChannelClose_whenRunning),
+                ("testChannelAdded_whenShuttingDown", testChannelAdded_whenShuttingDown),
+                ("testChannelAdded_whenShutdown", testChannelAdded_whenShutdown),
            ]
    }
 }

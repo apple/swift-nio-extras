@@ -23,23 +23,25 @@ private enum ShutdownError: Error {
 /// `channelAdded` method in the same event loop tick as the `Channel` is actually created.
 private final class ChannelCollector {
     enum LifecycleState {
-        case upAndRunning
-        case shuttingDown
+        case upAndRunning(
+            openChannels: [ObjectIdentifier: Channel],
+            serverChannel: Channel
+        )
+        case shuttingDown(
+            openChannels: [ObjectIdentifier: Channel],
+            fullyShutdownPromise: EventLoopPromise<Void>
+        )
         case shutdownCompleted
     }
 
-    private var openChannels: [ObjectIdentifier: Channel] = [:]
-    private let serverChannel: Channel
-    private var fullyShutdownPromise: EventLoopPromise<Void>? = nil
-    private var lifecycleState = LifecycleState.upAndRunning
+    private var lifecycleState: LifecycleState
 
-    private var eventLoop: EventLoop {
-        return self.serverChannel.eventLoop
-    }
+    private let eventLoop: EventLoop
 
     /// Initializes a `ChannelCollector` for `Channel`s accepted by `serverChannel`.
     init(serverChannel: Channel) {
-        self.serverChannel = serverChannel
+        self.eventLoop = serverChannel.eventLoop
+        self.lifecycleState = .upAndRunning(openChannels: [:], serverChannel: serverChannel)
     }
 
     /// Add a channel to the `ChannelCollector`.
@@ -51,30 +53,64 @@ private final class ChannelCollector {
     func channelAdded(_ channel: Channel) throws {
         self.eventLoop.assertInEventLoop()
 
-        guard self.lifecycleState != .shutdownCompleted else {
+        switch self.lifecycleState {
+        case .upAndRunning(var openChannels, let serverChannel):
+            openChannels[ObjectIdentifier(channel)] = channel
+            self.lifecycleState = .upAndRunning(openChannels: openChannels, serverChannel: serverChannel)
+
+        case .shuttingDown(var openChannels, let fullyShutdownPromise):
+            openChannels[ObjectIdentifier(channel)] = channel
+            channel.eventLoop.execute {
+                channel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
+            }
+            self.lifecycleState = .shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise)
+
+        case .shutdownCompleted:
             channel.close(promise: nil)
             throw ShutdownError.alreadyShutdown
         }
-
-        self.openChannels[ObjectIdentifier(channel)] = channel
     }
 
     private func shutdownCompleted() {
         self.eventLoop.assertInEventLoop()
-        assert(self.lifecycleState == .shuttingDown)
 
-        self.lifecycleState = .shutdownCompleted
-        self.fullyShutdownPromise?.succeed(())
+        switch self.lifecycleState {
+        case .upAndRunning:
+            preconditionFailure("This can never happen because we transition to shuttingDown first")
+
+        case .shuttingDown(_, let fullyShutdownPromise):
+            self.lifecycleState = .shutdownCompleted
+            fullyShutdownPromise.succeed(())
+
+        case .shutdownCompleted:
+            preconditionFailure("We should only complete the shutdown once")
+        }
     }
 
     private func channelRemoved0(_ channel: Channel) {
         self.eventLoop.assertInEventLoop()
-        precondition(self.openChannels.keys.contains(ObjectIdentifier(channel)),
-                     "channel \(channel) not in ChannelCollector \(self.openChannels)")
 
-        self.openChannels.removeValue(forKey: ObjectIdentifier(channel))
-        if self.lifecycleState != .upAndRunning && self.openChannels.isEmpty {
-            shutdownCompleted()
+        switch self.lifecycleState {
+        case .upAndRunning(var openChannels, let serverChannel):
+            let removedChannel = openChannels.removeValue(forKey: ObjectIdentifier(channel))
+
+            precondition(removedChannel != nil, "channel \(channel) not in ChannelCollector \(openChannels)")
+
+            self.lifecycleState = .upAndRunning(openChannels: openChannels, serverChannel: serverChannel)
+
+        case .shuttingDown(var openChannels, let fullyShutdownPromise):
+            let removedChannel = openChannels.removeValue(forKey: ObjectIdentifier(channel))
+
+            precondition(removedChannel != nil, "channel \(channel) not in ChannelCollector \(openChannels)")
+
+            if openChannels.isEmpty {
+                self.shutdownCompleted()
+            } else {
+                self.lifecycleState = .shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise)
+            }
+
+        case .shutdownCompleted:
+            preconditionFailure("We should not have channels removed after transitioned to completed")
         }
     }
 
@@ -96,44 +132,39 @@ private final class ChannelCollector {
 
     private func initiateShutdown0(promise: EventLoopPromise<Void>?) {
         self.eventLoop.assertInEventLoop()
-        precondition(self.lifecycleState == .upAndRunning)
 
-        self.lifecycleState = .shuttingDown
+        switch self.lifecycleState {
+        case .upAndRunning(let openChannels, let serverChannel):
+            let fullyShutdownPromise = promise ?? serverChannel.eventLoop.makePromise(of: Void.self)
 
-        if let promise = promise {
-            if let alreadyExistingPromise = self.fullyShutdownPromise {
-                alreadyExistingPromise.futureResult.cascade(to: promise)
-            } else {
-                self.fullyShutdownPromise = promise
+            self.lifecycleState = .shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise)
+
+            serverChannel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
+            serverChannel.close().cascadeFailure(to: fullyShutdownPromise)
+
+            for channel in openChannels.values {
+                channel.eventLoop.execute {
+                    channel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
+                }
             }
-        }
 
-        self.serverChannel.close().cascadeFailure(to: self.fullyShutdownPromise)
-
-        for channel in self.openChannels.values {
-            channel.eventLoop.execute {
-                channel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
+            if openChannels.isEmpty {
+                self.shutdownCompleted()
             }
-        }
 
-        if self.openChannels.isEmpty {
-            shutdownCompleted()
+        case .shuttingDown(_, let fullyShutdownPromise):
+            fullyShutdownPromise.futureResult.cascade(to: promise)
+
+        case .shutdownCompleted:
+            promise?.succeed(())
         }
     }
 
     /// Initiate the shutdown fulfilling `promise` when all the previously registered `Channel`s have been closed.
     ///
     /// - parameters:
-    ///    - promise: The `EventLoopPromise` to fulfill when the shutdown of all previously registered `Channel`s has been completed.
+    ///    - promise: The `EventLoopPromise` to fulfil when the shutdown of all previously registered `Channel`s has been completed.
     func initiateShutdown(promise: EventLoopPromise<Void>?) {
-        if self.serverChannel.eventLoop.inEventLoop {
-            self.serverChannel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
-        } else {
-            self.eventLoop.execute {
-                self.serverChannel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
-            }
-        }
-
         if self.eventLoop.inEventLoop {
             self.initiateShutdown0(promise: promise)
         } else {
@@ -143,7 +174,6 @@ private final class ChannelCollector {
         }
     }
 }
-
 
 extension ChannelCollector: @unchecked Sendable {}
 
@@ -173,7 +203,7 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
         do {
             try self.channelCollector.channelAdded(channel)
             let closeFuture = channel.closeFuture
-            closeFuture.whenComplete { (_: Result<(), Error>) in
+            closeFuture.whenComplete { (_: Result<Void, Error>) in
                 self.channelCollector.channelRemoved(channel)
             }
             context.fireChannelRead(data)
@@ -231,7 +261,7 @@ public final class ServerQuiescingHelper {
     deinit {
         self.channelCollectorPromise.fail(UnusedQuiescingHelperError())
     }
-    
+
     /// Create the `ChannelHandler` for the server `channel` to collect all accepted child `Channel`s.
     ///
     /// - parameters:
@@ -262,6 +292,4 @@ public final class ServerQuiescingHelper {
     }
 }
 
-extension ServerQuiescingHelper: Sendable {
-
-}
+extension ServerQuiescingHelper: Sendable {}
