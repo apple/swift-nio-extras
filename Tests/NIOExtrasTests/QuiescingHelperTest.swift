@@ -12,12 +12,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
+@testable import NIOExtras
 import NIOPosix
 import NIOTestUtils
-@testable import NIOExtras
+import XCTest
+
+private final class WaitForQuiesceUserEvent: ChannelInboundHandler {
+    typealias InboundIn = Never
+    private let promise: EventLoopPromise<Void>
+
+    init(promise: EventLoopPromise<Void>) {
+        self.promise = promise
+    }
+
+    func userInboundEventTriggered(context _: ChannelHandlerContext, event: Any) {
+        if event is ChannelShouldQuiesceEvent {
+            self.promise.succeed(())
+        }
+    }
+}
 
 public class QuiescingHelperTest: XCTestCase {
     func testShutdownIsImmediateWhenNoChannelsCollected() throws {
@@ -35,21 +50,6 @@ public class QuiescingHelperTest: XCTestCase {
     }
 
     func testQuiesceUserEventReceivedOnShutdown() throws {
-        class WaitForQuiesceUserEvent: ChannelInboundHandler {
-            typealias InboundIn = Never
-            private let promise: EventLoopPromise<Void>
-
-            init(promise: EventLoopPromise<Void>) {
-                self.promise = promise
-            }
-
-            func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
-                if event is ChannelShouldQuiesceEvent {
-                    self.promise.succeed(())
-                }
-            }
-        }
-
         let el = EmbeddedEventLoop()
         let allShutdownPromise: EventLoopPromise<Void> = el.makePromise()
         let serverChannel = EmbeddedChannel(handler: nil, loop: el)
@@ -63,7 +63,7 @@ public class QuiescingHelperTest: XCTestCase {
 
         // add a bunch of channels
         for pretendPort in 1...128 {
-            let waitForPromise: EventLoopPromise<()> = el.makePromise()
+            let waitForPromise: EventLoopPromise<Void> = el.makePromise()
             let channel = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise), loop: el)
             // activate the child chan
             XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: pretendPort)).wait())
@@ -137,7 +137,7 @@ public class QuiescingHelperTest: XCTestCase {
         }
     }
 
-    ///verifying that the promise fails when goes out of scope for shutdown
+    /// verifying that the promise fails when goes out of scope for shutdown
     func testShutdownIsImmediateWhenPromiseDoesNotSucceed() throws {
         let el = EmbeddedEventLoop()
 
@@ -150,5 +150,165 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertThrowsError(try p.futureResult.wait()) { error in
             XCTAssertTrue(error is ServerQuiescingHelper.UnusedQuiescingHelperError)
         }
+    }
+
+    func testShutdown_whenAlreadyShutdown() throws {
+        let el = EmbeddedEventLoop()
+        let channel = EmbeddedChannel(handler: nil, loop: el)
+        // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
+        XCTAssertNoThrow(try channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
+        XCTAssertTrue(channel.isActive)
+        let quiesce = ServerQuiescingHelper(group: el)
+        _ = quiesce.makeServerChannelHandler(channel: channel)
+        let p1: EventLoopPromise<Void> = el.makePromise()
+        quiesce.initiateShutdown(promise: p1)
+        XCTAssertNoThrow(try p1.futureResult.wait())
+        XCTAssertFalse(channel.isActive)
+
+        let p2: EventLoopPromise<Void> = el.makePromise()
+        quiesce.initiateShutdown(promise: p2)
+        XCTAssertNoThrow(try p2.futureResult.wait())
+    }
+
+    func testShutdown_whenNoOpenChild() throws {
+        let el = EmbeddedEventLoop()
+        let channel = EmbeddedChannel(handler: nil, loop: el)
+        // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
+        XCTAssertNoThrow(try channel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
+        XCTAssertTrue(channel.isActive)
+        let quiesce = ServerQuiescingHelper(group: el)
+        _ = quiesce.makeServerChannelHandler(channel: channel)
+        let p1: EventLoopPromise<Void> = el.makePromise()
+        quiesce.initiateShutdown(promise: p1)
+        el.run()
+        XCTAssertNoThrow(try p1.futureResult.wait())
+        XCTAssertFalse(channel.isActive)
+    }
+
+    func testChannelClose_whenRunning() throws {
+        let el = EmbeddedEventLoop()
+        let allShutdownPromise: EventLoopPromise<Void> = el.makePromise()
+        let serverChannel = EmbeddedChannel(handler: nil, loop: el)
+        // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
+        XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
+        let quiesce = ServerQuiescingHelper(group: el)
+        let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
+        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+
+        // let's one channels
+        let eventCounterHandler = EventCounterHandler()
+        let childChannel1 = EmbeddedChannel(handler: eventCounterHandler, loop: el)
+        // activate the child channel
+        XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
+        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+
+        // check that the server channel and channel are active before initiating the shutdown
+        XCTAssertTrue(serverChannel.isActive)
+        XCTAssertTrue(childChannel1.isActive)
+
+        XCTAssertEqual(eventCounterHandler.userInboundEventTriggeredCalls, 0)
+
+        // now close the first child channel
+        childChannel1.close(promise: nil)
+        el.run()
+
+        // check that the server is active and child is not
+        XCTAssertTrue(serverChannel.isActive)
+        XCTAssertFalse(childChannel1.isActive)
+
+        quiesce.initiateShutdown(promise: allShutdownPromise)
+        el.run()
+
+        // check that the server channel is closed as the first thing
+        XCTAssertFalse(serverChannel.isActive)
+
+        el.run()
+
+        // check that the shutdown has completed
+        XCTAssertNoThrow(try allShutdownPromise.futureResult.wait())
+    }
+
+    func testChannelAdded_whenShuttingDown() throws {
+        let el = EmbeddedEventLoop()
+        let allShutdownPromise: EventLoopPromise<Void> = el.makePromise()
+        let serverChannel = EmbeddedChannel(handler: nil, loop: el)
+        // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
+        XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
+        let quiesce = ServerQuiescingHelper(group: el)
+        let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
+        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+
+        // let's add one channel
+        let waitForPromise1: EventLoopPromise<Void> = el.makePromise()
+        let childChannel1 = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise1), loop: el)
+        // activate the child channel
+        XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
+        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+
+        el.run()
+
+        // check that the server and channel are running
+        XCTAssertTrue(serverChannel.isActive)
+        XCTAssertTrue(childChannel1.isActive)
+
+        // let's shut down
+        quiesce.initiateShutdown(promise: allShutdownPromise)
+
+        // let's add one more channel
+        let waitForPromise2: EventLoopPromise<Void> = el.makePromise()
+        let childChannel2 = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise2), loop: el)
+        // activate the child channel
+        XCTAssertNoThrow(try childChannel2.connect(to: .init(ipAddress: "1.2.3.4", port: 2)).wait())
+        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel2))
+        el.run()
+
+        // Check that we got all quiescing events
+        XCTAssertNoThrow(try waitForPromise1.futureResult.wait() as Void)
+        XCTAssertNoThrow(try waitForPromise2.futureResult.wait() as Void)
+
+        // check that the server is closed and the children are running
+        XCTAssertFalse(serverChannel.isActive)
+        XCTAssertTrue(childChannel1.isActive)
+        XCTAssertTrue(childChannel2.isActive)
+
+        // let's close the children
+        childChannel1.close(promise: nil)
+        childChannel2.close(promise: nil)
+        el.run()
+
+        // check that everything is closed
+        XCTAssertFalse(serverChannel.isActive)
+        XCTAssertFalse(childChannel1.isActive)
+        XCTAssertFalse(childChannel2.isActive)
+
+        XCTAssertNoThrow(try allShutdownPromise.futureResult.wait() as Void)
+    }
+
+    func testChannelAdded_whenShutdown() throws {
+        let el = EmbeddedEventLoop()
+        let allShutdownPromise: EventLoopPromise<Void> = el.makePromise()
+        let serverChannel = EmbeddedChannel(handler: nil, loop: el)
+        // let's activate the server channel, nothing actually happens as this is an EmbeddedChannel
+        XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
+        let quiesce = ServerQuiescingHelper(group: el)
+        let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
+        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+
+        // check that the server is running
+        XCTAssertTrue(serverChannel.isActive)
+
+        // let's shut down
+        quiesce.initiateShutdown(promise: allShutdownPromise)
+
+        // check that the shutdown has completed
+        XCTAssertNoThrow(try allShutdownPromise.futureResult.wait())
+
+        // let's add one channel
+        let childChannel1 = EmbeddedChannel(loop: el)
+        // activate the child channel
+        XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
+        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+
+        el.run()
     }
 }
