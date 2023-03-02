@@ -599,7 +599,7 @@ extension NIOWritePCAPHandler {
     /// A synchronised file sink that uses a `DispatchQueue` to do all the necessary write synchronously.
     ///
     /// A `SynchronizedFileSink` is thread-safe so can be used from any thread/`EventLoop`. After use, you
-    /// _must_ call `syncClose` on the `SynchronizedFileSink` to shut it and all the associated resources down. Failing
+    /// _must_ call `syncClose` or `close` on the `SynchronizedFileSink` to shut it and all the associated resources down. Failing
     /// to do so triggers undefined behaviour.
     public final class SynchronizedFileSink {
         private let fileHandle: NIOFileHandle
@@ -682,15 +682,42 @@ extension NIOWritePCAPHandler {
             self.workQueue = DispatchQueue(label: "io.swiftnio.extras.WritePCAPHandler.SynchronizedFileSink.workQueue")
             self.errorHandler = errorHandler
         }
-        
+
+        #if swift(>=5.7)
         /// Synchronously close this `SynchronizedFileSink` and any associated resources.
         ///
         /// After use, it is mandatory to close a `SynchronizedFileSink` exactly once. `syncClose` may be called from
-        /// any thread but not from an `EventLoop` as it will block.
+        /// any thread but not from an `EventLoop` as it will block, and may not be called from an async context.
+        @available(*, noasync, message: "syncClose() can block indefinitely, prefer close()", renamed: "close()")
         public func syncClose() throws {
+            try self._syncClose()
+        }
+        #else
+        /// Synchronously close this `SynchronizedFileSink` and any associated resources.
+        ///
+        /// After use, it is mandatory to close a `SynchronizedFileSink` exactly once. `syncClose` may be called from
+        /// any thread but not from an `EventLoop` as it will block, and may not be called from an async context.
+        public func syncClose() throws {
+            try self._syncClose()
+        }
+        #endif
+
+        private func _syncClose() throws {
             self.writesGroup.wait()
             try self.workQueue.sync {
                 try self.fileHandle.close()
+            }
+        }
+
+        /// Close this `SynchronizedFileSink` and any associated resources.
+        ///
+        /// After use, it is mandatory to close a `SynchronizedFileSink` exactly once.
+        @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
+        public func close() async throws {
+            try await withCheckedThrowingContinuation { continuation in
+                self.workQueue.async {
+                    continuation.resume(with: Result { try self.fileHandle.close() })
+                }
             }
         }
         

@@ -59,6 +59,7 @@ class LinuxMainRunner {
              testCase(ServerResponseTests.allTests),
              testCase(ServerStateMachineTests.allTests),
              testCase(SocksClientHandlerTests.allTests),
+             testCase(SynchronizedFileSinkTests.allTests),
              testCase(WritePCAPHandlerTest.allTests),
         ])
     }
