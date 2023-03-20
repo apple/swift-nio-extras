@@ -113,14 +113,12 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "NIONFS3",
         dependencies: [
-            .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
         ]),
     .testTarget(
         name: "NIONFS3Tests",
         dependencies: [
             "NIONFS3",
-            .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
         ]),

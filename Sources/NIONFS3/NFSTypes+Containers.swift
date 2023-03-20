@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2021-2022 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2021-2023 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -152,7 +152,7 @@ internal func nfsStringFillBytes(_ byteCount: Int) -> Int {
 }
 
 extension ByteBuffer {
-    mutating func readRPCVerifier() throws -> RPCOpaqueAuth {
+    public mutating func readRPCVerifier() throws -> RPCOpaqueAuth {
         guard let (flavor, length) = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
                   throw NFS3Error.illegalRPCTooShort
         }

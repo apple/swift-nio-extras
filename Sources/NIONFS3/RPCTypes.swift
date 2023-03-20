@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2021-2022 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2021-2023 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct RPCFragmentHeader {
+public struct RPCFragmentHeader: Hashable & Sendable {
     public var length: UInt32
     public var last: Bool
 
@@ -37,13 +37,13 @@ public struct RPCFragmentHeader {
     }
 }
 
-public enum RPCMessageType: UInt32 {
+public enum RPCMessageType: UInt32, Hashable & Sendable {
     case call = 0
     case reply = 1
 }
 
 /// RFC 5531: struct rpc_msg
-public enum RPCMessage {
+public enum RPCMessage: Hashable & Sendable {
     case call(RPCCall)
     case reply(RPCReply)
 
@@ -146,7 +146,7 @@ public struct RPCAcceptedReply: Hashable & Sendable {
     }
 }
 
-public enum RPCAuthStatus: UInt32, Sendable {
+public enum RPCAuthStatus: UInt32, Hashable & Sendable {
    case ok = 0  /* success                        */
    case badCredentials = 1  /* bad credential (seal broken)   */
    case rejectedCredentials = 2  /* client must begin new session  */
@@ -194,7 +194,7 @@ public struct RPCCredentials: Hashable & Sendable {
     }
 }
 
-public enum RPCAuthFlavor: UInt32, Sendable {
+public enum RPCAuthFlavor: UInt32, Hashable & Sendable {
     case noAuth = 0
     case system = 1
     case short = 2
