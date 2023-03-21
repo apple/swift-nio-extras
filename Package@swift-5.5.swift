@@ -109,7 +109,19 @@ var targets: [PackageDescription.Target] = [
             "NIOSOCKS",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
-        ])
+        ]),
+    .target(
+        name: "NIONFS3",
+        dependencies: [
+            .product(name: "NIOCore", package: "swift-nio"),
+        ]),
+    .testTarget(
+        name: "NIONFS3Tests",
+        dependencies: [
+            "NIONFS3",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOTestUtils", package: "swift-nio"),
+        ]),
 ]
 
 let package = Package(
