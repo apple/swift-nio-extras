@@ -59,6 +59,7 @@ class LinuxMainRunner {
              testCase(PCAPRingBufferTest.allTests),
              testCase(QuiescingHelperTest.allTests),
              testCase(RequestResponseHandlerTest.allTests),
+             testCase(RequestResponseWithIDHandlerTest.allTests),
              testCase(SOCKSServerHandlerTests.allTests),
              testCase(ServerResponseTests.allTests),
              testCase(ServerStateMachineTests.allTests),
