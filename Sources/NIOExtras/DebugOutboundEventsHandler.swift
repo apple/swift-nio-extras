@@ -57,7 +57,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         self.logger = logger
     }
 
-    /// Logs ``Event.register`` to ``logger``
+    /// Logs ``Event/register`` to `logger`
     /// Called to request that the `Channel` register itself for I/O events with its `EventLoop`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -67,7 +67,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.register(promise: promise)
     }
 
-    /// Logs ``Event.bind`` to ``logger``
+    /// Logs ``Event/bind(address:)`` to `logger`
     /// Called to request that the `Channel` bind to a specific `SocketAddress`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -78,7 +78,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.bind(to: address, promise: promise)
     }
 
-    /// Logs ``Event.connect`` to ``logger``
+    /// Logs ``Event/connect(address:)`` to `logger`
     /// Called to request that the `Channel` connect to a given `SocketAddress`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -89,7 +89,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.connect(to: address, promise: promise)
     }
 
-    /// Logs ``Event.data`` to ``logger``
+    /// Logs ``Event/write(data:)`` to `logger`
     /// Called to request a write operation.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -100,7 +100,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.write(data, promise: promise)
     }
 
-    /// Logs ``Event.flush`` to ``logger``
+    /// Logs ``Event/flush`` to `logger`
     /// Called to request that the `Channel` flush all pending writes. The flush operation will try to flush out all previous written messages
     /// that are pending.
     /// - parameters:
@@ -110,7 +110,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.flush()
     }
 
-    /// Logs ``Event.read`` to ``logger``
+    /// Logs ``Event/read`` to `logger`
     /// Called to request that the `Channel` perform a read when data is ready. The read operation will signal that we are ready to read more data.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -119,7 +119,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.read()
     }
 
-    /// Logs ``Event.close`` to ``logger``
+    /// Logs ``Event/close(mode:)`` to `logger`
     /// Called to request that the `Channel` close itself down`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -130,7 +130,7 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
         context.close(mode: mode, promise: promise)
     }
 
-    /// Logs ``Event.triggerUserOutboundEvent`` to ``logger``
+    /// Logs ``Event/triggerUserOutboundEvent(event:)`` to `logger`
     /// Called when an user outbound event is triggered.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.

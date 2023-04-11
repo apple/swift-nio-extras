@@ -57,7 +57,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         self.logger = logger
     }
 
-    /// Logs ``Event.registered`` to ``logger``
+    /// Logs ``Event/registered`` to `logger`
     /// Called when the `Channel` has successfully registered with its `EventLoop` to handle I/O.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -66,7 +66,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelRegistered()
     }
 
-    /// Logs ``Event.unregistered`` to ``logger``
+    /// Logs ``Event/unregistered`` to `logger`
     /// Called when the `Channel` has unregistered from its `EventLoop`, and so will no longer be receiving I/O events.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -75,7 +75,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelUnregistered()
     }
 
-    /// Logs ``Event.active`` to ``logger``
+    /// Logs ``Event/active`` to `logger`
     /// Called when the `Channel` has become active, and is able to send and receive data.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -84,7 +84,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelActive()
     }
 
-    /// Logs ``Event.inactive`` to ``logger``
+    /// Logs ``Event/inactive`` to `logger`
     /// Called when the `Channel` has become inactive and is no longer able to send and receive data`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -93,7 +93,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelInactive()
     }
 
-    /// Logs ``Event.read`` to ``logger``
+    /// Logs ``Event/read(data:)`` to `logger`
     /// Called when some data has been read from the remote peer.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -103,7 +103,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelRead(data)
     }
 
-    /// Logs ``Event.readComplete`` to ``logger``
+    /// Logs ``Event/readComplete`` to `logger`
     /// Called when the `Channel` has completed its current read loop, either because no more data is available
     /// to read from the transport at this time, or because the `Channel` needs to yield to the event loop to process
     /// other I/O events for other `Channel`s.
@@ -114,7 +114,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelReadComplete()
     }
 
-    /// Logs ``Event.writabilityChanged`` to ``logger``
+    /// Logs ``Event/writabilityChanged(isWritable:)`` to `logger`
     /// The writability state of the `Channel` has changed, either because it has buffered more data than the writability
     /// high water mark, or because the amount of buffered data has dropped below the writability low water mark.
     /// - parameters:
@@ -124,7 +124,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireChannelWritabilityChanged()
     }
 
-    /// Logs ``Event.userInboundEventTriggered`` to ``logger``
+    /// Logs ``Event/userInboundEventTriggered(event:)`` to `logger`
     /// Called when a user inbound event has been triggered.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.
@@ -134,7 +134,7 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         context.fireUserInboundEventTriggered(event)
     }
 
-    /// Logs ``Event.errorCaught`` to ``logger``
+    /// Logs ``Event/errorCaught(_:)`` to `logger`
     /// An error was encountered earlier in the inbound `ChannelPipeline`.
     /// - parameters:
     ///     - context: The `ChannelHandlerContext` which this `ChannelHandler` belongs to.

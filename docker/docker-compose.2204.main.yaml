@@ -13,5 +13,8 @@ services:
     environment:
       - IMPORT_CHECK_ARG=--explicit-target-dependency-import-check error
 
+  documentation-check:
+    image: swift-nio-extras:22.04-main
+
   shell:
     image: swift-nio-extras:22.04-main

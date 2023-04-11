@@ -260,7 +260,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         }
     }
 
-    /// Error types for ``HTTP1ProxyConnectHandler``
+    /// Error types for ``NIOHTTP1ProxyConnectHandler``
     public struct Error: Swift.Error {
         fileprivate enum Details {
             case proxyAuthenticationRequired
