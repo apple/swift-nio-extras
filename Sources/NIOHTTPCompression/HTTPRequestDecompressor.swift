@@ -106,7 +106,5 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension NIOHTTPRequestDecompressor: Sendable {}
-#endif

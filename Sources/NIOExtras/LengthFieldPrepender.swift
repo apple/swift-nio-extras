@@ -145,7 +145,5 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension LengthFieldPrepender: Sendable {}
-#endif

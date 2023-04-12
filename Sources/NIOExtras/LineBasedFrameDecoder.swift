@@ -92,7 +92,5 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension LineBasedFrameDecoder: Sendable {}
-#endif
