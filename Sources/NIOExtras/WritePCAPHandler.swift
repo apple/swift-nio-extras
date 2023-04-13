@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2019-2021 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2019-2022 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,104 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+import Dispatch
+
+import NIOCore
+import NIOPCAP
+#if canImport(Darwin)
 import Darwin
 #else
 import Glibc
 #endif
-import Dispatch
-
-import NIOCore
 
 let sysWrite = write
-
-struct TCPHeader {
-    struct Flags: OptionSet {
-        var rawValue: UInt8
-
-        init(rawValue: UInt8) {
-            self.rawValue = rawValue
-        }
-
-        static let fin = Flags(rawValue: 1 << 0)
-        static let syn = Flags(rawValue: 1 << 1)
-        static let rst = Flags(rawValue: 1 << 2)
-        static let psh = Flags(rawValue: 1 << 3)
-        static let ack = Flags(rawValue: 1 << 4)
-        static let urg = Flags(rawValue: 1 << 5)
-        static let ece = Flags(rawValue: 1 << 6)
-        static let cwr = Flags(rawValue: 1 << 7)
-    }
-
-    var flags: Flags
-    var ackNumber: UInt32?
-    var sequenceNumber: UInt32
-    var srcPort: UInt16
-    var dstPort: UInt16
-}
-
-struct PCAPRecordHeader {
-    enum Error: Swift.Error {
-        case incompatibleAddressPair(SocketAddress, SocketAddress)
-    }
-    enum AddressTuple {
-        case v4(src: SocketAddress.IPv4Address, dst: SocketAddress.IPv4Address)
-        case v6(src: SocketAddress.IPv6Address, dst: SocketAddress.IPv6Address)
-
-        var srcPort: UInt16 {
-            switch self {
-            case .v4(src: let src, dst: _):
-                return UInt16(bigEndian: src.address.sin_port)
-            case .v6(src: let src, dst: _):
-                return UInt16(bigEndian: src.address.sin6_port)
-            }
-        }
-
-        var dstPort: UInt16 {
-            switch self {
-            case .v4(src: _, dst: let dst):
-                return UInt16(bigEndian: dst.address.sin_port)
-            case .v6(src: _, dst: let dst):
-                return UInt16(bigEndian: dst.address.sin6_port)
-            }
-        }
-    }
-
-    var payloadLength: Int
-    var addresses: AddressTuple
-    var time: timeval
-    var tcp: TCPHeader
-
-    init(payloadLength: Int, addresses: AddressTuple, time: timeval, tcp: TCPHeader) {
-        self.payloadLength = payloadLength
-        self.addresses = addresses
-        self.time = time
-        self.tcp = tcp
-
-        assert(addresses.srcPort == Int(tcp.srcPort))
-        assert(addresses.dstPort == Int(tcp.dstPort))
-        assert(tcp.ackNumber == nil ? !tcp.flags.contains([.ack]) : tcp.flags.contains([.ack]))
-    }
-
-    init(payloadLength: Int, src: SocketAddress, dst: SocketAddress, tcp: TCPHeader) throws {
-        let addressTuple: AddressTuple
-        switch (src, dst) {
-        case (.v4(let src), .v4(let dst)):
-            addressTuple = .v4(src: src, dst: dst)
-        case (.v6(let src), .v6(let dst)):
-            addressTuple = .v6(src: src, dst: dst)
-        default:
-            throw Error.incompatibleAddressPair(src, dst)
-        }
-        self = .init(payloadLength: payloadLength, addresses: addressTuple, tcp: tcp)
-    }
-    
-    init(payloadLength: Int, addresses: AddressTuple, tcp: TCPHeader) {
-        var tv = timeval()
-        gettimeofday(&tv, nil)
-        self = .init(payloadLength: payloadLength, addresses: addresses, time: tv, tcp: tcp)
-    }
-}
 
 /// A `ChannelHandler` that can write a [`.pcap` file](https://en.wikipedia.org/wiki/Pcap) containing the send/received
 /// data as synthesized TCP packet captures.
@@ -187,7 +100,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     /// Reusable header for `.pcap` file.
     public static var pcapFileHeader: ByteBuffer {
         var buffer = ByteBufferAllocator().buffer(capacity: 24)
-        buffer.writePCAPHeader()
+        buffer.writePCAPHeader(.default)
         return buffer
     }
 
@@ -494,104 +407,6 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             self.closeState = .closedInitiatorLocal
         }
         context.close(mode: mode, promise: promise)
-    }
-}
-
-extension ByteBuffer {
-    mutating func writePCAPHeader() {
-        // guint32 magic_number;   /* magic number */
-        self.writeInteger(0xa1b2c3d4, endianness: .host, as: UInt32.self)
-        // guint16 version_major;  /* major version number */
-        self.writeInteger(2, endianness: .host, as: UInt16.self)
-        // guint16 version_minor;  /* minor version number *
-        self.writeInteger(4, endianness: .host, as: UInt16.self)
-        // gint32  thiszone;       /* GMT to local correction */
-        self.writeInteger(0, endianness: .host, as: UInt32.self)
-        // guint32 sigfigs;        /* accuracy of timestamps */
-        self.writeInteger(0, endianness: .host, as: UInt32.self)
-        // guint32 snaplen;        /* max length of captured packets, in octets */
-        self.writeInteger(.max, endianness: .host, as: UInt32.self)
-        // guint32 network;        /* data link type */
-        self.writeInteger(0, endianness: .host, as: UInt32.self)
-    }
-    
-    mutating func writePCAPRecord(_ record: PCAPRecordHeader) throws {
-        let rawDataLength = record.payloadLength
-        let tcpLength = rawDataLength + 20 /* TCP header length */
-
-        // record
-        // guint32 ts_sec;         /* timestamp seconds */
-        self.writeInteger(.init(record.time.tv_sec), endianness: .host, as: UInt32.self)
-        // guint32 ts_usec;        /* timestamp microseconds */
-        self.writeInteger(.init(record.time.tv_usec), endianness: .host, as: UInt32.self)
-        // continued below ...
-
-        switch record.addresses {
-        case .v4(let la, let ra):
-            let ipv4WholeLength = tcpLength + 20 /* IPv4 header length, included in IPv4 */
-            let recordLength = ipv4WholeLength + 4 /* 32 bits for protocol id */
-            
-            // record, continued
-            // guint32 incl_len;       /* number of octets of packet saved in file */
-            self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            // guint32 orig_len;       /* actual length of packet */
-            self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            
-            self.writeInteger(2, endianness: .host, as: UInt32.self) // IPv4
-
-            // IPv4 packet
-            self.writeInteger(0x45, as: UInt8.self) // IP version (4) & IHL (5)
-            self.writeInteger(0, as: UInt8.self) // DSCP
-            self.writeInteger(.init(ipv4WholeLength), as: UInt16.self)
-            
-            self.writeInteger(0, as: UInt16.self) // identification
-            self.writeInteger(0x4000 /* this set's "don't fragment" */, as: UInt16.self) // flags & fragment offset
-            self.writeInteger(.max /* we don't care about TTL */, as: UInt8.self) // TTL
-            self.writeInteger(6, as: UInt8.self) // TCP
-            self.writeInteger(0, as: UInt16.self) // checksum
-            self.writeInteger(la.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
-            self.writeInteger(ra.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
-        case .v6(let la, let ra):
-            let ipv6PayloadLength = tcpLength
-            let recordLength = ipv6PayloadLength + 4 /* 32 bits for protocol id */ + 40 /* IPv6 header length */
-            
-            // record, continued
-            // guint32 incl_len;       /* number of octets of packet saved in file */
-            self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            // guint32 orig_len;       /* actual length of packet */
-            self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            
-            self.writeInteger(24, endianness: .host, as: UInt32.self) // IPv6
-            
-            // IPv6 packet
-            self.writeInteger(/* version */ (6 << 28), as: UInt32.self) // IP version (6) & fancy stuff
-            self.writeInteger(.init(ipv6PayloadLength), as: UInt16.self)
-            self.writeInteger(6, as: UInt8.self) // TCP
-            self.writeInteger(.max /* we don't care about TTL */, as: UInt8.self) // hop limit (like TTL)
-
-            var laAddress = la.address
-            withUnsafeBytes(of: &laAddress.sin6_addr) { ptr in
-                assert(ptr.count == 16)
-                self.writeBytes(ptr)
-            }
-            var raAddress = ra.address
-            withUnsafeBytes(of: &raAddress.sin6_addr) { ptr in
-                assert(ptr.count == 16)
-                self.writeBytes(ptr)
-            }
-        }
-
-        // TCP
-        self.writeInteger(record.tcp.srcPort, as: UInt16.self)
-        self.writeInteger(record.tcp.dstPort, as: UInt16.self)
-
-        self.writeInteger(record.tcp.sequenceNumber, as: UInt32.self) // seq no
-        self.writeInteger(record.tcp.ackNumber ?? 0, as: UInt32.self) // ack no
-
-        self.writeInteger(5 << 12 | UInt16(record.tcp.flags.rawValue), as: UInt16.self) // data offset + reserved bits + fancy stuff
-        self.writeInteger(.max /* we don't do actual window sizes */, as: UInt16.self) // window size
-        self.writeInteger(0xbad /* fake */, as: UInt16.self) // checksum
-        self.writeInteger(0, as: UInt16.self) // urgent pointer
     }
 }
 

@@ -19,6 +19,7 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "NIOExtras",
         dependencies: [
+            "NIOPCAP",
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio")
@@ -86,7 +87,7 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NIOExtrasTests",
         dependencies: [
-            "NIOExtras",
+            "NIOExtras", "NIOPCAP",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
@@ -121,6 +122,12 @@ var targets: [PackageDescription.Target] = [
             "NIONFS3",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOPCAP", // For now, this is not a product, ie. it's not exported and just an internal "helper module".
+        dependencies: [
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
         ]),
 ]
 
