@@ -97,7 +97,5 @@ public class NIOPCAPRingBuffer {
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension NIOPCAPRingBuffer: Sendable {}
-#endif

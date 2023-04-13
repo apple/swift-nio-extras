@@ -114,10 +114,8 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension SOCKSClientHandler: Sendable {}
-#endif
 
 extension SOCKSClientHandler {
     

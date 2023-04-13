@@ -14,7 +14,7 @@ All code will go through code review like in the other repositories related to t
 `swift-nio-extras` part of the SwiftNIO 2 family of repositories and depends on the following:
 
 - [`swift-nio`](https://github.com/apple/swift-nio), version 2.30.0 or better.
-- Swift 5.5.2
+- Swift 5.6
 - `zlib` and its development headers installed on the system. But don't worry, you'll find `zlib` on pretty much any UNIX system that can compile any sort of code.
 
 To depend on `swift-nio-extras`, put the following in the `dependencies` of your `Package.swift`:
@@ -25,14 +25,15 @@ To depend on `swift-nio-extras`, put the following in the `dependencies` of your
 
 ### Support for older Swift versions
 
-The most recent versions of SwiftNIO Extras support Swift 5.5.2 and newer. The minimum Swift version supported by SwiftNIO Extras releases are detailed below:
+The most recent versions of SwiftNIO Extras support Swift 5.6 and newer. The minimum Swift version supported by SwiftNIO Extras releases are detailed below:
 
 SwiftNIO Extras     | Minimum Swift Version
 --------------------|----------------------
 `1.0.0 ..< 1.10.0`  | 5.0
 `1.10.0 ..< 1.11.0` | 5.2
 `1.11.0 ..< 1.14.0` | 5.4
-`1.14.0 ...`        | 5.5.2
+`1.14.0 ..< 1.19.1` | 5.5.2
+`1.19.0 ...`        | 5.6
 
 On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-extras-0.1) branch, you can find the `swift-nio-extras` version for the SwiftNIO 1 family. It requires Swift 4.1 or better.
 

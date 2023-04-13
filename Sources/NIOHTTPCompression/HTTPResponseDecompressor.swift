@@ -122,7 +122,5 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension NIOHTTPResponseDecompressor: Sendable {}
-#endif

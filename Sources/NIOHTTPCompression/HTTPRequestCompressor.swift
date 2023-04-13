@@ -179,7 +179,5 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension NIOHTTPRequestCompressor: Sendable {}
-#endif

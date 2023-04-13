@@ -175,7 +175,5 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
     }
 }
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension DebugInboundEventsHandler: Sendable {}
-#endif

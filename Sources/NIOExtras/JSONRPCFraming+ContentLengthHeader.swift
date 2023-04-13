@@ -217,10 +217,8 @@ extension String {
 
 
 
-#if swift(>=5.6)
 @available(*, unavailable)
 extension NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder: Sendable {}
 
 @available(*, unavailable)
 extension NIOJSONRPCFraming.ContentLengthHeaderFrameEncoder: Sendable {}
-#endif
