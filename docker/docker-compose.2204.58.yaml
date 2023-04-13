@@ -6,7 +6,8 @@ services:
     image: swift-nio-extras:22.04-5.8
     build:
       args:
-        base_image: "swiftlang/swift:nightly-main-jammy"
+        ubuntu_version: "jammy"
+        swift_version: "5.8"
 
   test:
     image: swift-nio-extras:22.04-5.8
