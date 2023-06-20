@@ -50,3 +50,9 @@ On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-ext
 - [`DebugInboundsEventHandler`](Sources/NIOExtras/DebugInboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
 - [`DebugOutboundsEventHandler`](Sources/NIOExtras/DebugOutboundEventsHandler.swift) Prints out all outbound events that travel through the `ChannelPipeline`.
 - [`WritePCAPHandler`](Sources/NIOExtras/WritePCAPHandler.swift) A `ChannelHandler` that writes `.pcap` containing the traffic of the `ChannelPipeline` that you can inspect with Wireshark/tcpdump.
+- [`HTTP1ToHTTPClientCodec`](Sources/NIOHTTPTypesHTTP1/HTTP1ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/1 messages into shared HTTP types for the client side.
+- [`HTTP1ToHTTPServerCodec`](Sources/NIOHTTPTypesHTTP1/HTTP1ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/1 messages into shared HTTP types for the server side.
+- [`HTTPToHTTP1ClientCodec`](Sources/NIOHTTPTypesHTTP1/HTTPToHTTP1Codec.swift) A `ChannelHandler` that translates shared HTTP types into HTTP/1 messages for the client side for compatibility purposes.
+- [`HTTPToHTTP1ServerCodec`](Sources/NIOHTTPTypesHTTP1/HTTPToHTTP1Codec.swift) A `ChannelHandler` that translates shared HTTP types into HTTP/1 messages for the server side for compatibility purposes.
+- [`HTTP2FramePayloadToHTTPClientCodec`](Sources/NIOHTTPTypesHTTP2/HTTP2ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/2 concepts into shared HTTP types for the client side.
+- [`HTTP2FramePayloadToHTTPServerCodec`](Sources/NIOHTTPTypesHTTP2/HTTP2ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/2 concepts into shared HTTP types for the server side.

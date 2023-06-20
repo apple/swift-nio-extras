@@ -1,4 +1,4 @@
 version: 1
 builder:
   configs:
-    - documentation_targets: [NIOExtras, NIOHTTPCompression, NIOSOCKS]
+    - documentation_targets: [NIOExtras, NIOHTTPCompression, NIOSOCKS, NIOHTTPTypes, NIOHTTPTypesHTTP1, NIOHTTPTypesHTTP2]
