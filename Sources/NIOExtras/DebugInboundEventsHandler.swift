@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#if os(macOS) || os(tvOS) || os(iOS) || os(watchOS)
+#if canImport(Darwin)
 import Darwin
 #else
 import Glibc
