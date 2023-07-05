@@ -12,14 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
+import HTTPTypes
 import NIOCore
 import NIOEmbedded
-import NIOHTTP2
 import NIOHPACK
-import HTTPTypes
+import NIOHTTP2
 import NIOHTTPTypes
 import NIOHTTPTypesHTTP2
+import XCTest
 
 /// A handler that keeps track of all reads made on a channel.
 private final class InboundRecorder<Frame>: ChannelInboundHandler {
@@ -32,11 +32,11 @@ private final class InboundRecorder<Frame>: ChannelInboundHandler {
     }
 }
 
-private extension HTTPField.Name {
+extension HTTPField.Name {
     static let xFoo = Self("X-Foo")!
 }
 
-private extension HTTP2Frame.FramePayload {
+extension HTTP2Frame.FramePayload {
     var headers: HPACKHeaders? {
         if case .headers(let headers) = self {
             return headers.headers
@@ -117,7 +117,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.response))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.trailers))
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 
     func testServerHTTP2ToHTTP() throws {
@@ -137,6 +137,6 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldResponse)
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldTrailers)
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 }

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
 import HTTPTypes
+import NIOCore
 
 /// The parts of a complete HTTP message, either request or response.
 ///

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOHPACK
 import HTTPTypes
+import NIOHPACK
 
 private enum HTTP2TypeConversionError: Error {
     case multipleMethod
@@ -52,7 +52,7 @@ extension HPACKIndexing {
 
 extension HPACKHeaders {
     mutating func add(newField field: HTTPField) {
-        add(name: field.name.canonicalName, value: field.value, indexing: HPACKIndexing(field.indexingStrategy))
+        self.add(name: field.name.canonicalName, value: field.value, indexing: HPACKIndexing(field.indexingStrategy))
     }
 
     init(_ newRequest: HTTPRequest) {
@@ -161,10 +161,12 @@ extension HPACKHeaders {
                 throw HTTP2TypeConversionError.invalidMethod
             }
 
-            var request = HTTPRequest(method: method,
-                                      scheme: schemeString,
-                                      authority: authorityString,
-                                      path: pathString)
+            var request = HTTPRequest(
+                method: method,
+                scheme: schemeString,
+                authority: authorityString,
+                path: pathString
+            )
             request.pseudoHeaderFields.method.indexingStrategy = methodIndexable.newIndexingStrategy
             request.pseudoHeaderFields.scheme?.indexingStrategy = schemeIndexable.newIndexingStrategy
             request.pseudoHeaderFields.authority?.indexingStrategy = authorityIndexable.newIndexingStrategy
@@ -219,7 +221,7 @@ extension HPACKHeaders {
                 throw HTTP2TypeConversionError.missingStatus
             }
             guard let status = Int(statusString),
-                  (0...999).contains(status) else {
+                  (0 ... 999).contains(status) else {
                 throw HTTP2TypeConversionError.invalidStatus
             }
 

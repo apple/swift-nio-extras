@@ -12,13 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
+import HTTPTypes
 import NIOCore
 import NIOEmbedded
 import NIOHTTP1
-import HTTPTypes
 import NIOHTTPTypes
 import NIOHTTPTypesHTTP1
+import XCTest
 
 /// A handler that keeps track of all reads made on a channel.
 private final class InboundRecorder<Frame>: ChannelInboundHandler {
@@ -31,7 +31,7 @@ private final class InboundRecorder<Frame>: ChannelInboundHandler {
     }
 }
 
-private extension HTTPField.Name {
+extension HTTPField.Name {
     static let xFoo = Self("X-Foo")!
 }
 
@@ -105,7 +105,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.response))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.trailers))
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 
     func testServerHTTP1ToHTTP() throws {
@@ -125,7 +125,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPServerResponsePart.self), .head(Self.oldResponse))
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPServerResponsePart.self), .end(Self.oldTrailers))
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 
     func testClientHTTPToHTTP1() throws {
@@ -145,7 +145,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.oldResponse))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.oldTrailers))
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 
     func testServerHTTPToHTTP1() throws {
@@ -165,6 +165,6 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeServerResponsePart.self), .head(Self.response))
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeServerResponsePart.self), .end(Self.trailers))
 
-        XCTAssertTrue(try channel.finish().isClean)
+        XCTAssertTrue(try self.channel.finish().isClean)
     }
 }

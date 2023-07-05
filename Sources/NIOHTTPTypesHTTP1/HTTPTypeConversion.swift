@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOHTTP1
 import HTTPTypes
+import NIOHTTP1
 
 private enum HTTP1TypeConversionError: Error {
     case invalidMethod
@@ -119,11 +119,11 @@ extension HTTPHeaders {
         var fields = HTTPFields()
         fields.reserveCapacity(count)
         for (index, field) in enumerated() {
-            if index == 0 && field.name.lowercased() == "host" {
+            if index == 0, field.name.lowercased() == "host" {
                 continue
             }
             if let name = HTTPField.Name(field.name) {
-                if splitCookie && name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
+                if splitCookie, name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
                     fields.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
                         HTTPField(name: name, value: String($0))
                     })
@@ -157,30 +157,38 @@ extension HTTPRequestHead {
                 headers.add(name: field.name.rawName, value: field.value)
             }
         }
-        self.init(version: .http1_1,
-                  method: HTTPMethod(newRequest.method),
-                  uri: pathField.value,
-                  headers: headers)
+        self.init(
+            version: .http1_1,
+            method: HTTPMethod(newRequest.method),
+            uri: pathField.value,
+            headers: headers
+        )
     }
 
     func newRequest(secure: Bool, splitCookie: Bool) throws -> HTTPRequest {
         let method = try method.newMethod
         let scheme = secure ? "https" : "http"
         let authority = headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
-        return HTTPRequest(method: method,
-                           scheme: scheme,
-                           authority: authority,
-                           path: uri,
-                           headerFields: headers.newFields(splitCookie: splitCookie))
+        return HTTPRequest(
+            method: method,
+            scheme: scheme,
+            authority: authority,
+            path: uri,
+            headerFields: headers.newFields(splitCookie: splitCookie)
+        )
     }
 }
 
 extension HTTPResponseHead {
     init(_ newResponse: HTTPResponse) {
-        self.init(version: .http1_1,
-                  status: HTTPResponseStatus(statusCode: newResponse.status.code,
-                                             reasonPhrase: newResponse.status.reasonPhrase),
-                  headers: HTTPHeaders(newResponse.headerFields))
+        self.init(
+            version: .http1_1,
+            status: HTTPResponseStatus(
+                statusCode: newResponse.status.code,
+                reasonPhrase: newResponse.status.reasonPhrase
+            ),
+            headers: HTTPHeaders(newResponse.headerFields)
+        )
     }
 
     var newResponse: HTTPResponse {

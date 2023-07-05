@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOHTTP2
 import NIOHPACK
+import NIOHTTP2
 
 extension HPACKHeaders {
     /// Whether this `HTTPHeaders` corresponds to a final response or not.
@@ -21,7 +21,7 @@ extension HPACKHeaders {
     /// This function is only valid if called on a response header block. If the :status header
     /// is not present, this will throw.
     fileprivate func isInformationalResponse() throws -> Bool {
-        return try self.peekPseudoHeader(name: ":status").first! == "1"
+        try self.peekPseudoHeader(name: ":status").first! == "1"
     }
 
     /// Grabs a pseudo-header from a header block. Does not remove it.
@@ -43,7 +43,7 @@ extension HPACKHeaders {
             }
         }
 
-        if let headerValue = headerValue {
+        if let headerValue {
             return headerValue
         } else {
             throw NIOHTTP2Errors.missingPseudoHeader(name)

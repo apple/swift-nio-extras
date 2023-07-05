@@ -26,14 +26,13 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// Initializes a `HTTP1ToHTTPClientCodec`.
-    public init() {
-    }
+    public init() {}
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         switch unwrapInboundIn(data) {
         case .head(let head):
             do {
-                context.fireChannelRead(wrapInboundOut(.head(try head.newResponse)))
+                try context.fireChannelRead(wrapInboundOut(.head(head.newResponse)))
             } catch {
                 context.fireErrorCaught(error)
             }
@@ -48,7 +47,7 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
         switch unwrapOutboundIn(data) {
         case .head(let request):
             do {
-                context.write(wrapOutboundOut(.head(try HTTPRequestHead(request))), promise: promise)
+                try context.write(wrapOutboundOut(.head(HTTPRequestHead(request))), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
             }
@@ -86,7 +85,7 @@ public final class HTTP1ToHTTPServerCodec: ChannelInboundHandler, ChannelOutboun
         switch unwrapInboundIn(data) {
         case .head(let head):
             do {
-                context.fireChannelRead(wrapInboundOut(.head(try head.newRequest(secure: secure, splitCookie: splitCookie))))
+                try context.fireChannelRead(wrapInboundOut(.head(head.newRequest(secure: self.secure, splitCookie: self.splitCookie))))
             } catch {
                 context.fireErrorCaught(error)
             }
