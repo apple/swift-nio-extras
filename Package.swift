@@ -15,6 +15,18 @@
 
 import PackageDescription
 
+var products: [Product] = [
+    .library(name: "NIOExtras", targets: ["NIOExtras"]),
+    .library(name: "NIOSOCKS", targets: ["NIOSOCKS"]),
+    .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
+]
+
+var dependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.42.0"),
+    .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
+    .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+]
+
 var targets: [PackageDescription.Target] = [
     .target(
         name: "NIOExtras",
@@ -123,6 +135,20 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
         ]),
+]
+
+#if swift(>=5.8)
+products += [
+    .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
+    .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
+    .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
+]
+
+dependencies += [
+    .package(url: "https://github.com/apple/swift-http-types", from: "0.1.0"),
+]
+
+targets += [
     .target(
         name: "NIOHTTPTypes",
         dependencies: [
@@ -152,22 +178,11 @@ var targets: [PackageDescription.Target] = [
             "NIOHTTPTypesHTTP2",
         ]),
 ]
+#endif
 
 let package = Package(
     name: "swift-nio-extras",
-    products: [
-        .library(name: "NIOExtras", targets: ["NIOExtras"]),
-        .library(name: "NIOSOCKS", targets: ["NIOSOCKS"]),
-        .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
-        .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
-        .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
-        .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.42.0"),
-        .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-http-types", from: "0.1.0"),
-    ],
+    products: products,
+    dependencies: dependencies,
     targets: targets
 )
