@@ -21,24 +21,14 @@ import NIOCore
 /// encoded by `.head`, zero or more body parts, and optionally some trailers. To
 /// indicate that a complete HTTP message has been sent or received, we use `.end`,
 /// which may also contain any trailers that make up the message.
-public enum HTTPTypePart<HeadT: Equatable, BodyT: Equatable> {
-    case head(HeadT)
-    case body(BodyT)
+public enum HTTPTypePart<Head: Sendable & Hashable>: Sendable, Hashable {
+    case head(Head)
+    case body(ByteBuffer)
     case end(HTTPFields?)
 }
 
-extension HTTPTypePart: Sendable where HeadT: Sendable, BodyT: Sendable {}
+/// The components of an HTTP request.
+public typealias HTTPTypeRequestPart = HTTPTypePart<HTTPRequest>
 
-extension HTTPTypePart: Equatable {}
-
-/// The components of an HTTP request from the view of an HTTP client.
-public typealias HTTPTypeClientRequestPart = HTTPTypePart<HTTPRequest, IOData>
-
-/// The components of an HTTP request from the view of an HTTP server.
-public typealias HTTPTypeServerRequestPart = HTTPTypePart<HTTPRequest, ByteBuffer>
-
-/// The components of an HTTP response from the view of an HTTP client.
-public typealias HTTPTypeClientResponsePart = HTTPTypePart<HTTPResponse, ByteBuffer>
-
-/// The components of an HTTP response from the view of an HTTP server.
-public typealias HTTPTypeServerResponsePart = HTTPTypePart<HTTPResponse, IOData>
+/// The components of an HTTP response.
+public typealias HTTPTypeResponsePart = HTTPTypePart<HTTPResponse>

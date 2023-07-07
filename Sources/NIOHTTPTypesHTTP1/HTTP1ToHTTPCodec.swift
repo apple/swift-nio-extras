@@ -20,41 +20,41 @@ import NIOHTTPTypes
 /// and vice versa, for use on the client side.
 public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboundHandler {
     public typealias InboundIn = HTTPClientResponsePart
-    public typealias InboundOut = HTTPTypeClientResponsePart
+    public typealias InboundOut = HTTPTypeResponsePart
 
-    public typealias OutboundIn = HTTPTypeClientRequestPart
+    public typealias OutboundIn = HTTPTypeRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// Initializes a `HTTP1ToHTTPClientCodec`.
     public init() {}
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        switch unwrapInboundIn(data) {
+        switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                try context.fireChannelRead(wrapInboundOut(.head(head.newResponse)))
+                try context.fireChannelRead(self.wrapInboundOut(.head(head.newResponse)))
             } catch {
                 context.fireErrorCaught(error)
             }
         case .body(let body):
-            context.fireChannelRead(wrapInboundOut(.body(body)))
+            context.fireChannelRead(self.wrapInboundOut(.body(body)))
         case .end(let trailers):
-            context.fireChannelRead(wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
+            context.fireChannelRead(self.wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        switch unwrapOutboundIn(data) {
+        switch self.unwrapOutboundIn(data) {
         case .head(let request):
             do {
-                try context.write(wrapOutboundOut(.head(HTTPRequestHead(request))), promise: promise)
+                try context.write(self.wrapOutboundOut(.head(HTTPRequestHead(request))), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
             }
         case .body(let body):
-            context.write(wrapOutboundOut(.body(body)), promise: promise)
+            context.write(self.wrapOutboundOut(.body(.byteBuffer(body))), promise: promise)
         case .end(let trailers):
-            context.write(wrapOutboundOut(.end(trailers.map(HTTPHeaders.init))), promise: promise)
+            context.write(self.wrapOutboundOut(.end(trailers.map(HTTPHeaders.init))), promise: promise)
         }
     }
 }
@@ -63,9 +63,9 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
 /// and vice versa, for use on the server side.
 public final class HTTP1ToHTTPServerCodec: ChannelInboundHandler, ChannelOutboundHandler {
     public typealias InboundIn = HTTPServerRequestPart
-    public typealias InboundOut = HTTPTypeServerRequestPart
+    public typealias InboundOut = HTTPTypeRequestPart
 
-    public typealias OutboundIn = HTTPTypeServerResponsePart
+    public typealias OutboundIn = HTTPTypeResponsePart
     public typealias OutboundOut = HTTPServerResponsePart
 
     private let secure: Bool
@@ -82,28 +82,28 @@ public final class HTTP1ToHTTPServerCodec: ChannelInboundHandler, ChannelOutboun
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        switch unwrapInboundIn(data) {
+        switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                try context.fireChannelRead(wrapInboundOut(.head(head.newRequest(secure: self.secure, splitCookie: self.splitCookie))))
+                try context.fireChannelRead(self.wrapInboundOut(.head(head.newRequest(secure: self.secure, splitCookie: self.splitCookie))))
             } catch {
                 context.fireErrorCaught(error)
             }
         case .body(let body):
-            context.fireChannelRead(wrapInboundOut(.body(body)))
+            context.fireChannelRead(self.wrapInboundOut(.body(body)))
         case .end(let trailers):
-            context.fireChannelRead(wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
+            context.fireChannelRead(self.wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        switch unwrapOutboundIn(data) {
+        switch self.unwrapOutboundIn(data) {
         case .head(let response):
-            context.write(wrapOutboundOut(.head(HTTPResponseHead(response))), promise: promise)
+            context.write(self.wrapOutboundOut(.head(HTTPResponseHead(response))), promise: promise)
         case .body(let body):
-            context.write(wrapOutboundOut(.body(body)), promise: promise)
+            context.write(self.wrapOutboundOut(.body(.byteBuffer(body))), promise: promise)
         case .end(let trailers):
-            context.write(wrapOutboundOut(.end(trailers.map(HTTPHeaders.init))), promise: promise)
+            context.write(self.wrapOutboundOut(.end(trailers.map(HTTPHeaders.init))), promise: promise)
         }
     }
 }

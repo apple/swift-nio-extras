@@ -101,12 +101,12 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
     static let oldTrailers: HPACKHeaders = ["x-foo": "Bar"]
 
     func testClientHTTP2ToHTTP() throws {
-        let recorder = InboundRecorder<HTTPTypeClientResponsePart>()
+        let recorder = InboundRecorder<HTTPTypeResponsePart>()
 
         try self.channel.pipeline.addHandlers(HTTP2FramePayloadToHTTPClientCodec(), recorder).wait()
 
-        try self.channel.writeOutbound(HTTPTypeClientRequestPart.head(Self.request))
-        try self.channel.writeOutbound(HTTPTypeClientRequestPart.end(Self.trailers))
+        try self.channel.writeOutbound(HTTPTypeRequestPart.head(Self.request))
+        try self.channel.writeOutbound(HTTPTypeRequestPart.end(Self.trailers))
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldRequest)
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldTrailers)
@@ -121,7 +121,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
     }
 
     func testServerHTTP2ToHTTP() throws {
-        let recorder = InboundRecorder<HTTPTypeServerRequestPart>()
+        let recorder = InboundRecorder<HTTPTypeRequestPart>()
 
         try self.channel.pipeline.addHandlers(HTTP2FramePayloadToHTTPServerCodec(), recorder).wait()
 
@@ -131,8 +131,8 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.request))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.trailers))
 
-        try self.channel.writeOutbound(HTTPTypeServerResponsePart.head(Self.response))
-        try self.channel.writeOutbound(HTTPTypeServerResponsePart.end(Self.trailers))
+        try self.channel.writeOutbound(HTTPTypeResponsePart.head(Self.response))
+        try self.channel.writeOutbound(HTTPTypeResponsePart.end(Self.trailers))
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldResponse)
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldTrailers)

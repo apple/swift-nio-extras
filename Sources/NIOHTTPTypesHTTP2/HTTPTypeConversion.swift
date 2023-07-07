@@ -111,8 +111,8 @@ extension HPACKHeaders {
             var protocolString: String? = nil
             var protocolIndexable: HPACKIndexing = .indexable
 
-            var i = startIndex
-            while i != endIndex {
+            var i = self.startIndex
+            while i != self.endIndex {
                 let (name, value, indexable) = self[i]
                 if !name.hasPrefix(":") {
                     break
@@ -151,7 +151,7 @@ extension HPACKHeaders {
                 default:
                     continue
                 }
-                i = index(after: i)
+                i = self.index(after: i)
             }
 
             guard let methodString else {
@@ -187,7 +187,7 @@ extension HPACKHeaders {
                     field.indexingStrategy = indexable.newIndexingStrategy
                     request.headerFields.append(field)
                 }
-                i = index(after: i)
+                i = self.index(after: i)
             }
             return request
         }
@@ -198,8 +198,8 @@ extension HPACKHeaders {
             var statusString: String? = nil
             var statusIndexable: HPACKIndexing = .indexable
 
-            var i = startIndex
-            while i != endIndex {
+            var i = self.startIndex
+            while i != self.endIndex {
                 let (name, value, indexable) = self[i]
                 if !name.hasPrefix(":") {
                     break
@@ -214,7 +214,7 @@ extension HPACKHeaders {
                 default:
                     continue
                 }
-                i = index(after: i)
+                i = self.index(after: i)
             }
 
             guard let statusString else {
@@ -229,7 +229,7 @@ extension HPACKHeaders {
             response.pseudoHeaderFields.status.indexingStrategy = statusIndexable.newIndexingStrategy
 
             response.headerFields.reserveCapacity(count)
-            while i != endIndex {
+            while i != self.endIndex {
                 let (name, value, indexable) = self[i]
                 if name.hasPrefix(":") {
                     throw HTTP2TypeConversionError.pseudoFieldNotFirst
@@ -239,7 +239,7 @@ extension HPACKHeaders {
                     field.indexingStrategy = indexable.newIndexingStrategy
                     response.headerFields.append(field)
                 }
-                i = index(after: i)
+                i = self.index(after: i)
             }
             return response
         }

@@ -123,7 +123,7 @@ extension HTTPHeaders {
                 continue
             }
             if let name = HTTPField.Name(field.name) {
-                if splitCookie, name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
+                if splitCookie && name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
                     fields.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
                         HTTPField(name: name, value: String($0))
                     })
@@ -166,15 +166,15 @@ extension HTTPRequestHead {
     }
 
     func newRequest(secure: Bool, splitCookie: Bool) throws -> HTTPRequest {
-        let method = try method.newMethod
+        let method = try self.method.newMethod
         let scheme = secure ? "https" : "http"
-        let authority = headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
+        let authority = self.headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
         return HTTPRequest(
             method: method,
             scheme: scheme,
             authority: authority,
-            path: uri,
-            headerFields: headers.newFields(splitCookie: splitCookie)
+            path: self.uri,
+            headerFields: self.headers.newFields(splitCookie: splitCookie)
         )
     }
 }
@@ -193,11 +193,11 @@ extension HTTPResponseHead {
 
     var newResponse: HTTPResponse {
         get throws {
-            guard status.code <= 999 else {
+            guard self.status.code <= 999 else {
                 throw HTTP1TypeConversionError.invalidStatusCode
             }
-            let status = HTTPResponse.Status(code: Int(status.code), reasonPhrase: status.reasonPhrase)
-            return HTTPResponse(status: status, headerFields: headers.newFields(splitCookie: false))
+            let status = HTTPResponse.Status(code: Int(self.status.code), reasonPhrase: self.status.reasonPhrase)
+            return HTTPResponse(status: status, headerFields: self.headers.newFields(splitCookie: false))
         }
     }
 }
