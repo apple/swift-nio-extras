@@ -137,7 +137,7 @@ var targets: [PackageDescription.Target] = [
         ]),
 ]
 
-#if swift(>=5.8)
+#if swift(>=5.7)
 products += [
     .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
     .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
@@ -145,7 +145,7 @@ products += [
 ]
 
 dependencies += [
-    .package(url: "https://github.com/apple/swift-http-types", from: "0.1.0"),
+    .package(url: "https://github.com/apple/swift-http-types", from: "0.1.1"),
 ]
 
 targets += [
