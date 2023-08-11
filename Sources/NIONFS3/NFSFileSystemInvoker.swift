@@ -39,122 +39,135 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
         case .mountNull:
             self.sink.sendSuccessfulReply(.mountNull, call: callMessage)
         case .mount(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.mount(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.mount(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.mount(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .unmount(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.unmount(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.unmount(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.unmount(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .null:
             self.sink.sendSuccessfulReply(.null, call: callMessage)
         case .getattr(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.getattr(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.getattr(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.getattr(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .fsinfo(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.fsinfo(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.fsinfo(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.fsinfo(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .pathconf(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.pathconf(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.pathconf(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.pathconf(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .fsstat(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.fsstat(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.fsstat(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.fsstat(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .access(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.access(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.access(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.access(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .lookup(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.lookup(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.lookup(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.lookup(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .readdirplus(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.readdirplus(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.readdirplus(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.readdirplus(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .read(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.read(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.read(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.read(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .readdir(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.readdir(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.readdir(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.readdir(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .readlink(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.readlink(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.readlink(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.readlink(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case .setattr(let call):
+            let boundedSink = NIOLoopBound(self.sink, eventLoop: self.eventLoop)
             self.fs.setattr(call, eventLoop: self.eventLoop).whenComplete { result in
                 switch result {
                 case .success(let reply):
-                    self.sink.sendSuccessfulReply(.setattr(reply), call: callMessage)
+                    boundedSink.value.sendSuccessfulReply(.setattr(reply), call: callMessage)
                 case .failure(let error):
-                    self.sink.sendError(error, call: callMessage)
+                    boundedSink.value.sendError(error, call: callMessage)
                 }
             }
         case ._PLEASE_DO_NOT_EXHAUSTIVELY_MATCH_THIS_ENUM_NEW_CASES_MIGHT_BE_ADDED_IN_THE_FUTURE:

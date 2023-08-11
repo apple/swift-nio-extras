@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import XCTest
+import NIOConcurrencyHelpers
 import NIOCore
 import NIOEmbedded
 import NIOExtras
@@ -240,16 +241,16 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
                     (ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(ByteBuffer(string: "hi"))), responsePromise)
                     ),
                                       promise: writePromise)
-                var writePromiseCompleted = false
+                let writePromiseCompleted = NIOLockedValueBox(false)
                 defer {
-                    XCTAssertTrue(writePromiseCompleted)
+                    XCTAssertTrue(writePromiseCompleted.withLockedValue { $0 })
                 }
-                var responsePromiseCompleted = false
+                let responsePromiseCompleted = NIOLockedValueBox(false)
                 defer {
-                    XCTAssertTrue(responsePromiseCompleted)
+                    XCTAssertTrue(responsePromiseCompleted.withLockedValue { $0 })
                 }
                 writePromise.futureResult.whenComplete { result in
-                    writePromiseCompleted = true
+                    writePromiseCompleted.withLockedValue { $0 = true }
                     switch result {
                     case .success:
                         XCTFail("shouldn't succeed")
@@ -258,7 +259,7 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
                     }
                 }
                 responsePromise.futureResult.whenComplete { result in
-                    responsePromiseCompleted = true
+                    responsePromiseCompleted.withLockedValue { $0 = true }
                     switch result {
                     case .success:
                         XCTFail("shouldn't succeed")

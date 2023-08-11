@@ -18,141 +18,135 @@ import NIOEmbedded
 import XCTest
 
 class SocksClientHandlerTests: XCTestCase {
-    
-    var channel: EmbeddedChannel!
-    var handler: SOCKSClientHandler!
-    
-    override func setUp() {
-        XCTAssertNil(self.channel)
-        self.handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
-        self.channel = EmbeddedChannel(handler: self.handler)
+    func connect(channel: EmbeddedChannel) {
+        try! channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
     }
     
-    func connect() {
-        try! self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait()
-    }
-
-    override func tearDown() {
-        XCTAssertNotNil(self.channel)
-        self.channel = nil
-    }
-    
-    func assertOutputBuffer(_ bytes: [UInt8], line: UInt = #line) {
-        if var buffer = try! self.channel.readOutbound(as: ByteBuffer.self) {
+    func assertOutputBuffer(_ bytes: [UInt8], channel: EmbeddedChannel, line: UInt = #line) {
+        if var buffer = try! channel.readOutbound(as: ByteBuffer.self) {
             XCTAssertEqual(buffer.readBytes(length: buffer.readableBytes), bytes, line: line)
         } else if bytes.count > 0 {
             XCTFail("Expected bytes but found none")
         }
     }
     
-    func writeInbound(_ bytes: [UInt8], line: UInt = #line) {
-        try! self.channel.writeInbound(ByteBuffer(bytes: bytes))
+    func writeInbound(_ bytes: [UInt8], channel: EmbeddedChannel, line: UInt = #line) {
+        try! channel.writeInbound(ByteBuffer(bytes: bytes))
     }
     
-    func assertInbound(_ bytes: [UInt8], line: UInt = #line) {
-        var buffer = try! self.channel.readInbound(as: ByteBuffer.self)
+    func assertInbound(_ bytes: [UInt8], channel: EmbeddedChannel, line: UInt = #line) {
+        var buffer = try! channel.readInbound(as: ByteBuffer.self)
         XCTAssertEqual(buffer!.readBytes(length: buffer!.readableBytes), bytes, line: line)
     }
     
     func testTypicalWorkflow() {
-        
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
         let clientHandler = MockSOCKSClientHandler()
-        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(clientHandler))
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(clientHandler))
         
-        self.connect()
+        self.connect(channel: channel)
         
         // the client should start the handshake instantly
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
         
         // server selects an authentication method
-        self.writeInbound([0x05, 0x00])
+        self.writeInbound([0x05, 0x00], channel: channel)
         
         // client sends the request
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         // server replies yay
         XCTAssertFalse(clientHandler.hadSOCKSEstablishedProxyUserEvent)
-        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         XCTAssertTrue(clientHandler.hadSOCKSEstablishedProxyUserEvent)
         
         // any inbound data should now go straight through
-        self.writeInbound([1, 2, 3, 4, 5])
-        self.assertInbound([1, 2, 3, 4, 5])
+        self.writeInbound([1, 2, 3, 4, 5], channel: channel)
+        self.assertInbound([1, 2, 3, 4, 5], channel: channel)
 
         // any outbound data should also go straight through
-        XCTAssertNoThrow(try self.channel.writeOutbound(ByteBuffer(bytes: [1, 2, 3, 4, 5])))
-        self.assertOutputBuffer([1, 2, 3, 4, 5])
+        XCTAssertNoThrow(try channel.writeOutbound(ByteBuffer(bytes: [1, 2, 3, 4, 5])))
+        self.assertOutputBuffer([1, 2, 3, 4, 5], channel: channel)
     }
     
     // Tests that if we write alot of data at the start then
     // that data will be written after the client has completed
     // the socks handshake.
     func testThatBufferingWorks() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        self.connect(channel: channel)
         
-        let writePromise = self.channel.eventLoop.makePromise(of: Void.self)
-        self.channel.writeAndFlush(ByteBuffer(bytes: [1, 2, 3, 4, 5]), promise: writePromise)
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
-        self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
-        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        let writePromise = channel.eventLoop.makePromise(of: Void.self)
+        channel.writeAndFlush(ByteBuffer(bytes: [1, 2, 3, 4, 5]), promise: writePromise)
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
+        self.writeInbound([0x05, 0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         XCTAssertNoThrow(try writePromise.futureResult.wait())
-        self.assertOutputBuffer([1, 2, 3, 4, 5])
+        self.assertOutputBuffer([1, 2, 3, 4, 5], channel: channel)
     }
     
     func testBufferingWithMark() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        self.connect(channel: channel)
         
-        let writePromise1 = self.channel.eventLoop.makePromise(of: Void.self)
-        let writePromise2 = self.channel.eventLoop.makePromise(of: Void.self)
-        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: writePromise1)
-        self.channel.flush()
-        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: writePromise2)
+        let writePromise1 = channel.eventLoop.makePromise(of: Void.self)
+        let writePromise2 = channel.eventLoop.makePromise(of: Void.self)
+        channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: writePromise1)
+        channel.flush()
+        channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: writePromise2)
         
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
-        self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
-        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
+        self.writeInbound([0x05, 0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         XCTAssertNoThrow(try writePromise1.futureResult.wait())
-        self.assertOutputBuffer([1, 2, 3])
+        self.assertOutputBuffer([1, 2, 3], channel: channel)
         
-        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        XCTAssertNoThrow(try channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
         XCTAssertNoThrow(try writePromise2.futureResult.wait())
-        self.assertOutputBuffer([4, 5, 6])
-        self.assertOutputBuffer([7, 8, 9])
+        self.assertOutputBuffer([4, 5, 6], channel: channel)
+        self.assertOutputBuffer([7, 8, 9], channel: channel)
     }
     
     func testTypicalWorkflowDripfeed() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        self.connect(channel: channel)
         
         // the client should start the handshake instantly
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
         
         // server selects authentication method
         // once the dripfeed is complete we should get the client request
-        self.writeInbound([0x05])
-        self.assertOutputBuffer([])
-        self.writeInbound([0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.writeInbound([0x05], channel: channel)
+        self.assertOutputBuffer([], channel: channel)
+        self.writeInbound([0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         // drip feed server response
-        self.writeInbound([0x05, 0x00, 0x00, 0x01])
-        self.assertOutputBuffer([])
-        self.writeInbound([192, 168])
-        self.assertOutputBuffer([])
-        self.writeInbound([1, 1])
-        self.assertOutputBuffer([])
-        self.writeInbound([0x00, 0x50])
+        self.writeInbound([0x05, 0x00, 0x00, 0x01], channel: channel)
+        self.assertOutputBuffer([], channel: channel)
+        self.writeInbound([192, 168], channel: channel)
+        self.assertOutputBuffer([], channel: channel)
+        self.writeInbound([1, 1], channel: channel)
+        self.assertOutputBuffer([], channel: channel)
+        self.writeInbound([0x00, 0x50], channel: channel)
         
         // any inbound data should now go straight through
-        self.writeInbound([1, 2, 3, 4, 5])
-        self.assertInbound([1, 2, 3, 4, 5])
+        self.writeInbound([1, 2, 3, 4, 5], channel: channel)
+        self.assertInbound([1, 2, 3, 4, 5], channel: channel)
     }
     
     func testInvalidAuthenticationMethod() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        self.connect(channel: channel)
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -168,19 +162,21 @@ class SocksClientHandlerTests: XCTestCase {
             }
         }
         
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
         
         // server requests an auth method we don't support
-        let promise = self.channel.eventLoop.makePromise(of: Void.self)
-        try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
-        self.writeInbound([0x05, 0x01])
+        let promise = channel.eventLoop.makePromise(of: Void.self)
+        try! channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
+        self.writeInbound([0x05, 0x01], channel: channel)
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidAuthenticationSelection)
         }
     }
     
     func testProxyConnectionFailed() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        self.connect(channel: channel)
         
         class ErrorHandler: ChannelInboundHandler {
             typealias InboundIn = ByteBuffer
@@ -197,45 +193,45 @@ class SocksClientHandlerTests: XCTestCase {
         }
         
         // start handshake, send request
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
-        self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
+        self.writeInbound([0x05, 0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         // server replies with an error
-        let promise = self.channel.eventLoop.makePromise(of: Void.self)
-        try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
-        self.writeInbound([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        let promise = channel.eventLoop.makePromise(of: Void.self)
+        try! channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
+        self.writeInbound([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
         }
     }
     
     func testDelayedConnection() {
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        
         // we shouldn't start the handshake until the client
         // has connected
-        self.assertOutputBuffer([])
+        self.assertOutputBuffer([], channel: channel)
         
-        self.connect()
+        self.connect(channel: channel)
         
         // now the handshake should have started
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
     }
     
     func testDelayedHandlerAdded() {
-        
-        // reset the channel that was set up automatically
-        XCTAssertNoThrow(try self.channel.close().wait())
-        self.channel = EmbeddedChannel()
-        self.handler = SOCKSClientHandler(targetAddress: .domain("127.0.0.1", port: 1234))
-        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait())
-        XCTAssertTrue(self.channel.isActive)
+        let channel = EmbeddedChannel()
+        let handler = SOCKSClientHandler(targetAddress: .domain("127.0.0.1", port: 1234))
+        XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "127.0.0.1", port: 80)).wait())
+        XCTAssertTrue(channel.isActive)
         
         // there shouldn't be anything outbound
-        self.assertOutputBuffer([])
+        self.assertOutputBuffer([], channel: channel)
         
         // add the handler, there should be outbound data immediately
-        XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
+        XCTAssertNoThrow(channel.pipeline.addHandler(handler))
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
     }
     
     func testHandlerRemovalAfterEstablishEvent() {
@@ -258,72 +254,78 @@ class SocksClientHandlerTests: XCTestCase {
                 context.fireUserInboundEventTriggered(event)
             }
         }
-        
-        let establishPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
+
+        let channel = EmbeddedChannel(handler: SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80))))
+        let establishPromise = channel.eventLoop.makePromise(of: Void.self)
+        let removalPromise = channel.eventLoop.makePromise(of: Void.self)
         establishPromise.futureResult.whenSuccess { _ in
-            self.channel.pipeline.removeHandler(self.handler).cascade(to: removalPromise)
+            channel.pipeline.handler(type: SOCKSClientHandler.self).whenSuccess {
+                channel.pipeline.removeHandler($0).cascade(to: removalPromise)
+            }
         }
         
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait())
         
-        self.connect()
+        self.connect(channel: channel)
         
         // these writes should be buffered to be send out once the connection is established.
-        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
-        self.channel.flush()
-        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
+        channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
+        channel.flush()
+        channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
         
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
-        self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
-        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
+        self.writeInbound([0x05, 0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
-        self.assertOutputBuffer([1, 2, 3])
+        self.assertOutputBuffer([1, 2, 3], channel: channel)
         
-        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        XCTAssertNoThrow(try channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
         
-        self.assertOutputBuffer([4, 5, 6])
-        self.assertOutputBuffer([7, 8, 9])
+        self.assertOutputBuffer([4, 5, 6], channel: channel)
+        self.assertOutputBuffer([7, 8, 9], channel: channel)
         
         XCTAssertNoThrow(try removalPromise.futureResult.wait())
-        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+        XCTAssertThrowsError(try channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
             XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
         }
     }
     
     func testHandlerRemovalBeforeConnectionIsEstablished() {
-        self.connect()
+        let handler = SOCKSClientHandler(targetAddress: .address(try! .init(ipAddress: "192.168.1.1", port: 80)))
+        let channel = EmbeddedChannel(handler: handler)
+        
+        self.connect(channel: channel)
         
         // these writes should be buffered to be send out once the connection is established.
-        self.channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
-        self.channel.flush()
-        self.channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
+        channel.write(ByteBuffer(bytes: [1, 2, 3]), promise: nil)
+        channel.flush()
+        channel.write(ByteBuffer(bytes: [4, 5, 6]), promise: nil)
         
-        self.assertOutputBuffer([0x05, 0x01, 0x00])
-        self.writeInbound([0x05, 0x00])
-        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.assertOutputBuffer([0x05, 0x01, 0x00], channel: channel)
+        self.writeInbound([0x05, 0x00], channel: channel)
+        self.assertOutputBuffer([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         // we try to remove the handler before the connection is established.
-        let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        self.channel.pipeline.removeHandler(self.handler, promise: removalPromise)
+        let removalPromise = channel.eventLoop.makePromise(of: Void.self)
+        channel.pipeline.removeHandler(handler, promise: removalPromise)
         
         // establishes the connection
-        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
+        self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50], channel: channel)
         
         // write six more bytes - those should be passed through right away
-        self.writeInbound([1, 2, 3, 4, 5, 6])
-        self.assertInbound([1, 2, 3, 4, 5, 6])
+        self.writeInbound([1, 2, 3, 4, 5, 6], channel: channel)
+        self.assertInbound([1, 2, 3, 4, 5, 6], channel: channel)
         
-        self.assertOutputBuffer([1, 2, 3])
+        self.assertOutputBuffer([1, 2, 3], channel: channel)
         
-        XCTAssertNoThrow(try self.channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
+        XCTAssertNoThrow(try channel.writeAndFlush(ByteBuffer(bytes: [7, 8, 9])).wait())
         
-        self.assertOutputBuffer([4, 5, 6])
-        self.assertOutputBuffer([7, 8, 9])
+        self.assertOutputBuffer([4, 5, 6], channel: channel)
+        self.assertOutputBuffer([7, 8, 9], channel: channel)
         
         XCTAssertNoThrow(try removalPromise.futureResult.wait())
-        XCTAssertThrowsError(try self.channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
+        XCTAssertThrowsError(try channel.pipeline.syncOperations.handler(type: SOCKSClientHandler.self)) {
             XCTAssertEqual($0 as? ChannelPipelineError, .notFound)
         }
     }

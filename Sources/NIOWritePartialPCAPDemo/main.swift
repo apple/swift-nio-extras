@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import NIOCore
 import NIOPosix
 import NIOExtras
@@ -99,8 +100,8 @@ class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     }
 }
 
-guard let outputFile = CommandLine.arguments.dropFirst().first else {
-    print("Usage: \(CommandLine.arguments[0]) OUTPUT.pcap")
+guard let outputFile = ProcessInfo.processInfo.arguments.dropFirst().first else {
+    print("Usage: \(ProcessInfo.processInfo.arguments[0]) OUTPUT.pcap")
     exit(0)
 }
 
