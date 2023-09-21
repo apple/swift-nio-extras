@@ -25,40 +25,44 @@ extension HTTPMethod {
     init(_ newMethod: HTTPRequest.Method) {
         switch newMethod {
         case .get: self = .GET
-        case .put: self = .PUT
-        case .acl: self = .ACL
         case .head: self = .HEAD
         case .post: self = .POST
-        case .copy: self = .COPY
-        case .lock: self = .LOCK
-        case .move: self = .MOVE
-        case .bind: self = .BIND
-        case .link: self = .LINK
-        case .patch: self = .PATCH
-        case .trace: self = .TRACE
-        case .mkcol: self = .MKCOL
-        case .merge: self = .MERGE
-        case .purge: self = .PURGE
-        case .notify: self = .NOTIFY
-        case .search: self = .SEARCH
-        case .unlock: self = .UNLOCK
-        case .rebind: self = .REBIND
-        case .unbind: self = .UNBIND
-        case .report: self = .REPORT
+        case .put: self = .PUT
         case .delete: self = .DELETE
-        case .unlink: self = .UNLINK
         case .connect: self = .CONNECT
-        case .msearch: self = .MSEARCH
         case .options: self = .OPTIONS
-        case .propfind: self = .PROPFIND
-        case .checkout: self = .CHECKOUT
-        case .proppatch: self = .PROPPATCH
-        case .subscribe: self = .SUBSCRIBE
-        case .mkcalendar: self = .MKCALENDAR
-        case .mkactivity: self = .MKACTIVITY
-        case .unsubscribe: self = .UNSUBSCRIBE
-        case .source: self = .SOURCE
-        default: self = .RAW(value: newMethod.rawValue)
+        case .trace: self = .TRACE
+        case .patch: self = .PATCH
+        default:
+            let rawValue = newMethod.rawValue
+            switch rawValue {
+            case "ACL": self = .ACL
+            case "COPY": self = .COPY
+            case "LOCK": self = .LOCK
+            case "MOVE": self = .MOVE
+            case "BIND": self = .BIND
+            case "LINK": self = .LINK
+            case "MKCOL": self = .MKCOL
+            case "MERGE": self = .MERGE
+            case "PURGE": self = .PURGE
+            case "NOTIFY": self = .NOTIFY
+            case "SEARCH": self = .SEARCH
+            case "UNLOCK": self = .UNLOCK
+            case "REBIND": self = .REBIND
+            case "UNBIND": self = .UNBIND
+            case "REPORT": self = .REPORT
+            case "UNLINK": self = .UNLINK
+            case "MSEARCH": self = .MSEARCH
+            case "PROPFIND": self = .PROPFIND
+            case "CHECKOUT": self = .CHECKOUT
+            case "PROPPATCH": self = .PROPPATCH
+            case "SUBSCRIBE": self = .SUBSCRIBE
+            case "MKCALENDAR": self = .MKCALENDAR
+            case "MKACTIVITY": self = .MKACTIVITY
+            case "UNSUBSCRIBE": self = .UNSUBSCRIBE
+            case "SOURCE": self = .SOURCE
+            default: self = .RAW(value: rawValue)
+            }
         }
     }
 
@@ -67,38 +71,38 @@ extension HTTPMethod {
             switch self {
             case .GET: return .get
             case .PUT: return .put
-            case .ACL: return .acl
+            case .ACL: return HTTPRequest.Method("ACL")!
             case .HEAD: return .head
             case .POST: return .post
-            case .COPY: return .copy
-            case .LOCK: return .lock
-            case .MOVE: return .move
-            case .BIND: return .bind
-            case .LINK: return .link
+            case .COPY: return HTTPRequest.Method("COPY")!
+            case .LOCK: return HTTPRequest.Method("LOCK")!
+            case .MOVE: return HTTPRequest.Method("MOVE")!
+            case .BIND: return HTTPRequest.Method("BIND")!
+            case .LINK: return HTTPRequest.Method("LINK")!
             case .PATCH: return .patch
             case .TRACE: return .trace
-            case .MKCOL: return .mkcol
-            case .MERGE: return .merge
-            case .PURGE: return .purge
-            case .NOTIFY: return .notify
-            case .SEARCH: return .search
-            case .UNLOCK: return .unlock
-            case .REBIND: return .rebind
-            case .UNBIND: return .unbind
-            case .REPORT: return .report
+            case .MKCOL: return HTTPRequest.Method("MKCOL")!
+            case .MERGE: return HTTPRequest.Method("MERGE")!
+            case .PURGE: return HTTPRequest.Method("PURGE")!
+            case .NOTIFY: return HTTPRequest.Method("NOTIFY")!
+            case .SEARCH: return HTTPRequest.Method("SEARCH")!
+            case .UNLOCK: return HTTPRequest.Method("UNLOCK")!
+            case .REBIND: return HTTPRequest.Method("REBIND")!
+            case .UNBIND: return HTTPRequest.Method("UNBIND")!
+            case .REPORT: return HTTPRequest.Method("REPORT")!
             case .DELETE: return .delete
-            case .UNLINK: return .unlink
+            case .UNLINK: return HTTPRequest.Method("UNLINK")!
             case .CONNECT: return .connect
-            case .MSEARCH: return .msearch
+            case .MSEARCH: return HTTPRequest.Method("MSEARCH")!
             case .OPTIONS: return .options
-            case .PROPFIND: return .propfind
-            case .CHECKOUT: return .checkout
-            case .PROPPATCH: return .proppatch
-            case .SUBSCRIBE: return .subscribe
-            case .MKCALENDAR: return .mkcalendar
-            case .MKACTIVITY: return .mkactivity
-            case .UNSUBSCRIBE: return .unsubscribe
-            case .SOURCE: return .source
+            case .PROPFIND: return HTTPRequest.Method("PROPFIND")!
+            case .CHECKOUT: return HTTPRequest.Method("CHECKOUT")!
+            case .PROPPATCH: return HTTPRequest.Method("PROPPATCH")!
+            case .SUBSCRIBE: return HTTPRequest.Method("SUBSCRIBE")!
+            case .MKCALENDAR: return HTTPRequest.Method("MKCALENDAR")!
+            case .MKACTIVITY: return HTTPRequest.Method("MKACTIVITY")!
+            case .UNSUBSCRIBE: return HTTPRequest.Method("UNSUBSCRIBE")!
+            case .SOURCE: return HTTPRequest.Method("SOURCE")!
             case .RAW(value: let value):
                 guard let method = HTTPRequest.Method(value) else {
                     throw HTTP1TypeConversionError.invalidMethod
@@ -138,13 +142,13 @@ extension HTTPHeaders {
 
 extension HTTPRequestHead {
     init(_ newRequest: HTTPRequest) throws {
-        guard let pathField = newRequest.pseudoHeaderFields.path else {
+        guard let path = newRequest.method == .connect ? newRequest.authority : newRequest.path else {
             throw HTTP1TypeConversionError.missingPath
         }
         var headers = HTTPHeaders()
         headers.reserveCapacity(newRequest.headerFields.count + 1)
-        if let authorityField = newRequest.pseudoHeaderFields.authority {
-            headers.add(name: "Host", value: authorityField.value)
+        if let authority = newRequest.authority {
+            headers.add(name: "Host", value: authority)
         }
         var firstCookie = true
         for field in newRequest.headerFields {
@@ -160,7 +164,7 @@ extension HTTPRequestHead {
         self.init(
             version: .http1_1,
             method: HTTPMethod(newRequest.method),
-            uri: pathField.value,
+            uri: path,
             headers: headers
         )
     }

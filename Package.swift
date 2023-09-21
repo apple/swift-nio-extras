@@ -145,7 +145,7 @@ products += [
 ]
 
 dependencies += [
-    .package(url: "https://github.com/apple/swift-http-types", from: "0.1.1"),
+    .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
 ]
 
 targets += [
