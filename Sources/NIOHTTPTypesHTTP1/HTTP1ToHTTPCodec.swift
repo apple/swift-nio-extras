@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+import HTTPTypes
 import NIOCore
 import NIOHTTP1
 import NIOHTTPTypes
 
 /// A simple channel handler that translates HTTP/1 messages into shared HTTP types,
 /// and vice versa, for use on the client side.
-public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPClientResponsePart
     public typealias InboundOut = HTTPTypeResponsePart
 
@@ -32,14 +33,16 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                try context.fireChannelRead(self.wrapInboundOut(.head(head.newResponse)))
+                let newResponse = try HTTPResponse(head)
+                context.fireChannelRead(self.wrapInboundOut(.head(newResponse)))
             } catch {
                 context.fireErrorCaught(error)
             }
         case .body(let body):
             context.fireChannelRead(self.wrapInboundOut(.body(body)))
         case .end(let trailers):
-            context.fireChannelRead(self.wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
+            let newTrailers = trailers.map { HTTPFields($0, splitCookie: false) }
+            context.fireChannelRead(self.wrapInboundOut(.end(newTrailers)))
         }
     }
 
@@ -47,9 +50,11 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapOutboundIn(data) {
         case .head(let request):
             do {
-                try context.write(self.wrapOutboundOut(.head(HTTPRequestHead(request))), promise: promise)
+                let oldRequest = try HTTPRequestHead(request)
+                context.write(self.wrapOutboundOut(.head(oldRequest)), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
+                promise?.fail(error)
             }
         case .body(let body):
             context.write(self.wrapOutboundOut(.body(.byteBuffer(body))), promise: promise)
@@ -61,7 +66,7 @@ public final class HTTP1ToHTTPClientCodec: ChannelInboundHandler, ChannelOutboun
 
 /// A simple channel handler that translates HTTP/1 messages into shared HTTP types,
 /// and vice versa, for use on the server side.
-public final class HTTP1ToHTTPServerCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTP1ToHTTPServerCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPServerRequestPart
     public typealias InboundOut = HTTPTypeRequestPart
 
@@ -85,21 +90,24 @@ public final class HTTP1ToHTTPServerCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                try context.fireChannelRead(self.wrapInboundOut(.head(head.newRequest(secure: self.secure, splitCookie: self.splitCookie))))
+                let newRequest = try HTTPRequest(head, secure: self.secure, splitCookie: self.splitCookie)
+                context.fireChannelRead(self.wrapInboundOut(.head(newRequest)))
             } catch {
                 context.fireErrorCaught(error)
             }
         case .body(let body):
             context.fireChannelRead(self.wrapInboundOut(.body(body)))
         case .end(let trailers):
-            context.fireChannelRead(self.wrapInboundOut(.end(trailers?.newFields(splitCookie: false))))
+            let newTrailers = trailers.map { HTTPFields($0, splitCookie: false) }
+            context.fireChannelRead(self.wrapInboundOut(.end(newTrailers)))
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         switch self.unwrapOutboundIn(data) {
         case .head(let response):
-            context.write(self.wrapOutboundOut(.head(HTTPResponseHead(response))), promise: promise)
+            let oldResponse = HTTPResponseHead(response)
+            context.write(self.wrapOutboundOut(.head(oldResponse)), promise: promise)
         case .body(let body):
             context.write(self.wrapOutboundOut(.body(.byteBuffer(body))), promise: promise)
         case .end(let trailers):

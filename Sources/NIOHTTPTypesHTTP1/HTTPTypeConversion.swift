@@ -65,50 +65,50 @@ extension HTTPMethod {
             }
         }
     }
+}
 
-    var newMethod: HTTPRequest.Method {
-        get throws {
-            switch self {
-            case .GET: return .get
-            case .PUT: return .put
-            case .ACL: return HTTPRequest.Method("ACL")!
-            case .HEAD: return .head
-            case .POST: return .post
-            case .COPY: return HTTPRequest.Method("COPY")!
-            case .LOCK: return HTTPRequest.Method("LOCK")!
-            case .MOVE: return HTTPRequest.Method("MOVE")!
-            case .BIND: return HTTPRequest.Method("BIND")!
-            case .LINK: return HTTPRequest.Method("LINK")!
-            case .PATCH: return .patch
-            case .TRACE: return .trace
-            case .MKCOL: return HTTPRequest.Method("MKCOL")!
-            case .MERGE: return HTTPRequest.Method("MERGE")!
-            case .PURGE: return HTTPRequest.Method("PURGE")!
-            case .NOTIFY: return HTTPRequest.Method("NOTIFY")!
-            case .SEARCH: return HTTPRequest.Method("SEARCH")!
-            case .UNLOCK: return HTTPRequest.Method("UNLOCK")!
-            case .REBIND: return HTTPRequest.Method("REBIND")!
-            case .UNBIND: return HTTPRequest.Method("UNBIND")!
-            case .REPORT: return HTTPRequest.Method("REPORT")!
-            case .DELETE: return .delete
-            case .UNLINK: return HTTPRequest.Method("UNLINK")!
-            case .CONNECT: return .connect
-            case .MSEARCH: return HTTPRequest.Method("MSEARCH")!
-            case .OPTIONS: return .options
-            case .PROPFIND: return HTTPRequest.Method("PROPFIND")!
-            case .CHECKOUT: return HTTPRequest.Method("CHECKOUT")!
-            case .PROPPATCH: return HTTPRequest.Method("PROPPATCH")!
-            case .SUBSCRIBE: return HTTPRequest.Method("SUBSCRIBE")!
-            case .MKCALENDAR: return HTTPRequest.Method("MKCALENDAR")!
-            case .MKACTIVITY: return HTTPRequest.Method("MKACTIVITY")!
-            case .UNSUBSCRIBE: return HTTPRequest.Method("UNSUBSCRIBE")!
-            case .SOURCE: return HTTPRequest.Method("SOURCE")!
-            case .RAW(value: let value):
-                guard let method = HTTPRequest.Method(value) else {
-                    throw HTTP1TypeConversionError.invalidMethod
-                }
-                return method
+extension HTTPRequest.Method {
+    init(_ oldMethod: HTTPMethod) throws {
+        switch oldMethod {
+        case .GET: self = .get
+        case .PUT: self = .put
+        case .ACL: self = .init("ACL")!
+        case .HEAD: self = .head
+        case .POST: self = .post
+        case .COPY: self = .init("COPY")!
+        case .LOCK: self = .init("LOCK")!
+        case .MOVE: self = .init("MOVE")!
+        case .BIND: self = .init("BIND")!
+        case .LINK: self = .init("LINK")!
+        case .PATCH: self = .patch
+        case .TRACE: self = .trace
+        case .MKCOL: self = .init("MKCOL")!
+        case .MERGE: self = .init("MERGE")!
+        case .PURGE: self = .init("PURGE")!
+        case .NOTIFY: self = .init("NOTIFY")!
+        case .SEARCH: self = .init("SEARCH")!
+        case .UNLOCK: self = .init("UNLOCK")!
+        case .REBIND: self = .init("REBIND")!
+        case .UNBIND: self = .init("UNBIND")!
+        case .REPORT: self = .init("REPORT")!
+        case .DELETE: self = .delete
+        case .UNLINK: self = .init("UNLINK")!
+        case .CONNECT: self = .connect
+        case .MSEARCH: self = .init("MSEARCH")!
+        case .OPTIONS: self = .options
+        case .PROPFIND: self = .init("PROPFIND")!
+        case .CHECKOUT: self = .init("CHECKOUT")!
+        case .PROPPATCH: self = .init("PROPPATCH")!
+        case .SUBSCRIBE: self = .init("SUBSCRIBE")!
+        case .MKCALENDAR: self = .init("MKCALENDAR")!
+        case .MKACTIVITY: self = .init("MKACTIVITY")!
+        case .UNSUBSCRIBE: self = .init("UNSUBSCRIBE")!
+        case .SOURCE: self = .init("SOURCE")!
+        case .RAW(value: let value):
+            guard let method = HTTPRequest.Method(value) else {
+                throw HTTP1TypeConversionError.invalidMethod
             }
+            self = method
         }
     }
 }
@@ -118,25 +118,26 @@ extension HTTPHeaders {
         let fields = newFields.map { ($0.name.rawName, $0.value) }
         self.init(fields)
     }
+}
 
-    func newFields(splitCookie: Bool) -> HTTPFields {
-        var fields = HTTPFields()
-        fields.reserveCapacity(count)
-        for (index, field) in enumerated() {
+extension HTTPFields {
+    init(_ oldHeaders: HTTPHeaders, splitCookie: Bool) {
+        self.init()
+        self.reserveCapacity(count)
+        for (index, field) in oldHeaders.enumerated() {
             if index == 0, field.name.lowercased() == "host" {
                 continue
             }
             if let name = HTTPField.Name(field.name) {
                 if splitCookie && name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
-                    fields.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
+                    self.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
                         HTTPField(name: name, value: String($0))
                     })
                 } else {
-                    fields.append(HTTPField(name: name, value: field.value))
+                    self.append(HTTPField(name: name, value: field.value))
                 }
             }
         }
-        return fields
     }
 }
 
@@ -168,17 +169,19 @@ extension HTTPRequestHead {
             headers: headers
         )
     }
+}
 
-    func newRequest(secure: Bool, splitCookie: Bool) throws -> HTTPRequest {
-        let method = try self.method.newMethod
+extension HTTPRequest {
+    init(_ oldRequest: HTTPRequestHead, secure: Bool, splitCookie: Bool) throws {
+        let method = try Method(oldRequest.method)
         let scheme = secure ? "https" : "http"
-        let authority = self.headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
-        return HTTPRequest(
+        let authority = oldRequest.headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
+        self.init(
             method: method,
             scheme: scheme,
             authority: authority,
-            path: self.uri,
-            headerFields: self.headers.newFields(splitCookie: splitCookie)
+            path: oldRequest.uri,
+            headerFields: HTTPFields(oldRequest.headers, splitCookie: splitCookie)
         )
     }
 }
@@ -194,14 +197,14 @@ extension HTTPResponseHead {
             headers: HTTPHeaders(newResponse.headerFields)
         )
     }
+}
 
-    var newResponse: HTTPResponse {
-        get throws {
-            guard self.status.code <= 999 else {
-                throw HTTP1TypeConversionError.invalidStatusCode
-            }
-            let status = HTTPResponse.Status(code: Int(self.status.code), reasonPhrase: self.status.reasonPhrase)
-            return HTTPResponse(status: status, headerFields: self.headers.newFields(splitCookie: false))
+extension HTTPResponse {
+    init(_ oldResponse: HTTPResponseHead) throws {
+        guard oldResponse.status.code <= 999 else {
+            throw HTTP1TypeConversionError.invalidStatusCode
         }
+        let status = HTTPResponse.Status(code: Int(oldResponse.status.code), reasonPhrase: oldResponse.status.reasonPhrase)
+        self.init(status: status, headerFields: HTTPFields(oldResponse.headers, splitCookie: false))
     }
 }

@@ -15,20 +15,28 @@
 import HTTPTypes
 import NIOCore
 
-/// The parts of a complete HTTP message, either request or response.
+/// The parts of a complete HTTP request.
 ///
-/// An HTTP message is made up of a request, or one or more response headers,
-/// encoded by `.head`, zero or more body parts, and optionally some trailers. To
-/// indicate that a complete HTTP message has been sent or received, we use `.end`,
-/// which may also contain any trailers that make up the message.
-public enum HTTPTypePart<Head: Sendable & Hashable>: Sendable, Hashable {
-    case head(Head)
+/// An HTTP request message is made up of a request encoded by `.head`, zero or
+/// more body parts, and optionally some trailers.
+///
+/// To indicate that a complete HTTP message has been sent or received, we use
+/// `.end`, which may also contain any trailers that make up the message.
+public enum HTTPTypeRequestPart: Sendable, Hashable {
+    case head(HTTPRequest)
     case body(ByteBuffer)
     case end(HTTPFields?)
 }
 
-/// The components of an HTTP request.
-public typealias HTTPTypeRequestPart = HTTPTypePart<HTTPRequest>
-
-/// The components of an HTTP response.
-public typealias HTTPTypeResponsePart = HTTPTypePart<HTTPResponse>
+/// The parts of a complete HTTP response.
+///
+/// An HTTP response message is made up of one or more response headers encoded
+/// by `.head`, zero or more body parts, and optionally some trailers.
+///
+/// To indicate that a complete HTTP message has been sent or received, we use
+/// `.end`, which may also contain any trailers that make up the message.
+public enum HTTPTypeResponsePart: Sendable, Hashable {
+    case head(HTTPResponse)
+    case body(ByteBuffer)
+    case end(HTTPFields?)
+}

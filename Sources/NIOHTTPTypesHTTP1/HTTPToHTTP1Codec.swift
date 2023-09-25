@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import HTTPTypes
 import NIOCore
 import NIOHTTP1
 import NIOHTTPTypes
@@ -22,7 +23,7 @@ import NIOHTTPTypes
 /// This is intended for compatibility purposes where a channel handler working with
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
-public final class HTTPToHTTP1ClientCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPTypeResponsePart
     public typealias InboundOut = HTTPClientResponsePart
 
@@ -36,7 +37,11 @@ public final class HTTPToHTTP1ClientCodec: ChannelInboundHandler, ChannelOutboun
     /// - Parameters:
     ///   - secure: Whether "https" or "http" is used.
     ///   - splitCookie: Whether the cookies sent by the client should be split
-    ///                  into multiple header fields. Defaults to true.
+    ///                  into multiple header fields. Splitting the `Cookie`
+    ///                  header field improves the performance of HTTP/2 and
+    ///                  HTTP/3 clients by allowing individual cookies to be
+    ///                  indexed separately in the dynamic table. It has no
+    ///                  effects in HTTP/1. Defaults to true.
     public init(secure: Bool, splitCookie: Bool = true) {
         self.secure = secure
         self.splitCookie = splitCookie
@@ -45,7 +50,8 @@ public final class HTTPToHTTP1ClientCodec: ChannelInboundHandler, ChannelOutboun
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         switch self.unwrapInboundIn(data) {
         case .head(let head):
-            context.fireChannelRead(self.wrapInboundOut(.head(HTTPResponseHead(head))))
+            let oldResponse = HTTPResponseHead(head)
+            context.fireChannelRead(self.wrapInboundOut(.head(oldResponse)))
         case .body(let body):
             context.fireChannelRead(self.wrapInboundOut(.body(body)))
         case .end(let trailers):
@@ -57,16 +63,19 @@ public final class HTTPToHTTP1ClientCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapOutboundIn(data) {
         case .head(let request):
             do {
-                try context.write(self.wrapOutboundOut(.head(request.newRequest(secure: self.secure, splitCookie: self.splitCookie))), promise: promise)
+                let newRequest = try HTTPRequest(request, secure: self.secure, splitCookie: self.splitCookie)
+                context.write(self.wrapOutboundOut(.head(newRequest)), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
+                promise?.fail(error)
             }
         case .body(.byteBuffer(let body)):
             context.write(self.wrapOutboundOut(.body(body)), promise: promise)
         case .body:
             fatalError("File region not supported")
         case .end(let trailers):
-            context.write(self.wrapOutboundOut(.end(trailers?.newFields(splitCookie: false))), promise: promise)
+            let newTrailers = trailers.map { HTTPFields($0, splitCookie: false) }
+            context.write(self.wrapOutboundOut(.end(newTrailers)), promise: promise)
         }
     }
 }
@@ -77,7 +86,7 @@ public final class HTTPToHTTP1ClientCodec: ChannelInboundHandler, ChannelOutboun
 /// This is intended for compatibility purposes where a channel handler working with
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
-public final class HTTPToHTTP1ServerCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTPToHTTP1ServerCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPTypeRequestPart
     public typealias InboundOut = HTTPServerRequestPart
 
@@ -91,7 +100,8 @@ public final class HTTPToHTTP1ServerCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                try context.fireChannelRead(self.wrapInboundOut(.head(HTTPRequestHead(head))))
+                let oldRequest = try HTTPRequestHead(head)
+                context.fireChannelRead(self.wrapInboundOut(.head(oldRequest)))
             } catch {
                 context.fireErrorCaught(error)
             }
@@ -106,16 +116,19 @@ public final class HTTPToHTTP1ServerCodec: ChannelInboundHandler, ChannelOutboun
         switch self.unwrapOutboundIn(data) {
         case .head(let response):
             do {
-                try context.write(self.wrapOutboundOut(.head(response.newResponse)), promise: promise)
+                let newResponse = try HTTPResponse(response)
+                context.write(self.wrapOutboundOut(.head(newResponse)), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
+                promise?.fail(error)
             }
         case .body(.byteBuffer(let body)):
             context.write(self.wrapOutboundOut(.body(body)), promise: promise)
         case .body:
             fatalError("File region not supported")
         case .end(let trailers):
-            context.write(self.wrapOutboundOut(.end(trailers?.newFields(splitCookie: false))), promise: promise)
+            let newTrailers = trailers.map { HTTPFields($0, splitCookie: false) }
+            context.write(self.wrapOutboundOut(.end(newTrailers)), promise: promise)
         }
     }
 }

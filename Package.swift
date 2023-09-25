@@ -137,7 +137,7 @@ var targets: [PackageDescription.Target] = [
         ]),
 ]
 
-#if swift(>=5.7)
+#if swift(>=5.7.1)
 products += [
     .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
     .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),

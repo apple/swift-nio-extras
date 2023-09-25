@@ -30,18 +30,20 @@ private struct BaseClientCodec {
         case .headers(let headerContent):
             switch try self.headerStateMachine.newHeaders(block: headerContent.headers) {
             case .trailer:
-                return try (first: .end(headerContent.headers.newTrailers), second: nil)
+                let newTrailers = try HTTPFields(trailers: headerContent.headers)
+                return (first: .end(newTrailers), second: nil)
 
             case .informationalResponseHead:
-                return try (first: .head(headerContent.headers.newResponse), second: nil)
+                let newResponse = try HTTPResponse(headerContent.headers)
+                return (first: .head(newResponse), second: nil)
 
             case .finalResponseHead:
                 guard self.outgoingHTTP1RequestHead != nil else {
                     preconditionFailure("Expected not to get a response without having sent a request")
                 }
                 self.outgoingHTTP1RequestHead = nil
-                let respHead = try headerContent.headers.newResponse
-                let first = HTTPTypeResponsePart.head(respHead)
+                let newResponse = try HTTPResponse(headerContent.headers)
+                let first = HTTPTypeResponsePart.head(newResponse)
                 var second: HTTPTypeResponsePart?
                 if headerContent.endStream {
                     second = .end(nil)
@@ -102,7 +104,7 @@ private struct BaseClientCodec {
 /// connection.
 ///
 /// This handler uses `HTTP2Frame.FramePayload` as its HTTP/2 currency type.
-public final class HTTP2FramePayloadToHTTPClientCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTP2Frame.FramePayload
     public typealias InboundOut = HTTPTypeResponsePart
 
@@ -150,11 +152,11 @@ private struct BaseServerCodec {
         switch data {
         case .headers(let headerContent):
             if case .trailer = try self.headerStateMachine.newHeaders(block: headerContent.headers) {
-                return try (first: .end(headerContent.headers.newTrailers), second: nil)
+                let newTrailers = try HTTPFields(trailers: headerContent.headers)
+                return (first: .end(newTrailers), second: nil)
             } else {
-                let reqHead = try headerContent.headers.newRequest
-
-                let first = HTTPTypeRequestPart.head(reqHead)
+                let newRequest = try HTTPRequest(headerContent.headers)
+                let first = HTTPTypeRequestPart.head(newRequest)
                 var second: HTTPTypeRequestPart?
                 if headerContent.endStream {
                     second = .end(nil)
@@ -210,7 +212,7 @@ private struct BaseServerCodec {
 /// connection.
 ///
 /// This handler uses `HTTP2Frame.FramePayload` as its HTTP/2 currency type.
-public final class HTTP2FramePayloadToHTTPServerCodec: ChannelInboundHandler, ChannelOutboundHandler {
+public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTP2Frame.FramePayload
     public typealias InboundOut = HTTPTypeRequestPart
 
