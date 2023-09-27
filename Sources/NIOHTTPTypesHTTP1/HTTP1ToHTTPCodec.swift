@@ -21,9 +21,9 @@ import NIOHTTPTypes
 /// and vice versa, for use on the client side.
 public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPClientResponsePart
-    public typealias InboundOut = HTTPTypeResponsePart
+    public typealias InboundOut = HTTPResponsePart
 
-    public typealias OutboundIn = HTTPTypeRequestPart
+    public typealias OutboundIn = HTTPRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
     /// Initializes a `HTTP1ToHTTPClientCodec`.
@@ -68,9 +68,9 @@ public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler {
 /// and vice versa, for use on the server side.
 public final class HTTP1ToHTTPServerCodec: ChannelDuplexHandler {
     public typealias InboundIn = HTTPServerRequestPart
-    public typealias InboundOut = HTTPTypeRequestPart
+    public typealias InboundOut = HTTPRequestPart
 
-    public typealias OutboundIn = HTTPTypeResponsePart
+    public typealias OutboundIn = HTTPResponsePart
     public typealias OutboundOut = HTTPServerResponsePart
 
     private let secure: Bool

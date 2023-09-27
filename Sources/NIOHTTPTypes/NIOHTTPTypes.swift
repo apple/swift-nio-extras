@@ -22,7 +22,7 @@ import NIOCore
 ///
 /// To indicate that a complete HTTP message has been sent or received, we use
 /// `.end`, which may also contain any trailers that make up the message.
-public enum HTTPTypeRequestPart: Sendable, Hashable {
+public enum HTTPRequestPart: Sendable, Hashable {
     case head(HTTPRequest)
     case body(ByteBuffer)
     case end(HTTPFields?)
@@ -35,7 +35,7 @@ public enum HTTPTypeRequestPart: Sendable, Hashable {
 ///
 /// To indicate that a complete HTTP message has been sent or received, we use
 /// `.end`, which may also contain any trailers that make up the message.
-public enum HTTPTypeResponsePart: Sendable, Hashable {
+public enum HTTPResponsePart: Sendable, Hashable {
     case head(HTTPResponse)
     case body(ByteBuffer)
     case end(HTTPFields?)

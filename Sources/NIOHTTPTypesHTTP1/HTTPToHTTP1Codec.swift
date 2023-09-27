@@ -24,11 +24,11 @@ import NIOHTTPTypes
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
 public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler {
-    public typealias InboundIn = HTTPTypeResponsePart
+    public typealias InboundIn = HTTPResponsePart
     public typealias InboundOut = HTTPClientResponsePart
 
     public typealias OutboundIn = HTTPClientRequestPart
-    public typealias OutboundOut = HTTPTypeRequestPart
+    public typealias OutboundOut = HTTPRequestPart
 
     private let secure: Bool
     private let splitCookie: Bool
@@ -87,11 +87,11 @@ public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler {
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
 public final class HTTPToHTTP1ServerCodec: ChannelDuplexHandler {
-    public typealias InboundIn = HTTPTypeRequestPart
+    public typealias InboundIn = HTTPRequestPart
     public typealias InboundOut = HTTPServerRequestPart
 
     public typealias OutboundIn = HTTPServerResponsePart
-    public typealias OutboundOut = HTTPTypeResponsePart
+    public typealias OutboundOut = HTTPResponsePart
 
     /// Initializes a `HTTPToHTTP1ServerCodec`.
     public init() {}

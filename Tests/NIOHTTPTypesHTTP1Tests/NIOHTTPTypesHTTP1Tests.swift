@@ -89,12 +89,12 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     static let oldTrailers: HTTPHeaders = ["X-Foo": "Bar"]
 
     func testClientHTTP1ToHTTP() throws {
-        let recorder = InboundRecorder<HTTPTypeResponsePart>()
+        let recorder = InboundRecorder<HTTPResponsePart>()
 
         try self.channel.pipeline.addHandlers(HTTP1ToHTTPClientCodec(), recorder).wait()
 
-        try self.channel.writeOutbound(HTTPTypeRequestPart.head(Self.request))
-        try self.channel.writeOutbound(HTTPTypeRequestPart.end(Self.trailers))
+        try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
+        try self.channel.writeOutbound(HTTPRequestPart.end(Self.trailers))
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPClientRequestPart.self), .head(Self.oldRequest))
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPClientRequestPart.self), .end(Self.oldTrailers))
@@ -109,7 +109,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     }
 
     func testServerHTTP1ToHTTP() throws {
-        let recorder = InboundRecorder<HTTPTypeRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart>()
 
         try self.channel.pipeline.addHandlers(HTTP1ToHTTPServerCodec(secure: true), recorder).wait()
 
@@ -119,8 +119,8 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.requestNoSplitCookie))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.trailers))
 
-        try self.channel.writeOutbound(HTTPTypeResponsePart.head(Self.response))
-        try self.channel.writeOutbound(HTTPTypeResponsePart.end(Self.trailers))
+        try self.channel.writeOutbound(HTTPResponsePart.head(Self.response))
+        try self.channel.writeOutbound(HTTPResponsePart.end(Self.trailers))
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPServerResponsePart.self), .head(Self.oldResponse))
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPServerResponsePart.self), .end(Self.oldTrailers))
@@ -136,11 +136,11 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         try self.channel.writeOutbound(HTTPClientRequestPart.head(Self.oldRequest))
         try self.channel.writeOutbound(HTTPClientRequestPart.end(Self.oldTrailers))
 
-        XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeRequestPart.self), .head(Self.request))
-        XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeRequestPart.self), .end(Self.trailers))
+        XCTAssertEqual(try self.channel.readOutbound(as: HTTPRequestPart.self), .head(Self.request))
+        XCTAssertEqual(try self.channel.readOutbound(as: HTTPRequestPart.self), .end(Self.trailers))
 
-        try self.channel.writeInbound(HTTPTypeResponsePart.head(Self.response))
-        try self.channel.writeInbound(HTTPTypeResponsePart.end(Self.trailers))
+        try self.channel.writeInbound(HTTPResponsePart.head(Self.response))
+        try self.channel.writeInbound(HTTPResponsePart.end(Self.trailers))
 
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.oldResponse))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.oldTrailers))
@@ -153,8 +153,8 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
 
         try self.channel.pipeline.addHandlers(HTTPToHTTP1ServerCodec(), recorder).wait()
 
-        try self.channel.writeInbound(HTTPTypeRequestPart.head(Self.request))
-        try self.channel.writeInbound(HTTPTypeRequestPart.end(Self.trailers))
+        try self.channel.writeInbound(HTTPRequestPart.head(Self.request))
+        try self.channel.writeInbound(HTTPRequestPart.end(Self.trailers))
 
         XCTAssertEqual(recorder.receivedFrames[0], .head(Self.oldRequest))
         XCTAssertEqual(recorder.receivedFrames[1], .end(Self.oldTrailers))
@@ -162,8 +162,8 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         try self.channel.writeOutbound(HTTPServerResponsePart.head(Self.oldResponse))
         try self.channel.writeOutbound(HTTPServerResponsePart.end(Self.oldTrailers))
 
-        XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeResponsePart.self), .head(Self.response))
-        XCTAssertEqual(try self.channel.readOutbound(as: HTTPTypeResponsePart.self), .end(Self.trailers))
+        XCTAssertEqual(try self.channel.readOutbound(as: HTTPResponsePart.self), .head(Self.response))
+        XCTAssertEqual(try self.channel.readOutbound(as: HTTPResponsePart.self), .end(Self.trailers))
 
         XCTAssertTrue(try self.channel.finish().isClean)
     }
