@@ -55,7 +55,7 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
                 let length = head.headers[canonicalForm: "Content-Length"].first.flatMap({ Int($0) })
             {
                 do {
-                    try self.decompressor.initializeDecoder(encoding: algorithm)
+                    try self.decompressor.initializeDecoder()
                     self.compression = Compression(algorithm: algorithm, contentLength: length)
                 } catch let error {
                     context.fireErrorCaught(error)
