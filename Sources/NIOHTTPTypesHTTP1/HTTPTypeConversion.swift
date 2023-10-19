@@ -124,8 +124,10 @@ extension HTTPFields {
     init(_ oldHeaders: HTTPHeaders, splitCookie: Bool) {
         self.init()
         self.reserveCapacity(count)
-        for (index, field) in oldHeaders.enumerated() {
-            if index == 0, field.name.lowercased() == "host" {
+        var firstHost = true
+        for field in oldHeaders {
+            if firstHost && field.name.lowercased() == "host" {
+                firstHost = false
                 continue
             }
             if let name = HTTPField.Name(field.name) {
@@ -175,7 +177,7 @@ extension HTTPRequest {
     init(_ oldRequest: HTTPRequestHead, secure: Bool, splitCookie: Bool) throws {
         let method = try Method(oldRequest.method)
         let scheme = secure ? "https" : "http"
-        let authority = oldRequest.headers.first.flatMap { $0.name.lowercased() == "host" ? $0.value : nil }
+        let authority = oldRequest.headers["Host"].first
         self.init(
             method: method,
             scheme: scheme,
