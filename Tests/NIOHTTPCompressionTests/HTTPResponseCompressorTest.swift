@@ -14,6 +14,7 @@
 
 import XCTest
 import CNIOExtrasZlib
+import NIOConcurrencyHelpers
 import NIOCore
 import NIOEmbedded
 import NIOHTTP1
@@ -21,11 +22,11 @@ import NIOConcurrencyHelpers
 @testable import NIOHTTPCompression
 
 private class PromiseOrderer {
-    private var promiseArray: Array<EventLoopPromise<Void>>
+    private let promiseArray: NIOLockedValueBox<Array<EventLoopPromise<Void>>>
     private let eventLoop: EventLoop
 
     internal init(eventLoop: EventLoop) {
-        promiseArray = Array()
+        promiseArray = .init(Array())
         self.eventLoop = eventLoop
     }
 
@@ -36,12 +37,15 @@ private class PromiseOrderer {
     }
 
     private func appendPromise(_ promise: EventLoopPromise<Void>) {
-        let thisPromiseIndex = promiseArray.count
-        promiseArray.append(promise)
+        let thisPromiseIndex = promiseArray.withLockedValue {
+            let promiseIndex = $0.count
+            $0.append(promise)
+            return promiseIndex
+        }
 
-        promise.futureResult.whenComplete { (_: Result<Void, Error>) in
-            let priorFutures = self.promiseArray[0..<thisPromiseIndex]
-            let subsequentFutures = self.promiseArray[(thisPromiseIndex + 1)...]
+        promise.futureResult.whenComplete { [promiseArray] (_: Result<Void, Error>) in
+            let priorFutures = promiseArray.withLockedValue { $0[0..<thisPromiseIndex] }
+            let subsequentFutures = promiseArray.withLockedValue { $0[(thisPromiseIndex + 1)...] }
             let allPriorFuturesFired = priorFutures.map { $0.futureResult.isFulfilled }.allSatisfy { $0 }
             let allSubsequentFuturesUnfired = subsequentFutures.map { $0.futureResult.isFulfilled }.allSatisfy { !$0 }
 
@@ -51,7 +55,7 @@ private class PromiseOrderer {
     }
 
     func waitUntilComplete() throws {
-        guard let promise = promiseArray.last else { return }
+        guard let promise = self.promiseArray.withLockedValue({ $0.last }) else { return }
         try promise.futureResult.wait()
     }
 }
@@ -667,26 +671,23 @@ extension EventLoopFuture {
         if self.eventLoop.inEventLoop {
             // Easy, we're on the EventLoop. Let's just use our knowledge that we run completed future callbacks
             // immediately.
-            var fulfilled = false
+            let fulfilled = NIOLoopBoundBox(false, eventLoop: self.eventLoop)
             self.whenComplete { _ in
-                fulfilled = true
+                fulfilled.value = true
             }
-            return fulfilled
+            return fulfilled.value
         } else {
-            let lock = NIOLock()
             let group = DispatchGroup()
-            var fulfilled = false // protected by lock
+            let fulfilled = NIOLockedValueBox(false)
 
             group.enter()
             self.eventLoop.execute {
                 let isFulfilled = self.isFulfilled // This will now enter the above branch.
-                lock.withLock {
-                    fulfilled = isFulfilled
-                }
+                fulfilled.withLockedValue { $0 = isFulfilled }
                 group.leave()
             }
             group.wait() // this is very nasty but this is for tests only, so...
-            return lock.withLock { fulfilled }
+            return fulfilled.withLockedValue { $0 }
         }
     }
 }

@@ -29,8 +29,9 @@ private final class HTTPHandler: ChannelInboundHandler {
         case .head(let head):
             guard head.version == HTTPVersion(major: 1, minor: 1) else {
                 context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: head.version, status: .badRequest))), promise: nil)
+                let boundedContext = NIOLoopBound(context, eventLoop: context.eventLoop)
                 context.writeAndFlush(self.wrapOutboundOut(.end(nil))).whenComplete { (_: Result<(), Error>) in
-                    context.close(promise: nil)
+                    boundedContext.value.close(promise: nil)
                 }
                 return
             }
@@ -46,9 +47,11 @@ private final class HTTPHandler: ChannelInboundHandler {
             context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
             buffer.clear()
             buffer.writeStaticString("done with the request now\n")
+            let boundedContext = NIOLoopBound(context, eventLoop: context.eventLoop)
+            let boundedSelf = NIOLoopBound(self, eventLoop: context.eventLoop)
             _ = context.eventLoop.scheduleTask(in: .seconds(30)) { [buffer] in
-                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
-                context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
+                boundedContext.value.write(boundedSelf.value.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+                boundedContext.value.writeAndFlush(boundedSelf.value.wrapOutboundOut(.end(nil)), promise: nil)
 
             }
         }

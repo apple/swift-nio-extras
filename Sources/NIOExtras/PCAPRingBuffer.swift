@@ -12,18 +12,21 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOConcurrencyHelpers
 import NIOCore
 
 // MARK: NIOPCAPRingBuffer
 /// Storage for the most recent set of packets captured subject to constraints.
 /// Use ``addFragment(_:)`` as the sink to a ``NIOWritePCAPHandler`` and call ``emitPCAP()``
 /// when you wish to get the recorded data.
-/// - Warning:  This class is not thread safe so should only be called from one thread.
-public class NIOPCAPRingBuffer {
-    private var pcapFragments: CircularBuffer<ByteBuffer>
-    private var pcapCurrentBytes: Int
+/// - Note: This class is annotated `@unchecked Sendable` because its mutable state is protected by a lock.
+public final class NIOPCAPRingBuffer: @unchecked Sendable {
     private let maximumFragments: Int
     private let maximumBytes: Int
+    
+    private let pcapLock = NIOLock()
+    private var pcapFragments: CircularBuffer<ByteBuffer>
+    private var pcapCurrentBytes: Int
 
     /// Initialise the buffer, setting constraints.
     /// - Parameters:
@@ -52,50 +55,53 @@ public class NIOPCAPRingBuffer {
     
     @discardableResult
     private func popFirst() -> ByteBuffer? {
-        let popped = self.pcapFragments.popFirst()
-        if let popped = popped {
-            self.pcapCurrentBytes -= popped.readableBytes
+        self.pcapLock.withLock {
+            let popped = self.pcapFragments.popFirst()
+            if let popped = popped {
+                self.pcapCurrentBytes -= popped.readableBytes
+            }
+            return popped
         }
-        return popped
     }
     
     private func append(_ buffer: ByteBuffer) {
-        self.pcapFragments.append(buffer)
-        self.pcapCurrentBytes += buffer.readableBytes
-        assert(self.pcapFragments.count <= self.maximumFragments)
-        // It's expected that the caller will have made room if required
-        // for the fragment but we may well go over on bytes - they're
-        // expected to fix that afterwards.
+        self.pcapLock.withLock {
+            self.pcapFragments.append(buffer)
+            self.pcapCurrentBytes += buffer.readableBytes
+            assert(self.pcapFragments.count <= self.maximumFragments)
+            // It's expected that the caller will have made room if required
+            // for the fragment but we may well go over on bytes - they're
+            // expected to fix that afterwards.
+        }
     }
 
     /// Record a fragment into the buffer, making space if required.
     /// - Parameter buffer: ByteBuffer containing a pcap fragment to store
     public func addFragment(_ buffer: ByteBuffer) {
         // Make sure we don't go over on the number of fragments.
-        if self.pcapFragments.count >= self.maximumFragments {
+        if self.pcapLock.withLock({ self.pcapFragments.count }) >= self.maximumFragments {
             self.popFirst()
         }
-        precondition(self.pcapFragments.count < self.maximumFragments)
+        precondition(self.pcapLock.withLock({ self.pcapFragments.count }) < self.maximumFragments)
 
         // Add the new fragment
         self.append(buffer)
 
         // Trim if we've exceeded byte limit - this could remove multiple, and indeed all fragments.
-        while self.pcapCurrentBytes > self.maximumBytes {
+        while self.pcapLock.withLock({ self.pcapCurrentBytes }) > self.maximumBytes {
             self.popFirst()
         }
-        precondition(self.pcapCurrentBytes <= self.maximumBytes)
+        precondition(self.pcapLock.withLock({ self.pcapCurrentBytes }) <= self.maximumBytes)
     }
 
     /// Emit the captured data to a consuming function; then clear the captured data.
     /// - Returns: A ciruclar buffer of captured fragments.
     public func emitPCAP() -> CircularBuffer<ByteBuffer> {
-        let toReturn = self.pcapFragments // Copy before clearing.
-        self.pcapFragments.removeAll(keepingCapacity: true)
-        self.pcapCurrentBytes = 0
-        return toReturn
+        self.pcapLock.withLock {
+            let toReturn = self.pcapFragments // Copy before clearing.
+            self.pcapFragments.removeAll(keepingCapacity: true)
+            self.pcapCurrentBytes = 0
+            return toReturn
+        }
     }
 }
-
-@available(*, unavailable)
-extension NIOPCAPRingBuffer: Sendable {}

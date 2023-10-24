@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIOConcurrencyHelpers
 import NIOCore
 import NIOPosix
 import NIOHTTP1
@@ -107,7 +108,7 @@ final class RepeatedRequests: ChannelInboundHandler {
         let reqPart = self.unwrapInboundIn(data)
         if case .end(nil) = reqPart {
             if self.remainingNumberOfRequests <= 0 {
-                context.channel.close().map { self.doneRequests }.cascade(to: self.isDonePromise)
+                context.channel.close().map { [doneRequests] in doneRequests }.cascade(to: self.isDonePromise)
             } else {
                 self.doneRequests += 1
                 self.remainingNumberOfRequests -= 1
@@ -124,7 +125,7 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
     let numberOfRepeats: Int
     let numberOfClients: Int
     let requestsPerClient: Int
-    let extraInitialiser: (Channel) -> EventLoopFuture<Void>
+    let extraInitialiser: @Sendable (Channel) -> EventLoopFuture<Void>
 
     let head: HTTPRequestHead
 
@@ -134,7 +135,7 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
     init(numberOfRepeats: Int,
          numberOfClients: Int,
          requestsPerClient: Int,
-         extraInitialiser: @escaping (Channel) -> EventLoopFuture<Void>) {
+         extraInitialiser: @Sendable @escaping (Channel) -> EventLoopFuture<Void>) {
         self.numberOfRepeats = numberOfRepeats
         self.numberOfClients = numberOfClients
         self.requestsPerClient = requestsPerClient
@@ -165,21 +166,23 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
         var reqs: [Int] = []
         reqs.reserveCapacity(self.numberOfRepeats)
         for _ in 0..<self.numberOfRepeats {
-            var requestHandlers: [RepeatedRequests] = []
-            requestHandlers.reserveCapacity(self.numberOfClients)
+            let requestHandlerCompletedFutures: NIOLockedValueBox<[EventLoopFuture<Int>]> = .init([])
+            requestHandlerCompletedFutures.withLockedValue { $0.reserveCapacity(self.numberOfClients) }
             var clientChannels: [Channel] = []
             clientChannels.reserveCapacity(self.numberOfClients)
             for _ in 0 ..< self.numberOfClients {
                 let clientChannel = try! ClientBootstrap(group: self.group)
-                    .channelInitializer { channel in
-                        channel.pipeline.addHTTPClientHandlers().flatMap {
-                            let repeatedRequestsHandler = RepeatedRequests(numberOfRequests: self.requestsPerClient,
-                                                                           eventLoop: channel.eventLoop,
-                                                                           head: self.head)
-                            requestHandlers.append(repeatedRequestsHandler)
+                    .channelInitializer { [requestsPerClient, head, extraInitialiser] channel in
+                        return channel.pipeline.addHTTPClientHandlers().flatMap {
+                            let repeatedRequestsHandler = RepeatedRequests(
+                                numberOfRequests: requestsPerClient,
+                                eventLoop: channel.eventLoop,
+                                head: head
+                            )
+                            requestHandlerCompletedFutures.withLockedValue { $0.append(repeatedRequestsHandler.completedFuture) }
                             return channel.pipeline.addHandler(repeatedRequestsHandler)
                         }.flatMap {
-                            self.extraInitialiser(channel)
+                            extraInitialiser(channel)
                         }
                     }
                     .connect(to: self.serverChannel.localAddress!)
@@ -195,8 +198,12 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
             let allWrites = EventLoopFuture<Void>.andAllComplete(writeFutures, on: writeFutures.first!.eventLoop)
             try! allWrites.wait()
 
-            let streamCompletedFutures = requestHandlers.map { rh in rh.completedFuture }
-            let requestsServed = EventLoopFuture<Int>.reduce(0, streamCompletedFutures, on: streamCompletedFutures.first!.eventLoop, +)
+            let requestsServed = EventLoopFuture<Int>.reduce(
+                0,
+                requestHandlerCompletedFutures.withLockedValue { $0 },
+                on: requestHandlerCompletedFutures.withLockedValue { $0.first!.eventLoop },
+                { $0 + $1 }
+            )
             reqs.append(try! requestsServed.wait())
         }
         return reqs.reduce(0, +) / self.numberOfRepeats

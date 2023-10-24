@@ -14,7 +14,8 @@
 
 import NIOCore
 
-public protocol NFS3FileSystemNoAuth {
+@preconcurrency
+public protocol NFS3FileSystemNoAuth: Sendable {
     func mount(_ call: MountCallMount, promise: EventLoopPromise<MountReplyMount>)
     func unmount(_ call: MountCallUnmount, promise: EventLoopPromise<MountReplyUnmount>)
     func getattr(_ call: NFS3CallGetAttr, promise: EventLoopPromise<NFS3ReplyGetAttr>)
