@@ -151,6 +151,21 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             "NIOHTTPTypesHTTP2",
         ]),
+    .target(
+        name: "NIOResumableUpload",
+        dependencies: [
+            "NIOHTTPTypes",
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
+            .product(name: "Atomics", package: "swift-atomics"),
+        ]),
+    .testTarget(
+        name: "NIOResumableUploadTests",
+        dependencies: [
+            "NIOResumableUpload",
+            .product(name: "NIOEmbedded", package: "swift-nio"),
+        ]),
 ]
 
 let package = Package(
@@ -162,12 +177,15 @@ let package = Package(
         .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
         .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
         .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
+        .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.42.0"),
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
     ],
     targets: targets
 )
