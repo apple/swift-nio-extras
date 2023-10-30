@@ -19,20 +19,6 @@ import NIOHTTPTypes
 /// The child channel that persists across upload resumption attempts, delivering data as if it is
 /// a single HTTP upload.
 final class HTTPResumableUploadChannel: Channel, ChannelCore {
-    init(
-        upload: HTTPResumableUpload,
-        parent: Channel,
-        channelConfigurator: (Channel) -> Void
-    ) {
-        self.upload = upload
-        self.allocator = parent.allocator
-        self.closePromise = parent.eventLoop.makePromise()
-        self.eventLoop = parent.eventLoop
-        self.autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
-        self._pipeline = ChannelPipeline(channel: self)
-        channelConfigurator(self)
-    }
-
     let upload: HTTPResumableUpload
 
     let allocator: ByteBufferAllocator
@@ -78,6 +64,20 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
     let eventLoop: EventLoop
 
     private var autoRead: Bool
+
+    init(
+        upload: HTTPResumableUpload,
+        parent: Channel,
+        channelConfigurator: (Channel) -> Void
+    ) {
+        self.upload = upload
+        self.allocator = parent.allocator
+        self.closePromise = parent.eventLoop.makePromise()
+        self.eventLoop = parent.eventLoop
+        self.autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
+        self._pipeline = ChannelPipeline(channel: self)
+        channelConfigurator(self)
+    }
 
     func setOption<Option>(_ option: Option, value: Option.Value) -> EventLoopFuture<Void> where Option: ChannelOption {
         if self.eventLoop.inEventLoop {
