@@ -35,7 +35,8 @@ public class NIOPCAPRingBuffer {
         self.maximumFragments = maximumFragments
         self.maximumBytes = maximumBytes
         self.pcapCurrentBytes = 0
-        self.pcapFragments = CircularBuffer(initialCapacity: maximumFragments)
+        // Don't default to `maximumFragments` as it will be `.max` on some paths.
+        self.pcapFragments = CircularBuffer()
     }
 
     /// Initialise the buffer, setting constraints
@@ -88,7 +89,7 @@ public class NIOPCAPRingBuffer {
     }
 
     /// Emit the captured data to a consuming function; then clear the captured data.
-    /// - Returns: A ciruclar buffer of captured fragments.
+    /// - Returns: A circular buffer of captured fragments.
     public func emitPCAP() -> CircularBuffer<ByteBuffer> {
         let toReturn = self.pcapFragments // Copy before clearing.
         self.pcapFragments.removeAll(keepingCapacity: true)
