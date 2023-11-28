@@ -14,6 +14,8 @@
 
 #if canImport(Darwin)
 import Darwin
+#elseif canImport(Musl)
+import Musl
 #else
 import Glibc
 #endif
