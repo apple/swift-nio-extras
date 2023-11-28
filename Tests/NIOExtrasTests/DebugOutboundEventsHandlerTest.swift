@@ -85,7 +85,7 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
 
 }
 
-extension DebugOutboundEventsHandler.Event: Equatable {
+extension DebugOutboundEventsHandler.Event {
     public static func == (lhs: DebugOutboundEventsHandler.Event, rhs: DebugOutboundEventsHandler.Event) -> Bool {
         switch (lhs, rhs) {
         case (.register, .register):
@@ -108,6 +108,15 @@ extension DebugOutboundEventsHandler.Event: Equatable {
             return false
         }
     }
-    
 }
+
+#if swift(>=5.8)
+#if $RetroactiveAttribute
+extension DebugOutboundEventsHandler.Event: @retroactive Equatable { }
+#else
+extension DebugOutboundEventsHandler.Event: Equatable { }
+#endif
+#else
+extension DebugOutboundEventsHandler.Event: Equatable { }
+#endif
 
