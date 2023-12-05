@@ -104,7 +104,7 @@ private struct BaseClientCodec {
 /// connection.
 ///
 /// This handler uses `HTTP2Frame.FramePayload` as its HTTP/2 currency type.
-public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler {
+public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias InboundIn = HTTP2Frame.FramePayload
     public typealias InboundOut = HTTPResponsePart
 
@@ -212,7 +212,7 @@ private struct BaseServerCodec {
 /// connection.
 ///
 /// This handler uses `HTTP2Frame.FramePayload` as its HTTP/2 currency type.
-public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler {
+public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler, RemovableChannelHandler {
     public typealias InboundIn = HTTP2Frame.FramePayload
     public typealias InboundOut = HTTPRequestPart
 
