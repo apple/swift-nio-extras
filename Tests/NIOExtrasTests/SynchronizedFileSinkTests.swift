@@ -65,6 +65,7 @@ fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.N
     return try body(fileHandle, temporaryFilePath)
 }
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.NIOFileHandle, String) async throws -> T) async throws -> T {
     let temporaryFilePath = "\(temporaryDirectory)/nio_extras_\(UUID())"
     FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8))
