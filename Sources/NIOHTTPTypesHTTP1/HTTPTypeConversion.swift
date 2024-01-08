@@ -15,10 +15,23 @@
 import HTTPTypes
 import NIOHTTP1
 
-public enum HTTP1TypeConversionError: Error {
-    case invalidMethod
-    case missingPath
-    case invalidStatusCode
+public struct HTTP1TypeConversionError: Error, Equatable {
+    private enum Internal {
+        case invalidMethod
+        case missingPath
+        case invalidStatusCode
+    }
+    private let value: Internal
+    private init(_ value: Internal) {
+        self.value = value
+    }
+
+    /// Failed to create HTTPRequest.Method from HTTPMethod
+    public static var invalidMethod: Self { .init(.invalidMethod)}
+    /// Failed to extract a path from HTTPRequest
+    public static var missingPath: Self { .init(.missingPath)}
+    /// HTTPResponseHead had an invalid status code
+    public static var invalidStatusCode: Self { .init(.invalidStatusCode)}
 }
 
 extension HTTPMethod {
