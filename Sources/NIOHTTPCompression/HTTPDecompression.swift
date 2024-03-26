@@ -152,6 +152,7 @@ public enum NIOHTTPDecompression {
             self.stream.zalloc = nil
             self.stream.zfree = nil
             self.stream.opaque = nil
+            self.inflated = 0
 
             let rc = CNIOExtrasZlib_inflateInit2(&self.stream, Self.windowBitsWithAutomaticCompressionFormatDetection)
             guard rc == Z_OK else {

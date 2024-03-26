@@ -66,7 +66,7 @@ class PCAPRingBufferTest: XCTestCase {
     
     func testByteLimit() {
         let expectedData = 150 + 25 + 75 + 120
-        let ringBuffer = NIOPCAPRingBuffer(maximumFragments: 1000, maximumBytes: expectedData + 10)
+        let ringBuffer = NIOPCAPRingBuffer(maximumBytes: expectedData + 10)
         for fragment in dataForTests() {
             ringBuffer.addFragment(fragment)
         }

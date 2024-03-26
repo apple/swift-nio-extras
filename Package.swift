@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version:5.8
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the SwiftNIO open source project
@@ -123,6 +123,34 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
         ]),
+    .target(
+        name: "NIOHTTPTypes",
+        dependencies: [
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "NIOCore", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOHTTPTypesHTTP1",
+        dependencies: [
+            "NIOHTTPTypes",
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+        ]),
+    .target(
+        name: "NIOHTTPTypesHTTP2",
+        dependencies: [
+            "NIOHTTPTypes",
+            .product(name: "NIOHTTP2", package: "swift-nio-http2"),
+        ]),
+    .testTarget(
+        name: "NIOHTTPTypesHTTP1Tests",
+        dependencies: [
+            "NIOHTTPTypesHTTP1",
+        ]),
+    .testTarget(
+        name: "NIOHTTPTypesHTTP2Tests",
+        dependencies: [
+            "NIOHTTPTypesHTTP2",
+        ]),
 ]
 
 let package = Package(
@@ -131,10 +159,15 @@ let package = Package(
         .library(name: "NIOExtras", targets: ["NIOExtras"]),
         .library(name: "NIOSOCKS", targets: ["NIOSOCKS"]),
         .library(name: "NIOHTTPCompression", targets: ["NIOHTTPCompression"]),
+        .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
+        .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
+        .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.42.0"),
+        .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
     ],
     targets: targets
 )

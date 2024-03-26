@@ -214,4 +214,59 @@ class LineBasedFrameDecoderTest: XCTestCase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testBasicSingleStep() {
+        let decoder = LineBasedFrameDecoder()
+        let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
+        var callCount = 0
+        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "1\n\n2\n3\n")) { line in
+            callCount += 1
+            switch callCount {
+            case 1:
+                XCTAssertEqual(ByteBuffer(string: "1"), line)
+            case 2:
+                XCTAssertEqual(ByteBuffer(string: ""), line)
+            case 3:
+                XCTAssertEqual(ByteBuffer(string: "2"), line)
+            case 4:
+                XCTAssertEqual(ByteBuffer(string: "3"), line)
+            default:
+                XCTFail("not expecting call no \(callCount)")
+            }
+        })
+    }
+
+    func testBasicSingleStepNoNewlineComingButEOF() {
+        let decoder = LineBasedFrameDecoder()
+        let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
+        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
+            XCTFail("not taking calls")
+        })
+        XCTAssertThrowsError(try b2mp.finishProcessing(seenEOF: true, { line in
+            XCTFail("not taking calls")
+        })) { error in
+            if let error = error as? NIOExtrasErrors.LeftOverBytesError {
+                XCTAssertEqual(ByteBuffer(string: "new newline eva\r"), error.leftOverBytes)
+            } else {
+                XCTFail("unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testBasicSingleStepNoNewlineOrEOFComing() {
+        let decoder = LineBasedFrameDecoder()
+        let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
+        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
+            XCTFail("not taking calls")
+        })
+        XCTAssertThrowsError(try b2mp.finishProcessing(seenEOF: false, { line in
+            XCTFail("not taking calls")
+        })) { error in
+            if let error = error as? NIOExtrasErrors.LeftOverBytesError {
+                XCTAssertEqual(ByteBuffer(string: "new newline eva\r"), error.leftOverBytes)
+            } else {
+                XCTFail("unexpected error: \(error)")
+            }
+        }
+    }
 }

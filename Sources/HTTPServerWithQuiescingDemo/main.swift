@@ -59,45 +59,54 @@ private final class HTTPHandler: ChannelInboundHandler {
     }
 }
 
-let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-let quiesce = ServerQuiescingHelper(group: group)
+private func runServer() throws {
+    let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-let signalQueue = DispatchQueue(label: "io.swift-nio.NIOExtrasDemo.SignalHandlingQueue")
-let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
-let fullyShutdownPromise: EventLoopPromise<Void> = group.next().makePromise()
-signalSource.setEventHandler {
-    signalSource.cancel()
-    print("\nreceived signal, initiating shutdown which should complete after the last request finished.")
+    do {
+        // This nested block is necessary to ensure that all the destructors for objects defined inside are called before the final call to group.syncShutdownGracefully(). A possible side effect of not doing this is a run-time error "Cannot schedule tasks on an EventLoop that has already shut down".
+        let quiesce = ServerQuiescingHelper(group: group)
 
-    quiesce.initiateShutdown(promise: fullyShutdownPromise)
-}
-signal(SIGINT, SIG_IGN)
-signalSource.resume()
+        let signalQueue = DispatchQueue(label: "io.swift-nio.NIOExtrasDemo.SignalHandlingQueue")
+        let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+        let fullyShutdownPromise: EventLoopPromise<Void> = group.next().makePromise()
+        signalSource.setEventHandler {
+            signalSource.cancel()
+            print("\nreceived signal, initiating shutdown which should complete after the last request finished.")
 
-do {
-
-    let serverChannel = try ServerBootstrap(group: group)
-        .serverChannelOption(ChannelOptions.backlog, value: 256)
-        .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
-        .serverChannelInitializer { channel in
-            channel.pipeline.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+            quiesce.initiateShutdown(promise: fullyShutdownPromise)
         }
-        .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
-        .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
-        .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
-        .childChannelInitializer { channel in
-            channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true, withErrorHandling: true).flatMap {
-                channel.pipeline.addHandler(HTTPHandler())
-            }
+        signal(SIGINT, SIG_IGN)
+        signalSource.resume()
+
+        do {
+
+            let serverChannel = try ServerBootstrap(group: group)
+                .serverChannelOption(ChannelOptions.backlog, value: 256)
+                .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+                .serverChannelInitializer { channel in
+                    channel.pipeline.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+                }
+                .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
+                .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+                .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
+                .childChannelInitializer { channel in
+                    channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true, withErrorHandling: true).flatMap {
+                        channel.pipeline.addHandler(HTTPHandler())
+                    }
+                }
+                .bind(host: "localhost", port: 0)
+                .wait()
+            print("HTTP server up and running on \(serverChannel.localAddress!)")
+            print("to connect to this server, run")
+            print("    curl http://localhost:\(serverChannel.localAddress!.port!)")
+        } catch {
+            try group.syncShutdownGracefully()
+            throw error
         }
-        .bind(host: "localhost", port: 0)
-        .wait()
-    print("HTTP server up and running on \(serverChannel.localAddress!)")
-    print("to connect to this server, run")
-    print("    curl http://localhost:\(serverChannel.localAddress!.port!)")
-} catch {
+        try fullyShutdownPromise.futureResult.wait()
+    }
+
     try group.syncShutdownGracefully()
-    throw error
 }
-try fullyShutdownPromise.futureResult.wait()
-try group.syncShutdownGracefully()
+
+try runServer()

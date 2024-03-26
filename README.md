@@ -14,7 +14,7 @@ All code will go through code review like in the other repositories related to t
 `swift-nio-extras` part of the SwiftNIO 2 family of repositories and depends on the following:
 
 - [`swift-nio`](https://github.com/apple/swift-nio), version 2.30.0 or better.
-- Swift 5.7
+- Swift 5.7.1
 - `zlib` and its development headers installed on the system. But don't worry, you'll find `zlib` on pretty much any UNIX system that can compile any sort of code.
 
 To depend on `swift-nio-extras`, put the following in the `dependencies` of your `Package.swift`:
@@ -25,7 +25,7 @@ To depend on `swift-nio-extras`, put the following in the `dependencies` of your
 
 ### Support for older Swift versions
 
-The most recent versions of SwiftNIO Extras support Swift 5.7 and newer. The minimum Swift version supported by SwiftNIO Extras releases are detailed below:
+The most recent versions of SwiftNIO Extras support Swift 5.7.1 and newer. The minimum Swift version supported by SwiftNIO Extras releases are detailed below:
 
 SwiftNIO Extras     | Minimum Swift Version
 --------------------|----------------------
@@ -34,7 +34,8 @@ SwiftNIO Extras     | Minimum Swift Version
 `1.11.0 ..< 1.14.0` | 5.4
 `1.14.0 ..< 1.19.0` | 5.5.2
 `1.19.0 ..< 1.20.0` | 5.6
-`1.20.0 ...`        | 5.7
+`1.20.0 ..< 1.23.0` | 5.7.1
+`1.23.0 ...`        | 5.8
 
 On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-extras-0.1) branch, you can find the `swift-nio-extras` version for the SwiftNIO 1 family. It requires Swift 4.1 or better.
 
@@ -51,3 +52,9 @@ On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-ext
 - [`DebugInboundsEventHandler`](Sources/NIOExtras/DebugInboundEventsHandler.swift) Prints out all inbound events that travel through the `ChannelPipeline`.
 - [`DebugOutboundsEventHandler`](Sources/NIOExtras/DebugOutboundEventsHandler.swift) Prints out all outbound events that travel through the `ChannelPipeline`.
 - [`WritePCAPHandler`](Sources/NIOExtras/WritePCAPHandler.swift) A `ChannelHandler` that writes `.pcap` containing the traffic of the `ChannelPipeline` that you can inspect with Wireshark/tcpdump.
+- [`HTTP1ToHTTPClientCodec`](Sources/NIOHTTPTypesHTTP1/HTTP1ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/1 messages into shared HTTP types for the client side.
+- [`HTTP1ToHTTPServerCodec`](Sources/NIOHTTPTypesHTTP1/HTTP1ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/1 messages into shared HTTP types for the server side.
+- [`HTTPToHTTP1ClientCodec`](Sources/NIOHTTPTypesHTTP1/HTTPToHTTP1Codec.swift) A `ChannelHandler` that translates shared HTTP types into HTTP/1 messages for the client side for compatibility purposes.
+- [`HTTPToHTTP1ServerCodec`](Sources/NIOHTTPTypesHTTP1/HTTPToHTTP1Codec.swift) A `ChannelHandler` that translates shared HTTP types into HTTP/1 messages for the server side for compatibility purposes.
+- [`HTTP2FramePayloadToHTTPClientCodec`](Sources/NIOHTTPTypesHTTP2/HTTP2ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/2 concepts into shared HTTP types for the client side.
+- [`HTTP2FramePayloadToHTTPServerCodec`](Sources/NIOHTTPTypesHTTP2/HTTP2ToHTTPCodec.swift) A `ChannelHandler` that translates HTTP/2 concepts into shared HTTP types for the server side.

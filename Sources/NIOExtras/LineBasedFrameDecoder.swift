@@ -30,7 +30,7 @@ import NIOCore
 ///     | ABC | DEF | GHI |
 ///     +-----+-----+-----+
 ///
-public class LineBasedFrameDecoder: ByteToMessageDecoder {
+public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMessageDecoder {
     /// `ByteBuffer` is the expected type passed in.
     public typealias InboundIn = ByteBuffer
     /// `ByteBuffer`s will be passed to the next stage.
@@ -57,6 +57,14 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
         }
     }
 
+    /// Decode data in the supplied buffer.
+    /// - Parameters:
+    ///   - buffer: Buffer containing data to decode.
+    /// - Returns: The decoded object or `nil` if we require more bytes.
+    public func decode(buffer: inout NIOCore.ByteBuffer) throws -> NIOCore.ByteBuffer? {
+        return try self.findNextFrame(buffer: &buffer)
+    }
+
     /// Decode all remaining data.
     /// If it is not possible to consume all the data then ``NIOExtrasErrors/LeftOverBytesError`` is reported via `context.fireErrorCaught`
     /// - Parameters:
@@ -70,6 +78,20 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder {
             context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
         }
         return .needMoreData
+    }
+
+    /// Decode all remaining data.
+    /// If it is not possible to consume all the data then ``NIOExtrasErrors/LeftOverBytesError`` is reported via `context.fireErrorCaught`
+    /// - Parameters:
+    ///   - buffer: Buffer containing the data to decode.
+    ///   - seenEOF: Has end of file been seen.
+    /// - Returns: The decoded object or `nil` if we require more bytes.
+    public func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> InboundOut? {
+        let decoded = try self.decode(buffer: &buffer)
+        if buffer.readableBytes > 0 {
+            throw NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer)
+        }
+        return decoded
     }
 
     private func findNextFrame(buffer: inout ByteBuffer) throws -> ByteBuffer? {

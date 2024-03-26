@@ -143,6 +143,21 @@ class HTTPResponseDecompressorTest: XCTestCase {
         }
     }
 
+    func testDecompressionMultipleWriteWithLimit() {
+        let channel = EmbeddedChannel()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))).wait())
+
+        let headers = HTTPHeaders([("Content-Encoding", "deflate")])
+        // this compressed payload is 272 bytes long uncompressed
+        let body = ByteBuffer.of(bytes: [120, 156, 75, 76, 28, 5, 200, 0, 0, 248, 66, 103, 17])
+
+        for i in 0..<3 {
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))), "\(i)")
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(body)), "\(i)")
+            XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)), "\(i)")
+        }
+    }
+
     func testDecompression() {
         let channel = EmbeddedChannel()
         XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait())
