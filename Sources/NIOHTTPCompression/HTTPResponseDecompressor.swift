@@ -71,7 +71,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
             do {
                 if let algorithm = algorithm {
                     self.compression = Compression(algorithm: algorithm, compressedLength: 0)
-                    try self.decompressor.initializeDecoder(encoding: algorithm)
+                    try self.decompressor.initializeDecoder()
                 }
                 
                 context.fireChannelRead(data)

@@ -94,18 +94,41 @@ public enum NIOHTTPDecompression {
                 return nil
             }
         }
-
-        var window: CInt {
-            switch self {
-            case .deflate:
-                return 15
-            case .gzip:
-                return 15 + 16
-            }
-        }
     }
 
     struct Decompressor {
+        /// `15` is the base two logarithm of the maximum window size (the size of the history buffer). It should be in the range 8..15 for this version of the library.
+        /// `32` enables automatic detection of gzip or zlib compression format with automatic header detection.
+        ///
+        /// Documentation from https://www.zlib.net/manual.html:
+        /// The windowBits parameter is the base two logarithm of the maximum window size (the size of the history buffer).
+        /// It should be in the range 8..15 for this version of the library.
+        /// The default value is 15 if inflateInit is used instead.
+        /// windowBits must be greater than or equal to the windowBits value provided to deflateInit2() while compressing,
+        /// or it must be equal to 15 if deflateInit2() was not used.
+        /// If a compressed stream with a larger window size is given as input,
+        /// inflate() will return with the error code Z_DATA_ERROR instead of trying to allocate a larger window.
+        /// windowBits can also be zero to request that inflate use the window size in the zlib header of the compressed stream.
+        /// windowBits can also be –8..–15 for raw inflate.
+        /// In this case, -windowBits determines the window size.
+        /// inflate() will then process raw deflate data, not looking for a zlib or gzip header, not generating a check value,
+        /// and not looking for any check values for comparison at the end of the stream.
+        /// This is for use with other formats that use the deflate compressed data format such as zip.
+        /// Those formats provide their own check values.
+        /// If a custom format is developed using the raw deflate format for compressed data,
+        /// it is recommended that a check value such as an Adler-32 or a CRC-32 be applied to the uncompressed data as is done in the zlib,
+        /// gzip, and zip formats. For most applications, the zlib format should be used as is.
+        /// Note that comments above on the use in deflateInit2() applies to the magnitude of windowBits.
+        /// windowBits can also be greater than 15 for optional gzip decoding.
+        /// Add 32 to windowBits to enable zlib and gzip decoding with automatic header detection,
+        /// or add 16 to decode only the gzip format (the zlib format will return a Z_DATA_ERROR).
+        /// If a gzip stream is being decoded, strm->adler is a CRC-32 instead of an Adler-32.
+        /// Unlike the gunzip utility and gzread() (see below), inflate() will not automatically decode concatenated gzip members.
+        /// inflate() will return Z_STREAM_END at the end of the gzip member.
+        /// The state would need to be reset to continue decoding a subsequent gzip member.
+        /// This must be done if there is more data after a gzip member, in order for the decompression to be compliant with the gzip standard (RFC 1952).
+        static let windowBitsWithAutomaticCompressionFormatDetection: Int32 = 15 + 32
+        
         private let limit: NIOHTTPDecompression.DecompressionLimit
         private var stream = z_stream()
         private var inflated = 0
@@ -125,13 +148,13 @@ public enum NIOHTTPDecompression {
             return result
         }
 
-        mutating func initializeDecoder(encoding: NIOHTTPDecompression.CompressionAlgorithm) throws {
+        mutating func initializeDecoder() throws {
             self.stream.zalloc = nil
             self.stream.zfree = nil
             self.stream.opaque = nil
             self.inflated = 0
 
-            let rc = CNIOExtrasZlib_inflateInit2(&self.stream, encoding.window)
+            let rc = CNIOExtrasZlib_inflateInit2(&self.stream, Self.windowBitsWithAutomaticCompressionFormatDetection)
             guard rc == Z_OK else {
                 throw NIOHTTPDecompression.DecompressionError.initializationError(Int(rc))
             }

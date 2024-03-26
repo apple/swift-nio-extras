@@ -103,13 +103,20 @@ class HTTPRequestDecompressorTest: XCTestCase {
         try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
 
         let body = Array(repeating: testString, count: 1000).joined()
-
-        for algorithm in [nil, "gzip", "deflate"] {
+        let algorithms: [(actual: String, announced: String)?] = [
+            nil,
+            (actual: "gzip", announced: "gzip"),
+            (actual: "deflate", announced: "deflate"),
+            (actual: "gzip", announced: "deflate"),
+            (actual: "deflate", announced: "gzip"),
+        ]
+        
+        for algorithm in algorithms {
             let compressed: ByteBuffer
             var headers = HTTPHeaders()
             if let algorithm = algorithm {
-                headers.add(name: "Content-Encoding", value: algorithm)
-                compressed = compress(ByteBuffer.of(string: body), algorithm)
+                headers.add(name: "Content-Encoding", value: algorithm.announced)
+                compressed = compress(ByteBuffer.of(string: body), algorithm.actual)
             } else {
                 compressed = ByteBuffer.of(string: body)
             }

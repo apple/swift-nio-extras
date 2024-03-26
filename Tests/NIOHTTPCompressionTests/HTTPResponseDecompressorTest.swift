@@ -166,13 +166,20 @@ class HTTPResponseDecompressorTest: XCTestCase {
         for _ in 1...1000 {
             body += "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
         }
+        let algorithms: [(actual: String, announced: String)?] = [
+            nil,
+            (actual: "gzip", announced: "gzip"),
+            (actual: "deflate", announced: "deflate"),
+            (actual: "gzip", announced: "deflate"),
+            (actual: "deflate", announced: "gzip"),
+        ]
 
-        for algorithm in [nil, "gzip", "deflate"] {
+        for algorithm in algorithms {
             let compressed: ByteBuffer
             var headers = HTTPHeaders()
             if let algorithm = algorithm {
-                headers.add(name: "Content-Encoding", value: algorithm)
-                compressed = compress(ByteBuffer.of(string: body), algorithm)
+                headers.add(name: "Content-Encoding", value: algorithm.announced)
+                compressed = compress(ByteBuffer.of(string: body), algorithm.actual)
             } else {
                 compressed = ByteBuffer.of(string: body)
             }
@@ -213,13 +220,21 @@ class HTTPResponseDecompressorTest: XCTestCase {
         for _ in 1...1000 {
             body += "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
         }
+        
+        let algorithms: [(actual: String, announced: String)?] = [
+            nil,
+            (actual: "gzip", announced: "gzip"),
+            (actual: "deflate", announced: "deflate"),
+            (actual: "gzip", announced: "deflate"),
+            (actual: "deflate", announced: "gzip"),
+        ]
 
-        for algorithm in [nil, "gzip", "deflate"] {
+        for algorithm in algorithms {
             let compressed: ByteBuffer
             var headers = HTTPHeaders()
             if let algorithm = algorithm {
-                headers.add(name: "Content-Encoding", value: algorithm)
-                compressed = compress(ByteBuffer.of(string: body), algorithm)
+                headers.add(name: "Content-Encoding", value: algorithm.announced)
+                compressed = compress(ByteBuffer.of(string: body), algorithm.actual)
             } else {
                 compressed = ByteBuffer.of(string: body)
             }
