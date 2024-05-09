@@ -110,12 +110,8 @@ extension DebugOutboundEventsHandler.Event {
     }
 }
 
-#if swift(>=5.8)
-#if $RetroactiveAttribute
+#if compiler(>=6.0)
 extension DebugOutboundEventsHandler.Event: @retroactive Equatable { }
-#else
-extension DebugOutboundEventsHandler.Event: Equatable { }
-#endif
 #else
 extension DebugOutboundEventsHandler.Event: Equatable { }
 #endif
