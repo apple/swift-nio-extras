@@ -136,7 +136,7 @@ extension HTTPHeaders {
 extension HTTPFields {
     public init(_ oldHeaders: HTTPHeaders, splitCookie: Bool) {
         self.init()
-        self.reserveCapacity(count)
+        self.reserveCapacity(oldHeaders.count)
         var firstHost = true
         for field in oldHeaders {
             if firstHost && field.name.lowercased() == "host" {
