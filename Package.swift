@@ -64,6 +64,14 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
         ]),
+    .executableTarget(
+        name: "NIOExtrasNFS3Demo",
+        dependencies: [
+            "NIONFS3",
+            "NIOExtras",
+            .product(name: "NIO", package: "swift-nio"),
+            .product(name: "Logging", package: "swift-log"),
+        ]),
     .target(
         name: "NIOSOCKS",
         dependencies: [
@@ -168,6 +176,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     ],
     targets: targets
 )
