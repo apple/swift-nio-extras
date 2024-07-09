@@ -234,10 +234,18 @@ class HTTPResponseCompressorTest: XCTestCase {
         XCTAssertEqual(expectedResponse, outputBuffer)
     }
 
-    private func assertDeflatedResponse(channel: EmbeddedChannel, writeStrategy: WriteStrategy = .once) throws {
+    private func assertDeflatedResponse(
+        channel: EmbeddedChannel,
+        writeStrategy: WriteStrategy = .once,
+        responseHeaders: HTTPHeaders = [:],
+        assertHeaders: HTTPHeaders? = nil
+    ) throws {
         let bodySize = 2048
-        let response = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1),
-                                        status: .ok)
+        let response = HTTPResponseHead(
+            version: HTTPVersion(major: 1, minor: 1),
+            status: .ok,
+            headers: responseHeaders
+        )
         let body = [UInt8](repeating: 60, count: bodySize)
         var bodyBuffer = channel.allocator.buffer(capacity: bodySize)
         bodyBuffer.writeBytes(body)
@@ -265,17 +273,28 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTAssertEqual(compressedResponse.headers[canonicalForm: "transfer-encoding"], ["chunked"])
         }
 
+        if let assertHeaders {
+            XCTAssertEqual(compressedResponse.headers, assertHeaders)
+        }
+
         assertDecompressedResponseMatches(responseData: &compressedBody,
                                           expectedResponse: bodyBuffer,
                                           allocator: channel.allocator,
                                           decompressor: z_stream.decompressDeflate)
     }
 
-    private func assertGzippedResponse(channel: EmbeddedChannel, writeStrategy: WriteStrategy = .once, additionalHeaders: HTTPHeaders = HTTPHeaders()) throws {
+    private func assertGzippedResponse(
+        channel: EmbeddedChannel,
+        writeStrategy: WriteStrategy = .once,
+        responseHeaders: HTTPHeaders = [:],
+        assertHeaders: HTTPHeaders? = nil
+    ) throws {
         let bodySize = 2048
-        var response = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1),
-                                        status: .ok)
-        response.headers = additionalHeaders
+        let response = HTTPResponseHead(
+            version: HTTPVersion(major: 1, minor: 1),
+            status: .ok,
+            headers: responseHeaders
+        )
         let body = [UInt8](repeating: 60, count: bodySize)
         var bodyBuffer = channel.allocator.buffer(capacity: bodySize)
         bodyBuffer.writeBytes(body)
@@ -303,16 +322,28 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTAssertEqual(compressedResponse.headers[canonicalForm: "transfer-encoding"], ["chunked"])
         }
 
+        if let assertHeaders {
+            XCTAssertEqual(compressedResponse.headers, assertHeaders)
+        }
+
         assertDecompressedResponseMatches(responseData: &compressedBody,
                                           expectedResponse: bodyBuffer,
                                           allocator: channel.allocator,
                                           decompressor: z_stream.decompressGzip)
     }
 
-    private func assertUncompressedResponse(channel: EmbeddedChannel, writeStrategy: WriteStrategy = .once) throws {
+    private func assertUncompressedResponse(
+        channel: EmbeddedChannel,
+        writeStrategy: WriteStrategy = .once,
+        responseHeaders: HTTPHeaders = [:],
+        assertHeaders: HTTPHeaders? = nil
+    ) throws {
         let bodySize = 2048
-        let response = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1),
-                                        status: .ok)
+        let response = HTTPResponseHead(
+            version: HTTPVersion(major: 1, minor: 1),
+            status: .ok,
+            headers: responseHeaders
+        )
         let body = [UInt8](repeating: 60, count: bodySize)
         var bodyBuffer = channel.allocator.buffer(capacity: bodySize)
         bodyBuffer.writeBytes(body)
@@ -330,19 +361,35 @@ class HTTPResponseCompressorTest: XCTestCase {
         var compressedChunks = data.1
         let uncompressedBody = compressedChunks[0].merge(compressedChunks[1...])
         XCTAssertEqual(compressedResponse.headers[canonicalForm: "content-encoding"], [])
+        if let assertHeaders {
+            XCTAssertEqual(compressedResponse.headers, assertHeaders)
+        }
         XCTAssertEqual(uncompressedBody.readableBytes, 2048)
         XCTAssertEqual(uncompressedBody, bodyBuffer)
     }
 
-    private func compressionChannel() throws -> EmbeddedChannel {
+    private func compressionChannel(
+        compressor: HTTPResponseCompressor = HTTPResponseCompressor()
+    ) throws -> EmbeddedChannel {
         let channel = EmbeddedChannel()
         XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseEncoder(), name: "encoder").wait())
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor(), name: "compressor").wait())
+        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor, name: "compressor").wait())
         return channel
     }
 
     func testCanCompressSimpleBodies() throws {
         let channel = try compressionChannel()
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertDeflatedResponse(channel: channel)
+    }
+    
+    func testExplicitInitialByteBufferCapacity() throws {
+        /// This test it to make sure there is no ambiguity choosing an initializer.
+        let channel = try compressionChannel(compressor: HTTPResponseCompressor(initialByteBufferCapacity: 2048))
         defer {
             XCTAssertNoThrow(try channel.finish())
         }
@@ -504,7 +551,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
 
         try sendRequest(acceptEncoding: "deflate;q=2.2, gzip;q=0.3", channel: channel)
-        try assertGzippedResponse(channel: channel, additionalHeaders: HTTPHeaders([("Content-Encoding", "deflate")]))
+        try assertGzippedResponse(channel: channel, responseHeaders: HTTPHeaders([("Content-Encoding", "deflate")]))
     }
 
     func testRemovingHandlerFailsPendingWrites() throws {
@@ -687,6 +734,234 @@ class HTTPResponseCompressorTest: XCTestCase {
             case .end: break
             }
         }
+    }
+    
+    func testConditionalCompressionEnabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, true)
+            return true
+        }
+        
+        let channel = try compressionChannel(compressor: compressor)
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertDeflatedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "Content-Encoding" : "deflate",
+                "Content-Length" : "23",
+            ]
+        )
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testUnsupportedRequestConditionalCompressionEnabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, false)
+            return true
+        }
+        
+        let channel = try compressionChannel(compressor: compressor)
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+        
+        try sendRequest(acceptEncoding: nil, channel: channel)
+        try assertUncompressedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "transfer-encoding" : "chunked",
+            ]
+        )
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testUnsupportedStatusConditionalCompressionEnabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.status, .notModified)
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, false)
+            return true
+        }
+        
+        let channel = EmbeddedChannel()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor).wait())
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+        
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        
+        let head = HTTPResponseHead(
+            version: .init(major: 1, minor: 1),
+            status: .notModified,
+            headers: ["Content-Type" : "json"]
+        )
+        try channel.writeOutbound(HTTPServerResponsePart.head(head))
+        try channel.writeOutbound(HTTPServerResponsePart.end(nil))
+
+        while let part = try channel.readOutbound(as: HTTPServerResponsePart.self) {
+            switch part {
+            case .head(let head):
+                XCTAssertEqual(head.headers[canonicalForm: "content-encoding"], [])
+            case .body:
+                XCTFail("Unexpected body")
+            case .end: break
+            }
+        }
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testConditionalCompressionDisabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, true)
+            return false
+        }
+        
+        let channel = try compressionChannel(compressor: compressor)
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertUncompressedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "transfer-encoding" : "chunked",
+            ]
+        )
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testUnsupportedRequestConditionalCompressionDisabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, false)
+            return false
+        }
+        
+        let channel = try compressionChannel(compressor: compressor)
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+        
+        try sendRequest(acceptEncoding: nil, channel: channel)
+        try assertUncompressedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "transfer-encoding" : "chunked",
+            ]
+        )
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testUnsupportedStatusConditionalCompressionDisabled() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            XCTAssertEqual(responseHeaders.status, .notModified)
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
+            XCTAssertEqual(isCompressionSupported, false)
+            return false
+        }
+        
+        let channel = EmbeddedChannel()
+        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor).wait())
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+        
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        
+        let head = HTTPResponseHead(
+            version: .init(major: 1, minor: 1),
+            status: .notModified,
+            headers: ["Content-Type" : "json"]
+        )
+        try channel.writeOutbound(HTTPServerResponsePart.head(head))
+        try channel.writeOutbound(HTTPServerResponsePart.end(nil))
+
+        while let part = try channel.readOutbound(as: HTTPServerResponsePart.self) {
+            switch part {
+            case .head(let head):
+                XCTAssertEqual(head.headers[canonicalForm: "content-encoding"], [])
+            case .body:
+                XCTFail("Unexpected body")
+            case .end: break
+            }
+        }
+        
+        waitForExpectations(timeout: 0)
+    }
+    
+    func testConditionalCompressionModifiedHeaders() throws {
+        let predicateWasCalled = expectation(description: "Predicate was called")
+        predicateWasCalled.expectedFulfillmentCount = 2
+        let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
+            predicateWasCalled.fulfill()
+            let isEnabled = responseHeaders.headers[canonicalForm: "x-compression"].first == "enable"
+            XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json", "X-Compression" : isEnabled ? "enable" : "disable"])
+            responseHeaders.headers.remove(name: "X-Compression")
+            XCTAssertEqual(isCompressionSupported, true)
+            return isEnabled
+        }
+        
+        let channel = try compressionChannel(compressor: compressor)
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+        
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertDeflatedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json", "X-Compression" : "enable"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "Content-Encoding" : "deflate",
+                "Content-Length" : "23",
+            ]
+        )
+        
+        try sendRequest(acceptEncoding: "deflate", channel: channel)
+        try assertUncompressedResponse(
+            channel: channel,
+            responseHeaders: ["Content-Type" : "json", "X-Compression" : "disable"],
+            assertHeaders: [
+                "Content-Type" : "json",
+                "transfer-encoding" : "chunked",
+            ]
+        )
+        
+        waitForExpectations(timeout: 0)
     }
 }
 
