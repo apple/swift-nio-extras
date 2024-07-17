@@ -742,7 +742,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, true)
-            return true
+            return .compressIfPossible
         }
         
         let channel = try compressionChannel(compressor: compressor)
@@ -770,7 +770,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
-            return true
+            return .compressIfPossible
         }
         
         let channel = try compressionChannel(compressor: compressor)
@@ -798,7 +798,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
-            return true
+            return .compressIfPossible
         }
         
         let channel = EmbeddedChannel()
@@ -836,7 +836,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, true)
-            return false
+            return .doNotCompress
         }
         
         let channel = try compressionChannel(compressor: compressor)
@@ -863,7 +863,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
-            return false
+            return .doNotCompress
         }
         
         let channel = try compressionChannel(compressor: compressor)
@@ -891,7 +891,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
-            return false
+            return .doNotCompress
         }
         
         let channel = EmbeddedChannel()
@@ -932,7 +932,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json", "X-Compression" : isEnabled ? "enable" : "disable"])
             responseHeaders.headers.remove(name: "X-Compression")
             XCTAssertEqual(isCompressionSupported, true)
-            return isEnabled
+            return isEnabled ? .compressIfPossible : .doNotCompress
         }
         
         let channel = try compressionChannel(compressor: compressor)

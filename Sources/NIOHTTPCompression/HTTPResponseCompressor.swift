@@ -78,13 +78,37 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// - Parameter responseHeaders: The headers that will be used for the response. These can be modified as needed at this stage, to clean up any marker headers used to statelessly determine if compression should occur, and the new headers will be used when writing the response. Compression headers are not yet provided and should not be set; ``HTTPResponseCompressor`` will set them accordingly based on the result of this predicate.
     /// - Parameter isCompressionSupported: Set to `true` if the client requested compatible compression, and if the HTTP response supports it, otherwise `false`.
-    /// - Returns: Return `true` if the compressor should proceed to compress the response, or `false` if the response should not be compressed.
+    /// - Returns: Return ``CompressionIntent/compressIfPossible`` if the compressor should proceed to compress the response, or ``CompressionIntent/doNotCompress`` if the response should not be compressed.
     ///
-    /// - Note: Returning `true` when compression is not supported will not enable compression, and the modified headers will always be used.
+    /// - Note: Returning ``CompressionIntent/compressIfPossible`` is only a suggestion — when compression is not supported, the response will be returned as is along with any modified headers.
     public typealias ResponseCompressionPredicate = (
         _ responseHeaders: inout HTTPResponseHead,
         _ isCompressionSupported: Bool
-    ) -> Bool
+    ) -> CompressionIntent
+    
+    /// A signal a ``ResponseCompressionPredicate`` returns to indicate if it intends for compression to be used or not when supported by HTTP.
+    public struct CompressionIntent: Sendable, Hashable {
+        /// The internal type ``CompressionIntent`` uses.
+        enum RawValue {
+            /// The response should be compressed if supported by the HTTP protocol.
+            case compressIfPossible
+            /// The response should not be compressed even if supported by the HTTP protocol.
+            case doNotCompress
+        }
+        
+        /// The raw value of the intent.
+        let rawValue: RawValue
+        
+        /// Initialize the raw value with an internal intent.
+        init(_ rawValue: RawValue) {
+            self.rawValue = rawValue
+        }
+        
+        /// The response should be compressed if supported by the HTTP protocol.
+        public static let compressIfPossible = CompressionIntent(.compressIfPossible)
+        /// The response should not be compressed even if supported by the HTTP protocol.
+        public static let doNotCompress = CompressionIntent(.doNotCompress)
+    }
 
     /// Errors which can occur when compressing
     public enum CompressionError: Error {
@@ -152,10 +176,10 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
             let requestSupportsCompression = algorithm != nil && responseHead.status.mayHaveResponseBody
             
             /// If a predicate was set, ask it if we should compress when compression is supported, and give the predicate a chance to clean up any marker headers that may have been set even if compression were not supported.
-            let predicateSupportsCompression = responseCompressionPredicate?(&responseHead, requestSupportsCompression) ?? true
+            let predicateCompressionIntent = responseCompressionPredicate?(&responseHead, requestSupportsCompression) ?? .compressIfPossible
             
             /// Make sure that compression should proceed, otherwise stop here and supply the response headers before configuring the compressor.
-            guard let algorithm, requestSupportsCompression, predicateSupportsCompression else {
+            guard let algorithm, requestSupportsCompression, predicateCompressionIntent == .compressIfPossible else {
                 context.write(wrapOutboundOut(.head(responseHead)), promise: promise)
                 return
             }
