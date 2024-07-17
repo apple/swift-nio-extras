@@ -739,7 +739,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testConditionalCompressionEnabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, true)
             return true
@@ -767,7 +767,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testUnsupportedRequestConditionalCompressionEnabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
             return true
@@ -794,7 +794,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testUnsupportedStatusConditionalCompressionEnabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
@@ -833,7 +833,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testConditionalCompressionDisabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, true)
             return false
@@ -860,7 +860,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testUnsupportedRequestConditionalCompressionDisabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
             return false
@@ -887,7 +887,7 @@ class HTTPResponseCompressorTest: XCTestCase {
     func testUnsupportedStatusConditionalCompressionDisabled() throws {
         let predicateWasCalled = expectation(description: "Predicate was called")
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json"])
             XCTAssertEqual(isCompressionSupported, false)
@@ -927,7 +927,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         let predicateWasCalled = expectation(description: "Predicate was called")
         predicateWasCalled.expectedFulfillmentCount = 2
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            predicateWasCalled.fulfill()
+            defer { predicateWasCalled.fulfill() }
             let isEnabled = responseHeaders.headers[canonicalForm: "x-compression"].first == "enable"
             XCTAssertEqual(responseHeaders.headers, ["Content-Type" : "json", "X-Compression" : isEnabled ? "enable" : "disable"])
             responseHeaders.headers.remove(name: "X-Compression")
