@@ -80,15 +80,20 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMe
         return .needMoreData
     }
 
-    /// Decode all remaining data.
-    /// If it is not possible to consume all the data then ``NIOExtrasErrors/LeftOverBytesError`` is reported via `context.fireErrorCaught`
+    /// Decode from a `ByteBuffer` when no more data is incoming.
+    ///
+    /// Like with `decode`, this method will be called in a loop until either `nil` is returned from the method or until the input `ByteBuffer`
+    /// has no more readable bytes. If non-`nil` is returned and the `ByteBuffer` contains more readable bytes, this method will immediately
+    /// be invoked again.
+    ///
+    /// If it is not possible to decode remaining bytes into a frame then ``NIOExtrasErrors/LeftOverBytesError`` is thrown.
     /// - Parameters:
     ///   - buffer: Buffer containing the data to decode.
     ///   - seenEOF: Has end of file been seen.
     /// - Returns: The decoded object or `nil` if we require more bytes.
     public func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> InboundOut? {
         let decoded = try self.decode(buffer: &buffer)
-        if buffer.readableBytes > 0 {
+        if decoded == nil, buffer.readableBytes > 0 {
             throw NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer)
         }
         return decoded
