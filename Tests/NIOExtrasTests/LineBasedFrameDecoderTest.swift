@@ -279,9 +279,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
             switch callCount {
             case 1:
                 XCTAssertEqual(ByteBuffer(string: "1"), line)
-                XCTAssertNoThrow(try b2mp.finishProcessing(seenEOF: true) { line in
-                    print(line)
-                })
+                XCTAssertNoThrow(try b2mp.finishProcessing(seenEOF: true) { _ in } )
             case 2:
                 XCTAssertEqual(ByteBuffer(string: ""), line)
             case 3:
