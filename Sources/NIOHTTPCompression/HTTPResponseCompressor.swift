@@ -78,7 +78,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// - Parameter responseHeaders: The headers that will be used for the response. These can be modified as needed at this stage, to clean up any marker headers used to statelessly determine if compression should occur, and the new headers will be used when writing the response. Compression headers are not yet provided and should not be set; ``HTTPResponseCompressor`` will set them accordingly based on the result of this predicate.
     /// - Parameter isCompressionSupported: Set to `true` if the client requested compatible compression, and if the HTTP response supports it, otherwise `false`.
-    /// - Returns: Return ``CompressionIntent/compressIfPossible`` if the compressor should proceed to compress the response, or ``CompressionIntent/doNotCompress`` if the response should not be compressed.
+    /// - Returns: Return ``CompressionIntent/compressIfPossible`` if the compressor should proceed to compress the response, or ``CompressionIntent/doNotCompressWithUnsupportedAlgorithm`` if the response should not be compressed due to the unsupported algorithm, or ``CompressionIntent/doNotCompress`` if the response should not be compressed.
     ///
     /// - Note: Returning ``CompressionIntent/compressIfPossible`` is only a suggestion — when compression is not supported, the response will be returned as is along with any modified headers.
     public typealias ResponseCompressionPredicate = (
@@ -92,6 +92,8 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         enum RawValue {
             /// The response should be compressed if supported by the HTTP protocol.
             case compressIfPossible
+            /// The response should not be compressed because the requested compression algorithm is not supported.
+            case doNotCompressWithUnsupportedAlgorithm
             /// The response should not be compressed even if supported by the HTTP protocol.
             case doNotCompress
         }
@@ -106,6 +108,8 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         
         /// The response should be compressed if supported by the HTTP protocol.
         public static let compressIfPossible = CompressionIntent(.compressIfPossible)
+        /// The response should not be compressed because the requested compression algorithm is not supported.
+        public static let doNotCompressWithUnsupportedAlgorithm = CompressionIntent(.doNotCompressWithUnsupportedAlgorithm)
         /// The response should not be compressed even if supported by the HTTP protocol.
         public static let doNotCompress = CompressionIntent(.doNotCompress)
     }
