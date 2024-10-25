@@ -13,22 +13,28 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-@testable import NIOSOCKS
 import XCTest
 
+@testable import NIOSOCKS
+
 public class ClientGreetingTests: XCTestCase {
-    
+
     func testInitFromBuffer() {
         var buffer = ByteBuffer()
         buffer.writeBytes([0x05, 0x01, 0x00])
         XCTAssertNoThrow(XCTAssertEqual(try buffer.readClientGreeting(), .init(methods: [.noneRequired])))
         XCTAssertEqual(buffer.readableBytes, 0)
-        
+
         buffer.writeBytes([0x05, 0x03, 0x00, 0x01, 0x02])
-        XCTAssertNoThrow(XCTAssertEqual(try buffer.readClientGreeting(), .init(methods: [.noneRequired, .gssapi, .usernamePassword])))
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                try buffer.readClientGreeting(),
+                .init(methods: [.noneRequired, .gssapi, .usernamePassword])
+            )
+        )
         XCTAssertEqual(buffer.readableBytes, 0)
     }
-    
+
     func testWriting() {
         var buffer = ByteBuffer()
         let greeting = ClientGreeting(methods: [.noneRequired])

@@ -54,7 +54,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     var compressor: NIOCompression.Compressor
     /// pending write promise
     var pendingWritePromise: EventLoopPromise<Void>!
-    
+
     /// Initialize a ``NIOHTTPRequestCompressor``
     /// - Parameter encoding: Compression algorithm to use
     public init(encoding: NIOCompression.Algorithm) {
@@ -83,7 +83,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     ///   - promise: The eventloop promise that should be notified when the operation completes
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         pendingWritePromise.futureResult.cascade(to: promise)
-        
+
         let httpData = unwrapOutboundIn(data)
         switch httpData {
         case .head(let head):
@@ -116,7 +116,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
             default:
                 preconditionFailure("Unexpected Body")
             }
-            
+
         case .end:
             switch state {
             case .head(let head):
@@ -125,14 +125,22 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
                 context.write(data, promise: pendingWritePromise)
             case .body(var head, var body):
                 // have head and the whole of the body. Compress body, set content length header and write it all out, including the end
-                let outputBuffer = compressor.compress(inputBuffer: &body, allocator: context.channel.allocator, finalise: true)
+                let outputBuffer = compressor.compress(
+                    inputBuffer: &body,
+                    allocator: context.channel.allocator,
+                    finalise: true
+                )
                 head.headers.replaceOrAdd(name: "Content-Length", value: outputBuffer.readableBytes.description)
                 context.write(wrapOutboundOut(.head(head)), promise: nil)
                 context.write(wrapOutboundOut(.body(.byteBuffer(outputBuffer))), promise: nil)
                 context.write(data, promise: pendingWritePromise)
             case .partialBody(var body):
                 // have a section of the body. Compress that section of the body and write it out along with the end
-                let outputBuffer = compressor.compress(inputBuffer: &body, allocator: context.channel.allocator, finalise: true)
+                let outputBuffer = compressor.compress(
+                    inputBuffer: &body,
+                    allocator: context.channel.allocator,
+                    finalise: true
+                )
                 context.write(wrapOutboundOut(.body(.byteBuffer(outputBuffer))), promise: nil)
                 context.write(data, promise: pendingWritePromise)
             default:
@@ -142,7 +150,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
             compressor.shutdown()
         }
     }
-    
+
     public func flush(context: ChannelHandlerContext) {
         switch state {
         case .head(var head):
@@ -156,19 +164,27 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
         case .body(var head, var body):
             // Write out head with transfer-encoding set to "chunked" as we cannot set the content length
             // Compress and write out what we have of the the body
-            let outputBuffer = compressor.compress(inputBuffer: &body, allocator: context.channel.allocator, finalise: false)
+            let outputBuffer = compressor.compress(
+                inputBuffer: &body,
+                allocator: context.channel.allocator,
+                finalise: false
+            )
             head.headers.remove(name: "Content-Length")
             head.headers.replaceOrAdd(name: "Transfer-Encoding", value: "chunked")
             context.write(wrapOutboundOut(.head(head)), promise: nil)
             context.write(wrapOutboundOut(.body(.byteBuffer(outputBuffer))), promise: pendingWritePromise)
             state = .partialBody(context.channel.allocator.buffer(capacity: 0))
-            
+
         case .partialBody(var body):
             // Compress and write out what we have of the body
-            let outputBuffer = compressor.compress(inputBuffer: &body, allocator: context.channel.allocator, finalise: false)
+            let outputBuffer = compressor.compress(
+                inputBuffer: &body,
+                allocator: context.channel.allocator,
+                finalise: false
+            )
             context.write(wrapOutboundOut(.body(.byteBuffer(outputBuffer))), promise: pendingWritePromise)
             state = .partialBody(context.channel.allocator.buffer(capacity: 0))
-            
+
         default:
             context.flush()
             return

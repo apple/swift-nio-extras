@@ -61,7 +61,7 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3ReplyReadlink() throws -> NFS3ReplyReadlink {
-        return NFS3ReplyReadlink(
+        NFS3ReplyReadlink(
             result: try self.readNFS3Result(
                 readOkay: { buffer in
                     let attrs = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
@@ -72,7 +72,9 @@ extension ByteBuffer {
                 readFail: { buffer in
                     let attrs = try buffer.readNFS3Optional { try $0.readNFS3FileAttr() }
                     return NFS3ReplyReadlink.Fail(symlinkAttributes: attrs)
-                }))
+                }
+            )
+        )
     }
 
     @discardableResult public mutating func writeNFS3ReplyReadlink(_ reply: NFS3ReplyReadlink) -> Int {
@@ -80,8 +82,9 @@ extension ByteBuffer {
 
         switch reply.result {
         case .okay(let okay):
-            bytesWritten += self.writeNFS3Optional(okay.symlinkAttributes, writer: { $0.writeNFS3FileAttr($1) })
-            + self.writeNFS3String(okay.target)
+            bytesWritten +=
+                self.writeNFS3Optional(okay.symlinkAttributes, writer: { $0.writeNFS3FileAttr($1) })
+                + self.writeNFS3String(okay.target)
         case .fail(_, let fail):
             bytesWritten += self.writeNFS3Optional(fail.symlinkAttributes, writer: { $0.writeNFS3FileAttr($1) })
         }

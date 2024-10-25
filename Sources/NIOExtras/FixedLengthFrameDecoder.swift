@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
+
 ///
 /// A decoder that splits the received `ByteBuffer` by a fixed number
 /// of bytes. For example, if you received the following four fragmented packets:
@@ -68,7 +69,11 @@ public final class FixedLengthFrameDecoder: ByteToMessageDecoder {
     ///   - buffer: Buffer containing data.
     ///   - seenEOF: If end of file has been seen.
     /// - Returns: needMoreData always as all data is consumed.
-    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public func decodeLast(
+        context: ChannelHandlerContext,
+        buffer: inout ByteBuffer,
+        seenEOF: Bool
+    ) throws -> DecodingState {
         while case .continue = try self.decode(context: context, buffer: &buffer) {}
         if buffer.readableBytes > 0 {
             context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))

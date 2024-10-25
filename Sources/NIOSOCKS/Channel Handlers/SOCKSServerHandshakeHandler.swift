@@ -28,27 +28,27 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
     public typealias OutboundIn = ServerMessage
     /// Passes `ByteBuffer` to the next pipeline stage when sending data.
     public typealias OutboundOut = ByteBuffer
-    
+
     var inboundBuffer: ByteBuffer?
     var stateMachine: ServerStateMachine
-    
+
     public init() {
         self.stateMachine = ServerStateMachine()
     }
-    
+
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        
+
         var message = self.unwrapInboundIn(data)
         self.inboundBuffer.setOrWriteBuffer(&message)
-        
+
         if self.stateMachine.proxyEstablished {
             return
         }
-        
+
         do {
             // safe to bang inbound buffer, it's always written above
             guard let message = try self.stateMachine.receiveBuffer(&self.inboundBuffer!) else {
-                return // do nothing, we've buffered the data
+                return  // do nothing, we've buffered the data
             }
             context.fireChannelRead(self.wrapInboundOut(message))
         } catch {
@@ -74,7 +74,7 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         }
         context.fireChannelRead(.init(buffer))
     }
-    
+
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         do {
             let message = self.unwrapOutboundIn(data)
@@ -88,23 +88,27 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
                 outboundBuffer = try self.handleWriteAuthenticationData(data, complete: complete, context: context)
             }
             context.write(self.wrapOutboundOut(outboundBuffer), promise: promise)
-            
+
         } catch {
             context.fireErrorCaught(error)
             promise?.fail(error)
         }
     }
-    
+
     private func handleWriteSelectedAuthenticationMethod(
-        _ method: SelectedAuthenticationMethod, context: ChannelHandlerContext) throws -> ByteBuffer {
+        _ method: SelectedAuthenticationMethod,
+        context: ChannelHandlerContext
+    ) throws -> ByteBuffer {
         try stateMachine.sendAuthenticationMethod(method)
         var buffer = context.channel.allocator.buffer(capacity: 16)
         buffer.writeMethodSelection(method)
         return buffer
     }
-    
+
     private func handleWriteResponse(
-        _ response: SOCKSResponse, context: ChannelHandlerContext) throws -> ByteBuffer {
+        _ response: SOCKSResponse,
+        context: ChannelHandlerContext
+    ) throws -> ByteBuffer {
         try stateMachine.sendServerResponse(response)
         if case .succeeded = response.reply {
             context.fireUserInboundEventTriggered(SOCKSProxyEstablishedEvent())
@@ -113,13 +117,16 @@ public final class SOCKSServerHandshakeHandler: ChannelDuplexHandler, RemovableC
         buffer.writeServerResponse(response)
         return buffer
     }
-    
+
     private func handleWriteAuthenticationData(
-        _ data: ByteBuffer, complete: Bool, context: ChannelHandlerContext) throws -> ByteBuffer {
+        _ data: ByteBuffer,
+        complete: Bool,
+        context: ChannelHandlerContext
+    ) throws -> ByteBuffer {
         try self.stateMachine.sendAuthenticationData(data, complete: complete)
         return data
     }
-    
+
 }
 
 @available(*, unavailable)

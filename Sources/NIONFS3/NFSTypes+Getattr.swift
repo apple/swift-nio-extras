@@ -50,14 +50,15 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3ReplyGetAttr() throws -> NFS3ReplyGetAttr {
-        return NFS3ReplyGetAttr(
+        NFS3ReplyGetAttr(
             result: try self.readNFS3Result(
                 readOkay: { buffer in
-                    return NFS3ReplyGetAttr.Okay(attributes: try buffer.readNFS3FileAttr())
+                    NFS3ReplyGetAttr.Okay(attributes: try buffer.readNFS3FileAttr())
                 },
                 readFail: { _ in
-                    return NFS3Nothing()
-                })
+                    NFS3Nothing()
+                }
+            )
         )
     }
 

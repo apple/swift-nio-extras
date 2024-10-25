@@ -58,18 +58,20 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
     ///   - headers: Headers to supply to the proxy server as part of the CONNECT request
     ///   - deadline: Deadline for the CONNECT request
     ///   - promise: Promise with which the result of the connect operation is communicated
-    public init(targetHost: String,
-                targetPort: Int,
-                headers: HTTPHeaders,
-                deadline: NIODeadline,
-                promise: EventLoopPromise<Void>?) {
+    public init(
+        targetHost: String,
+        targetPort: Int,
+        headers: HTTPHeaders,
+        deadline: NIODeadline,
+        promise: EventLoopPromise<Void>?
+    ) {
         self.targetHost = targetHost
         self.targetPort = targetPort
         self.headers = headers
         self.deadline = deadline
         self.promise = promise
 
-        self.bufferedWrittenMessages = MarkedCircularBuffer(initialCapacity: 16) // matches CircularBuffer default
+        self.bufferedWrittenMessages = MarkedCircularBuffer(initialCapacity: 16)  // matches CircularBuffer default
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -98,7 +100,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
                     context.flush()
                 }
             }
-            
+
         }
 
         context.leavePipeline(removalToken: removalToken)
@@ -297,7 +299,11 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         }
 
         /// Proxy response contains unexpected status
-        public static func invalidProxyResponseHead(_ head: HTTPResponseHead, file: String = #file, line: UInt = #line) -> Error {
+        public static func invalidProxyResponseHead(
+            _ head: HTTPResponseHead,
+            file: String = #file,
+            line: UInt = #line
+        ) -> Error {
             Error(error: .invalidProxyResponseHead(head: head), file: file, line: line)
         }
 
@@ -357,14 +363,13 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
 extension NIOHTTP1ProxyConnectHandler.Error: Hashable {
     // compare only the kind of error, not the associated response head
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        return lhs.errorCode == rhs.errorCode
+        lhs.errorCode == rhs.errorCode
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.errorCode)
     }
 }
-
 
 extension NIOHTTP1ProxyConnectHandler.Error: CustomStringConvertible {
     public var description: String {

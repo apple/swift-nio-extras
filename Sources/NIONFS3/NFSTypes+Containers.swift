@@ -20,10 +20,10 @@ public struct RPCNFS3ProcedureID: Hashable & Sendable {
 
     public static let mountNull: Self = .init(program: 100005, procedure: 0)
     public static let mountMount: Self = .init(program: 100005, procedure: 1)
-    public static let mountDump: Self = .init(program: 100005, procedure: 2) // unimplemented
+    public static let mountDump: Self = .init(program: 100005, procedure: 2)  // unimplemented
     public static let mountUnmount: Self = .init(program: 100005, procedure: 3)
-    public static let mountUnmountAll: Self = .init(program: 100005, procedure: 4) // unimplemented
-    public static let mountExport: Self = .init(program: 100005, procedure: 5) // unimplemented
+    public static let mountUnmountAll: Self = .init(program: 100005, procedure: 4)  // unimplemented
+    public static let mountExport: Self = .init(program: 100005, procedure: 5)  // unimplemented
 
     // The source of truth for the values in the NFS program (`1000003`) can be found in the NFS RFC at
     // https://www.rfc-editor.org/rfc/rfc1813#page-28
@@ -35,15 +35,15 @@ public struct RPCNFS3ProcedureID: Hashable & Sendable {
     public static let nfsReadLink: Self = .init(program: 100003, procedure: 5)
     public static let nfsRead: Self = .init(program: 100003, procedure: 6)
 
-    public static let nfsWrite: Self = .init(program: 100003, procedure: 7) // unimplemented
-    public static let nfsCreate: Self = .init(program: 100003, procedure: 8) // unimplemented
-    public static let nfsMkDir: Self = .init(program: 100003, procedure: 9) // unimplemented
-    public static let nfsSymlink: Self = .init(program: 100003, procedure: 10) // unimplemented
-    public static let nfsMkNod: Self = .init(program: 100003, procedure: 11) // unimplemented
-    public static let nfsRemove: Self = .init(program: 100003, procedure: 12) // unimplemented
-    public static let nfsRmDir: Self = .init(program: 100003, procedure: 13) // unimplemented
-    public static let nfsRename: Self = .init(program: 100003, procedure: 14) // unimplemented
-    public static let nfsLink: Self = .init(program: 100003, procedure: 15) // unimplemented
+    public static let nfsWrite: Self = .init(program: 100003, procedure: 7)  // unimplemented
+    public static let nfsCreate: Self = .init(program: 100003, procedure: 8)  // unimplemented
+    public static let nfsMkDir: Self = .init(program: 100003, procedure: 9)  // unimplemented
+    public static let nfsSymlink: Self = .init(program: 100003, procedure: 10)  // unimplemented
+    public static let nfsMkNod: Self = .init(program: 100003, procedure: 11)  // unimplemented
+    public static let nfsRemove: Self = .init(program: 100003, procedure: 12)  // unimplemented
+    public static let nfsRmDir: Self = .init(program: 100003, procedure: 13)  // unimplemented
+    public static let nfsRename: Self = .init(program: 100003, procedure: 14)  // unimplemented
+    public static let nfsLink: Self = .init(program: 100003, procedure: 15)  // unimplemented
     public static let nfsReadDir: Self = .init(program: 100003, procedure: 16)
 
     public static let nfsReadDirPlus: Self = .init(program: 100003, procedure: 17)
@@ -51,7 +51,7 @@ public struct RPCNFS3ProcedureID: Hashable & Sendable {
     public static let nfsFSInfo: Self = .init(program: 100003, procedure: 19)
     public static let nfsPathConf: Self = .init(program: 100003, procedure: 20)
 
-    public static let nfsCommit: Self = .init(program: 100003, procedure: 21) // unimplemented
+    public static let nfsCommit: Self = .init(program: 100003, procedure: 21)  // unimplemented
 }
 
 extension RPCNFS3ProcedureID {
@@ -148,13 +148,13 @@ public enum NFS3Error: Error {
 }
 
 internal func nfsStringFillBytes(_ byteCount: Int) -> Int {
-    return (4 - (byteCount % 4)) % 4
+    (4 - (byteCount % 4)) % 4
 }
 
 extension ByteBuffer {
     public mutating func readRPCVerifier() throws -> RPCOpaqueAuth {
         guard let (flavor, length) = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
-                  throw NFS3Error.illegalRPCTooShort
+            throw NFS3Error.illegalRPCTooShort
         }
         guard (flavor == RPCAuthFlavor.system.rawValue || flavor == RPCAuthFlavor.noAuth.rawValue) && length == 0 else {
             throw RPCErrors.unknownVerifier(flavor)
@@ -181,8 +181,8 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeRPCCredentials(_ credentials: RPCCredentials) -> Int {
-        return self.writeInteger(credentials.flavor)
-        + self.writeNFS3Blob(credentials.otherBytes)
+        self.writeInteger(credentials.flavor)
+            + self.writeNFS3Blob(credentials.otherBytes)
     }
 
     public mutating func readRPCFragmentHeader() throws -> RPCFragmentHeader? {
@@ -196,7 +196,7 @@ extension ByteBuffer {
 
     @discardableResult
     public mutating func setRPCFragmentHeader(_ header: RPCFragmentHeader, at index: Int) -> Int {
-        return self.setInteger(header.rawValue, at: index)
+        self.setInteger(header.rawValue, at: index)
     }
 
     @discardableResult public mutating func writeRPCFragmentHeader(_ header: RPCFragmentHeader) -> Int {
@@ -208,41 +208,48 @@ extension ByteBuffer {
     mutating func readRPCReply(xid: UInt32) throws -> RPCReply {
         let acceptedOrDenied = try self.readNFS3Integer(as: UInt32.self)
         switch acceptedOrDenied {
-        case 0: // MSG_ACCEPTED
+        case 0:  // MSG_ACCEPTED
             let verifier = try self.readRPCVerifier()
             let status = try self.readNFS3Integer(as: UInt32.self)
             let acceptedReplyStatus: RPCAcceptedReplyStatus
 
             switch status {
-            case 0: // SUCCESS
+            case 0:  // SUCCESS
                 acceptedReplyStatus = .success
-            case 1: //PROG_UNAVAIL
+            case 1:  //PROG_UNAVAIL
                 acceptedReplyStatus = .programUnavailable
-            case 2: //PROG_MISMATCH
+            case 2:  //PROG_MISMATCH
                 guard let values = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
                     throw NFS3Error.illegalRPCTooShort
                 }
                 acceptedReplyStatus = .programMismatch(low: values.0, high: values.1)
-            case 3: //PROC_UNAVAIL
+            case 3:  //PROC_UNAVAIL
                 acceptedReplyStatus = .procedureUnavailable
-            case 4: //GARBAGE_ARGS
+            case 4:  //GARBAGE_ARGS
                 acceptedReplyStatus = .garbageArguments
-            case 5: //SYSTEM_ERR
+            case 5:  //SYSTEM_ERR
                 acceptedReplyStatus = .systemError
             default:
                 throw RPCErrors.illegalReplyAcceptanceStatus(status)
             }
-            return RPCReply(xid: xid, status: .messageAccepted(.init(verifier: verifier,
-                                                                     status: acceptedReplyStatus)))
-        case 1: // MSG_DENIED
+            return RPCReply(
+                xid: xid,
+                status: .messageAccepted(
+                    .init(
+                        verifier: verifier,
+                        status: acceptedReplyStatus
+                    )
+                )
+            )
+        case 1:  // MSG_DENIED
             let rejectionKind = try self.readNFS3Integer(as: UInt32.self)
             switch rejectionKind {
-            case 0: // RPC_MISMATCH: RPC version number != 2
+            case 0:  // RPC_MISMATCH: RPC version number != 2
                 guard let values = self.readMultipleIntegers(as: (UInt32, UInt32).self) else {
                     throw NFS3Error.illegalRPCTooShort
                 }
                 return RPCReply(xid: xid, status: .messageDenied(.rpcMismatch(low: values.0, high: values.1)))
-            case 1: // AUTH_ERROR
+            case 1:  // AUTH_ERROR
                 let rawValue = try self.readNFS3Integer(as: UInt32.self)
                 if let value = RPCAuthStatus(rawValue: rawValue) {
                     return RPCReply(xid: xid, status: .messageDenied(.authError(value)))
@@ -258,14 +265,15 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeRPCCall(_ call: RPCCall) -> Int {
-        return self.writeMultipleIntegers(
+        self.writeMultipleIntegers(
             RPCMessageType.call.rawValue,
             call.rpcVersion,
             call.program,
             call.programVersion,
-            call.procedure)
-        + self.writeRPCCredentials(call.credentials)
-        + self.writeRPCVerifier(call.verifier)
+            call.procedure
+        )
+            + self.writeRPCCredentials(call.credentials)
+            + self.writeRPCVerifier(call.verifier)
     }
 
     @discardableResult public mutating func writeRPCReply(_ reply: RPCReply) -> Int {
@@ -273,16 +281,16 @@ extension ByteBuffer {
 
         switch reply.status {
         case .messageAccepted(_):
-            bytesWritten += self.writeInteger(0 /* accepted */, as: UInt32.self)
+            bytesWritten += self.writeInteger(0, as: UInt32.self)  // 0 -> accepted
         case .messageDenied(_):
             // FIXME: MSG_DENIED (spec name) isn't actually handled correctly here.
-            bytesWritten += self.writeInteger(1 /* denied */, as: UInt32.self)
+            bytesWritten += self.writeInteger(1, as: UInt32.self)  // 1 -> denied
         }
-        bytesWritten += self.writeInteger(0 /* verifier */, as: UInt64.self)
-        + self.writeInteger(0 /* executed successfully */, as: UInt32.self)
+        bytesWritten +=
+            self.writeInteger(0, as: UInt64.self)  // 0 -> verifier
+            + self.writeInteger(0, as: UInt32.self)  // 0 -> executed successfully
         return bytesWritten
     }
-
 
     public mutating func readRPCCall(xid: UInt32) throws -> RPCCall {
         guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32).self) else {
@@ -297,16 +305,21 @@ extension ByteBuffer {
             throw RPCErrors.unknownVersion(version)
         }
 
-        return RPCCall(xid: xid,
-                       rpcVersion: version,
-                       program: program,
-                       programVersion: programVersion,
-                       procedure: procedure,
-                       credentials: credentials,
-                       verifier: verifier)
+        return RPCCall(
+            xid: xid,
+            rpcVersion: version,
+            program: program,
+            programVersion: programVersion,
+            procedure: procedure,
+            credentials: credentials,
+            verifier: verifier
+        )
     }
 
-    public mutating func readNFS3Reply(programAndProcedure: RPCNFS3ProcedureID, rpcReply: RPCReply) throws -> RPCNFS3Reply {
+    public mutating func readNFS3Reply(
+        programAndProcedure: RPCNFS3ProcedureID,
+        rpcReply: RPCReply
+    ) throws -> RPCNFS3Reply {
         switch programAndProcedure {
         case .mountNull:
             return .init(rpcReply: rpcReply, nfsReply: .mountNull)
@@ -382,20 +395,20 @@ extension ByteBuffer {
 
     @discardableResult public mutating func writeRPCNFS3Call(_ rpcNFS3Call: RPCNFS3Call) -> Int {
         let startWriterIndex = self.writerIndex
-        self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
+        self.writeRPCFragmentHeader(.init(length: 12_345_678, last: false))  // placeholder, overwritten later
         self.writeInteger(rpcNFS3Call.rpcCall.xid)
 
         self.writeRPCCall(rpcNFS3Call.rpcCall)
 
         switch rpcNFS3Call.nfsCall {
         case .mountNull:
-            () // noop
+            ()  // noop
         case .mount(let nfsCallMount):
             self.writeNFS3CallMount(nfsCallMount)
         case .unmount(let nfsCallUnmount):
             self.writeNFS3CallUnmount(nfsCallUnmount)
         case .null:
-            () // noop
+            ()  // noop
         case .getattr(let nfsCallGetAttr):
             self.writeNFS3CallGetattr(nfsCallGetAttr)
         case .fsinfo(let nfsCallFSInfo):
@@ -423,30 +436,36 @@ extension ByteBuffer {
             preconditionFailure("unknown NFS3 call, this should never happen. Please report a bug.")
         }
 
-        self.setRPCFragmentHeader(.init(length: UInt32(self.writerIndex - startWriterIndex - 4),
-                                        last: true),
-                                  at: startWriterIndex)
+        self.setRPCFragmentHeader(
+            .init(
+                length: UInt32(self.writerIndex - startWriterIndex - 4),
+                last: true
+            ),
+            at: startWriterIndex
+        )
         return self.writerIndex - startWriterIndex
     }
 
-    @discardableResult public mutating func writeRPCNFS3ReplyPartially(_ rpcNFS3Reply: RPCNFS3Reply) -> (Int, NFS3PartialWriteNextStep) {
+    @discardableResult public mutating func writeRPCNFS3ReplyPartially(
+        _ rpcNFS3Reply: RPCNFS3Reply
+    ) -> (Int, NFS3PartialWriteNextStep) {
         var nextStep: NFS3PartialWriteNextStep = .doNothing
 
         let startWriterIndex = self.writerIndex
-        self.writeRPCFragmentHeader(.init(length: 12345678, last: false)) // placeholder, overwritten later
+        self.writeRPCFragmentHeader(.init(length: 12_345_678, last: false))  // placeholder, overwritten later
         self.writeInteger(rpcNFS3Reply.rpcReply.xid)
 
         self.writeRPCReply(rpcNFS3Reply.rpcReply)
 
         switch rpcNFS3Reply.nfsReply {
         case .mountNull:
-            () // noop
+            ()  // noop
         case .mount(let nfsReplyMount):
             self.writeNFS3ReplyMount(nfsReplyMount)
         case .unmount(let nfsReplyUnmount):
             self.writeNFS3ReplyUnmount(nfsReplyUnmount)
         case .null:
-            () // noop
+            ()  // noop
         case .getattr(let nfsReplyGetAttr):
             self.writeNFS3ReplyGetAttr(nfsReplyGetAttr)
         case .fsinfo(let nfsReplyFSInfo):
@@ -474,9 +493,13 @@ extension ByteBuffer {
             preconditionFailure("unknown NFS3 reply, this should never happen. Please report a bug.")
         }
 
-        self.setRPCFragmentHeader(.init(length: UInt32(self.writerIndex - startWriterIndex - 4 + nextStep.bytesToFollow),
-                                        last: true),
-                                  at: startWriterIndex)
+        self.setRPCFragmentHeader(
+            .init(
+                length: UInt32(self.writerIndex - startWriterIndex - 4 + nextStep.bytesToFollow),
+                last: true
+            ),
+            at: startWriterIndex
+        )
         return (self.writerIndex - startWriterIndex, nextStep)
     }
 
@@ -488,16 +511,17 @@ extension ByteBuffer {
             return bytesWritten
         case .writeBlob(let buffer, numberOfFillBytes: let fillBytes):
             return bytesWritten
-            &+ self.writeImmutableBuffer(buffer)
-            &+ self.writeRepeatingByte(0x41, count: fillBytes)
+                &+ self.writeImmutableBuffer(buffer)
+                &+ self.writeRepeatingByte(0x41, count: fillBytes)
         }
     }
 
     public mutating func readRPCMessage() throws -> (RPCMessage, ByteBuffer)? {
         let save = self
         guard let fragmentHeader = try self.readRPCFragmentHeader(),
-              let xid = self.readInteger(as: UInt32.self),
-              let messageType = self.readInteger(as: UInt32.self) else {
+            let xid = self.readInteger(as: UInt32.self),
+            let messageType = self.readInteger(as: UInt32.self)
+        else {
             self = save
             return nil
         }

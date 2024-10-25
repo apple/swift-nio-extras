@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import NIOCore
 import NIOEmbedded
 import NIOExtras
-import Foundation
 
 final class PCAPPerformanceTest: Benchmark {
     let numberOfRepeats: Int
@@ -33,7 +33,7 @@ final class PCAPPerformanceTest: Benchmark {
     func tearDown() {
         try! FileManager.default.removeItem(atPath: self.outputFile)
     }
-    
+
     func run() throws -> Int {
         let fileSink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: self.outputFile) {
             error in
@@ -49,12 +49,13 @@ final class PCAPPerformanceTest: Benchmark {
             _ = try! channel.finish()
         }
 
-        let pcapHandler = NIOWritePCAPHandler(mode: .client,
-                                              fileSink: fileSink.write)
+        let pcapHandler = NIOWritePCAPHandler(
+            mode: .client,
+            fileSink: fileSink.write
+        )
         try channel.pipeline.addHandler(pcapHandler, position: .first).wait()
 
-
-        for _ in 0 ..< self.numberOfRepeats {
+        for _ in 0..<self.numberOfRepeats {
             channel.writeAndFlush(self.byteBuffer, promise: nil)
             _ = try channel.readOutbound(as: ByteBuffer.self)
         }

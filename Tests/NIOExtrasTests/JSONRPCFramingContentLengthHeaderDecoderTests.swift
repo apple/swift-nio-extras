@@ -12,20 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
-    private var channel: EmbeddedChannel! // not a real network connection
+    private var channel: EmbeddedChannel!  // not a real network connection
 
     override func setUp() {
         self.channel = EmbeddedChannel()
 
         // let's add the framing handler to the pipeline as that's what we're testing here.
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(ByteToMessageHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder())).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                ByteToMessageHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder())
+            ).wait()
+        )
         // this pretends to connect the channel to this IP address.
         XCTAssertNoThrow(self.channel.connect(to: try .init(ipAddress: "1.2.3.4", port: 5678)))
     }
@@ -51,7 +54,7 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
     }
 
     private func readInboundString() throws -> String? {
-        return try self.channel.readInbound(as: ByteBuffer.self).map {
+        try self.channel.readInbound(as: ByteBuffer.self).map {
             String(decoding: $0.readableBytesView, as: Unicode.UTF8.self)
         }
     }
@@ -76,10 +79,11 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
 
     func testTechnicallyInvalidButWeAreNicePeople() {
         // this writes a bunch of messages that are technically not okay, but we're fine with them
-        let coupleOfMessages = "Content-Length:1\r\n\r\nX" + // space after colon missing
-            /*              */ "Content-Length : 1\r\n\r\nX" + // extra space before colon
-            /*              */ " Content-Length: 1\r\n\r\nX" + // extra space at the beginning of the header
-            /*              */ "Content-Length: 1\n\r\nX" // \r missing
+        let coupleOfMessages =
+            "Content-Length:1\r\n\r\nX"  // space after colon missing
+            + "Content-Length : 1\r\n\r\nX"  // extra space before colon
+            + " Content-Length: 1\r\n\r\nX"  // extra space at the beginning of the header
+            + "Content-Length: 1\n\r\nX"  // \r missing
 
         XCTAssertNoThrow(try self.channel.writeInbound(self.buffer(string: coupleOfMessages)))
 
@@ -101,11 +105,12 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
 
     func testDripAndMassFeedMessages() {
         let messagesAndExpectedOutput: [(String, String)] =
-            [ ("Content-Length: 1\r\n\r\n1", "1"),
-              ("Content-Length: 0\r\n\r\n", ""),
-              ("foo: bar\r\nContent-Length: 7\r\nbuz: qux\r\n\r\nqwerasd", "qwerasd"),
-              ("content-lengTH:                1             \r\n\r\nX", "X")
-        ]
+            [
+                ("Content-Length: 1\r\n\r\n1", "1"),
+                ("Content-Length: 0\r\n\r\n", ""),
+                ("foo: bar\r\nContent-Length: 7\r\nbuz: qux\r\n\r\nqwerasd", "qwerasd"),
+                ("content-lengTH:                1             \r\n\r\nX", "X"),
+            ]
 
         // drip feed (byte by byte)
         for (message, expected) in messagesAndExpectedOutput {
@@ -124,7 +129,7 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
         XCTAssertNoThrow(try self.channel.writeInbound(self.buffer(string: everything + everything + everything)))
 
         for _ in 0..<3 {
-            for expected in messagesAndExpectedOutput.map({$0.1}) {
+            for expected in messagesAndExpectedOutput.map({ $0.1 }) {
                 XCTAssertNoThrow(try XCTAssertEqual(expected, self.readInboundString()))
             }
         }
@@ -144,7 +149,7 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
     }
 
     func testErrorNotEnoughDataAtEOF() {
-        let s = "Content-Length: 4\r\n\r\n123" // only three bytes payload, not 4
+        let s = "Content-Length: 4\r\n\r\n123"  // only three bytes payload, not 4
         XCTAssertNoThrow(try self.channel.writeInbound(self.buffer(string: s)))
         XCTAssertNoThrow(try XCTAssertNil(self.channel.readInbound()))
 

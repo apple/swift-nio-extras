@@ -31,7 +31,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
     }
 
     func shutdown() -> EventLoopFuture<Void> {
-        return self.fs.shutdown(eventLoop: self.eventLoop)
+        self.fs.shutdown(eventLoop: self.eventLoop)
     }
 
     func handleNFS3Call(_ callMessage: RPCNFS3Call) {

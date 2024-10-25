@@ -15,13 +15,15 @@
 // MARK:  Setup
 let warning: String = {
     var warning: String = ""
-    assert({
-        print("============================================================")
-        print("= YOU ARE RUNNING NIOExtrasPerformanceTester IN DEBUG MODE =")
-        print("============================================================")
-        warning = " <<< DEBUG MODE >>>"
-        return true
-        }())
+    assert(
+        {
+            print("============================================================")
+            print("= YOU ARE RUNNING NIOExtrasPerformanceTester IN DEBUG MODE =")
+            print("============================================================")
+            warning = " <<< DEBUG MODE >>>"
+            return true
+        }()
+    )
     return warning
 }()
 
@@ -33,13 +35,19 @@ try! measureAndPrint(desc: "pcap_100k_reqs", benchmark: PCAPPerformanceTest(numb
 try! measureAndPrint(desc: "rolling_pcap_100k_reqs", benchmark: RollingPCAPPerformanceTest(numberOfRepeats: 100_000))
 
 // Relatively real world test - http1 with many threads.
-try! measureAndPrint(desc: "http1_threaded_50reqs_500conns",
-                     benchmark: HTTP1ThreadedRawPerformanceTest())
+try! measureAndPrint(
+    desc: "http1_threaded_50reqs_500conns",
+    benchmark: HTTP1ThreadedRawPerformanceTest()
+)
 
 // Relatively real world test - http1 with many threads and rolling pcap.
-try! measureAndPrint(desc: "http1_threaded_50reqs_500conns_rolling_pcap",
-                     benchmark: HTTP1ThreadedRollingPCapPerformanceTest())
+try! measureAndPrint(
+    desc: "http1_threaded_50reqs_500conns_rolling_pcap",
+    benchmark: HTTP1ThreadedRollingPCapPerformanceTest()
+)
 
 // Relatively real world test - http1 with many threads and pcap to file.
-try! measureAndPrint(desc: "http1_threaded_50reqs_500conns_pcap",
-                     benchmark: HTTP1ThreadedPCapPerformanceTest())
+try! measureAndPrint(
+    desc: "http1_threaded_50reqs_500conns_pcap",
+    benchmark: HTTP1ThreadedPCapPerformanceTest()
+)

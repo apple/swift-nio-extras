@@ -12,17 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 class DebugInboundEventsHandlerTest: XCTestCase {
-    
+
     private var channel: EmbeddedChannel!
     private var lastEvent: DebugInboundEventsHandler.Event!
     private var handlerUnderTest: DebugInboundEventsHandler!
-    
+
     override func setUp() {
         super.setUp()
         channel = EmbeddedChannel()
@@ -31,61 +31,61 @@ class DebugInboundEventsHandlerTest: XCTestCase {
         }
         try? channel.pipeline.addHandler(handlerUnderTest).wait()
     }
-    
+
     override func tearDown() {
         channel = nil
         lastEvent = nil
         handlerUnderTest = nil
         super.tearDown()
     }
-    
+
     func testRegistered() {
         channel.pipeline.register(promise: nil)
         XCTAssertEqual(lastEvent, .registered)
     }
-    
+
     func testUnregistered() {
         channel.pipeline.fireChannelUnregistered()
         XCTAssertEqual(lastEvent, .unregistered)
     }
-    
+
     func testActive() {
         channel.pipeline.fireChannelActive()
         XCTAssertEqual(lastEvent, .active)
     }
-    
+
     func testInactive() {
         channel.pipeline.fireChannelInactive()
         XCTAssertEqual(lastEvent, .inactive)
     }
-    
+
     func testReadComplete() {
         channel.pipeline.fireChannelReadComplete()
         XCTAssertEqual(lastEvent, .readComplete)
     }
-    
+
     func testWritabilityChanged() {
         channel.pipeline.fireChannelWritabilityChanged()
         XCTAssertEqual(lastEvent, .writabilityChanged(isWritable: true))
     }
-    
+
     func testUserInboundEvent() {
         let eventString = "new user inbound event"
         channel.pipeline.fireUserInboundEventTriggered(eventString)
         XCTAssertEqual(lastEvent, .userInboundEventTriggered(event: eventString))
     }
-    
+
     func testErrorCaught() {
         struct E: Error {
             var localizedDescription: String {
-                return "desc"
+                "desc"
             }
         }
         let error = E()
         channel.pipeline.fireErrorCaught(error)
         XCTAssertEqual(lastEvent, .errorCaught(error))
     }
-    
+
     func testRead() {
         let messageString = "message"
         var expectedBuffer = ByteBufferAllocator().buffer(capacity: messageString.count)
@@ -94,7 +94,7 @@ class DebugInboundEventsHandlerTest: XCTestCase {
         channel.pipeline.fireChannelRead(nioAny)
         XCTAssertEqual(lastEvent, .read(data: nioAny))
     }
-    
+
 }
 
 extension DebugInboundEventsHandler.Event {
@@ -125,8 +125,7 @@ extension DebugInboundEventsHandler.Event {
 }
 
 #if compiler(>=6.0)
-extension DebugInboundEventsHandler.Event: @retroactive Equatable { }
+extension DebugInboundEventsHandler.Event: @retroactive Equatable {}
 #else
-extension DebugInboundEventsHandler.Event: Equatable { }
+extension DebugInboundEventsHandler.Event: Equatable {}
 #endif
-

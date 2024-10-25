@@ -27,11 +27,11 @@ public struct HTTP1TypeConversionError: Error, Equatable {
     }
 
     /// Failed to create HTTPRequest.Method from HTTPMethod
-    public static var invalidMethod: Self { .init(.invalidMethod)}
+    public static var invalidMethod: Self { .init(.invalidMethod) }
     /// Failed to extract a path from HTTPRequest
-    public static var missingPath: Self { .init(.missingPath)}
+    public static var missingPath: Self { .init(.missingPath) }
     /// HTTPResponseHead had an invalid status code
-    public static var invalidStatusCode: Self { .init(.invalidStatusCode)}
+    public static var invalidStatusCode: Self { .init(.invalidStatusCode) }
 }
 
 extension HTTPMethod {
@@ -117,7 +117,7 @@ extension HTTPRequest.Method {
         case .MKACTIVITY: self = .init("MKACTIVITY")!
         case .UNSUBSCRIBE: self = .init("UNSUBSCRIBE")!
         case .SOURCE: self = .init("SOURCE")!
-        case .RAW(value: let value):
+        case .RAW(let value):
             guard let method = HTTPRequest.Method(value) else {
                 throw HTTP1TypeConversionError.invalidMethod
             }
@@ -145,9 +145,11 @@ extension HTTPFields {
             }
             if let name = HTTPField.Name(field.name) {
                 if splitCookie && name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
-                    self.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
-                        HTTPField(name: name, value: String($0))
-                    })
+                    self.append(
+                        contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
+                            HTTPField(name: name, value: String($0))
+                        }
+                    )
                 } else {
                     self.append(HTTPField(name: name, value: field.value))
                 }
@@ -219,7 +221,10 @@ extension HTTPResponse {
         guard oldResponse.status.code <= 999 else {
             throw HTTP1TypeConversionError.invalidStatusCode
         }
-        let status = HTTPResponse.Status(code: Int(oldResponse.status.code), reasonPhrase: oldResponse.status.reasonPhrase)
+        let status = HTTPResponse.Status(
+            code: Int(oldResponse.status.code),
+            reasonPhrase: oldResponse.status.reasonPhrase
+        )
         self.init(status: status, headerFields: HTTPFields(oldResponse.headers, splitCookie: false))
     }
 }

@@ -25,9 +25,9 @@ public enum NIOCompression {
             case deflate
         }
         fileprivate let algorithm: AlgorithmEnum
-        
+
         /// return as String
-        public var description: String { return algorithm.rawValue }
+        public var description: String { algorithm.rawValue }
 
         /// `gzip` method
         public static let gzip = Algorithm(algorithm: .gzip)
@@ -42,9 +42,9 @@ public enum NIOCompression {
             case noDataToWrite
         }
         fileprivate let error: ErrorEnum
-        
+
         /// return as String
-        public var description: String { return error.rawValue }
+        public var description: String { error.rawValue }
 
         /// There were writes pending which were not processed before shutdown.
         public static let uncompressedWritesPending = Error(error: .uncompressedWritesPending)
@@ -57,7 +57,7 @@ public enum NIOCompression {
         private var stream = z_stream()
         var isActive = false
 
-        init() { }
+        init() {}
 
         /// Set up the encoder for compressing data according to a specific
         /// algorithm.
@@ -77,11 +77,22 @@ public enum NIOCompression {
                 windowBits = 16 + 15
             }
 
-            let rc = CNIOExtrasZlib_deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowBits, 8, Z_DEFAULT_STRATEGY)
+            let rc = CNIOExtrasZlib_deflateInit2(
+                &stream,
+                Z_DEFAULT_COMPRESSION,
+                Z_DEFLATED,
+                windowBits,
+                8,
+                Z_DEFAULT_STRATEGY
+            )
             precondition(rc == Z_OK, "Unexpected return from zlib init: \(rc)")
         }
 
-        mutating func compress(inputBuffer: inout ByteBuffer, allocator: ByteBufferAllocator, finalise: Bool) -> ByteBuffer {
+        mutating func compress(
+            inputBuffer: inout ByteBuffer,
+            allocator: ByteBufferAllocator,
+            finalise: Bool
+        ) -> ByteBuffer {
             assert(isActive)
             let flags = finalise ? Z_FINISH : Z_SYNC_FLUSH
             // don't compress an empty buffer if we aren't finishing the compress
@@ -101,13 +112,13 @@ public enum NIOCompression {
             stream.oneShotDeflate(from: &inputBuffer, to: &outputBuffer, flag: flags)
             return outputBuffer
         }
-        
+
         mutating func shutdown() {
             assert(isActive)
             isActive = false
             deflateEnd(&stream)
         }
-        
+
         mutating func shutdownIfActive() {
             if isActive {
                 isActive = false
@@ -131,8 +142,10 @@ extension z_stream {
 
         from.readWithUnsafeMutableReadableBytes { dataPtr in
             let typedPtr = dataPtr.baseAddress!.assumingMemoryBound(to: UInt8.self)
-            let typedDataPtr = UnsafeMutableBufferPointer(start: typedPtr,
-                                                          count: dataPtr.count)
+            let typedDataPtr = UnsafeMutableBufferPointer(
+                start: typedPtr,
+                count: dataPtr.count
+            )
 
             self.avail_in = UInt32(typedDataPtr.count)
             self.next_in = typedDataPtr.baseAddress!
@@ -151,8 +164,10 @@ extension z_stream {
         var rc = Z_OK
 
         buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: buffer.capacity) { outputPtr in
-            let typedOutputPtr = UnsafeMutableBufferPointer(start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
-                                                            count: outputPtr.count)
+            let typedOutputPtr = UnsafeMutableBufferPointer(
+                start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                count: outputPtr.count
+            )
             self.avail_out = UInt32(typedOutputPtr.count)
             self.next_out = typedOutputPtr.baseAddress!
             rc = deflate(&self, flag)

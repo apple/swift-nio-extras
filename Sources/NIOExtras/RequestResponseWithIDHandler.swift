@@ -26,9 +26,11 @@ import NIOCore
 ///
 /// `NIORequestResponseWithIDHandler` does _not_ require that the `Response`s arrive on `Channel` in the same order as
 /// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
-public final class NIORequestResponseWithIDHandler<Request: NIORequestIdentifiable,
-                                                   Response: NIORequestIdentifiable>: ChannelDuplexHandler
-                                                  where Request.RequestID == Response.RequestID {
+public final class NIORequestResponseWithIDHandler<
+    Request: NIORequestIdentifiable,
+    Response: NIORequestIdentifiable
+>: ChannelDuplexHandler
+where Request.RequestID == Response.RequestID {
     public typealias InboundIn = Response
     public typealias InboundOut = Never
     public typealias OutboundIn = (Request, EventLoopPromise<Response>)
@@ -78,7 +80,7 @@ public final class NIORequestResponseWithIDHandler<Request: NIORequestIdentifiab
             let promiseBuffer = self.promiseBuffer
             self.promiseBuffer.removeAll()
             self.state = .inactive
-            promiseBuffer.forEach { promise in
+            for promise in promiseBuffer {
                 promise.value.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
             }
         }
@@ -109,8 +111,8 @@ public final class NIORequestResponseWithIDHandler<Request: NIORequestIdentifiab
         let promiseBuffer = self.promiseBuffer
         self.promiseBuffer.removeAll()
         context.close(promise: nil)
-        promiseBuffer.forEach {
-            $0.value.fail(error)
+        for promise in promiseBuffer {
+            promise.value.fail(error)
         }
     }
 
@@ -141,4 +143,3 @@ extension NIOExtrasErrors {
         }
     }
 }
-

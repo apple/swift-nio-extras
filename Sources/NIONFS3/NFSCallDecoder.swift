@@ -32,6 +32,6 @@ public struct NFS3CallDecoder: NIOSingleStepByteToMessageDecoder {
     }
 
     public mutating func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> RPCNFS3Call? {
-        return try self.decode(buffer: &buffer)
+        try self.decode(buffer: &buffer)
     }
 }

@@ -127,7 +127,7 @@ extension NIOJSONRPCFraming {
                 // Given that we're waiting for the end of a header block or a new header field, it's sensible to
                 // check if this might be the end of the block.
                 if buffer.readableBytesView.starts(with: "\r\n".utf8) {
-                    buffer.moveReaderIndex(forwardBy: 2) // skip \r\n\r\n
+                    buffer.moveReaderIndex(forwardBy: 2)  // skip \r\n\r\n
                     return try self.processHeaderBlockEnd(context: context)
                 }
 
@@ -135,7 +135,7 @@ extension NIOJSONRPCFraming {
                 // must always have a colon (or we don't have enough data).
                 if let colonIndex = buffer.readableBytesView.firstIndex(of: UInt8(ascii: ":")) {
                     let headerName = buffer.readString(length: colonIndex - buffer.readableBytesView.startIndex)!
-                    buffer.moveReaderIndex(forwardBy: 1) // skip the colon
+                    buffer.moveReaderIndex(forwardBy: 1)  // skip the colon
                     self.state = .waitingForHeaderValue(name: headerName.trimmed().lowercased())
                     return .continue
                 }
@@ -153,7 +153,8 @@ extension NIOJSONRPCFraming {
                 if headerName == "content-length" {
                     // Yes, let's parse the int.
                     let headerValue = buffer.readString(length: newlineIndex - buffer.readableBytesView.startIndex + 1)!
-                    if let length = UInt32(headerValue.trimmed()) { // anything more than 4GB or negative doesn't make sense
+                    // anything more than 4GB or negative doesn't make sense
+                    if let length = UInt32(headerValue.trimmed()) {
                         self.payloadLength = .init(length)
                     } else {
                         throw DecodingError.illegalContentLengthHeaderValue(headerValue)
@@ -166,7 +167,7 @@ extension NIOJSONRPCFraming {
                 // but in any case, we're now waiting for a new header or the end of the header block again.
                 self.state = .waitingForHeaderNameOrHeaderBlockEnd
                 return .continue
-            case .waitingForPayload(length: let length):
+            case .waitingForPayload(let length):
                 // That's the easiest case, let's just wait until we have enough data.
                 if let payload = buffer.readSlice(length: length) {
                     // Cool, we got enough data, let's go back waiting for a new header block.
@@ -183,14 +184,16 @@ extension NIOJSONRPCFraming {
         /// Decode all remaining data.
         /// Invoked when the `Channel` is being brought down.
         /// Reports error through `ByteToMessageDecoderError.leftoverDataWhenDone` if not all data is consumed.
-        /// - parameters:
+        /// - Parameters:
         ///     - context: Calling context.
         ///     - buffer: Buffer of data to decode.
         ///     - seenEOF: If the end of file has been seen.
-        ///     - returns: .needMoreData always as all data should be consumed.
-        public mutating func decodeLast(context: ChannelHandlerContext,
-                                        buffer: inout ByteBuffer,
-                                        seenEOF: Bool) throws -> DecodingState {
+        /// - Returns: .needMoreData always as all data should be consumed.
+        public mutating func decodeLast(
+            context: ChannelHandlerContext,
+            buffer: inout ByteBuffer,
+            seenEOF: Bool
+        ) throws -> DecodingState {
             // Last chance to decode anything.
             while try self.decode(context: context, buffer: &buffer) == .continue {}
 
@@ -211,11 +214,9 @@ extension String {
         }
 
         let lastElementIndex = self.reversed().firstIndex(where: { !$0.isWhitespace })!
-        return self[firstElementIndex ..< lastElementIndex.base]
+        return self[firstElementIndex..<lastElementIndex.base]
     }
 }
-
-
 
 @available(*, unavailable)
 extension NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder: Sendable {}

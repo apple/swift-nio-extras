@@ -34,34 +34,36 @@ enum ClientAction: Hashable {
 struct ClientStateMachine {
 
     private var state: ClientState
-    
+
     var proxyEstablished: Bool {
         switch self.state {
         case .active:
             return true
-        case .error, .inactive, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest, .waitingForServerResponse:
+        case .error, .inactive, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest,
+            .waitingForServerResponse:
             return false
         }
     }
-    
-    var shouldBeginHandshake: Bool  {
+
+    var shouldBeginHandshake: Bool {
         switch self.state {
         case .inactive:
             return true
-        case .active, .error, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest, .waitingForServerResponse:
+        case .active, .error, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest,
+            .waitingForServerResponse:
             return false
         }
     }
-    
+
     init() {
         self.state = .inactive
     }
-    
+
 }
 
 // MARK: - Incoming
 extension ClientStateMachine {
-    
+
     mutating func receiveBuffer(_ buffer: inout ByteBuffer) throws -> ClientAction {
         do {
             switch self.state {
@@ -83,23 +85,26 @@ extension ClientStateMachine {
             throw error
         }
     }
-    
-    mutating func handleSelectedAuthenticationMethod(_ buffer: inout ByteBuffer, greeting: ClientGreeting) throws -> ClientAction? {
-        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
+
+    mutating func handleSelectedAuthenticationMethod(
+        _ buffer: inout ByteBuffer,
+        greeting: ClientGreeting
+    ) throws -> ClientAction? {
+        try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
             guard let selected = try buffer.readMethodSelection() else {
                 return nil
             }
             guard greeting.methods.contains(selected.method) else {
                 throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
             }
-                
+
             // we don't current support any form of authentication
             return self.authenticate(&buffer, method: selected.method)
         }
     }
-    
+
     mutating func handleServerResponse(_ buffer: inout ByteBuffer, request: SOCKSRequest) throws -> ClientAction? {
-        return try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
+        try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
             guard let response = try buffer.readServerResponse() else {
                 return nil
             }
@@ -110,22 +115,22 @@ extension ClientStateMachine {
             return .proxyEstablished
         }
     }
-    
+
     mutating func authenticate(_ buffer: inout ByteBuffer, method: AuthenticationMethod) -> ClientAction {
         precondition(method == .noneRequired, "No authentication mechanism is supported. Use .noneRequired only.")
-        
+
         // we don't currently support any authentication
         // so assume all is fine, and instruct the client
         // to send the request
         self.state = .waitingForClientRequest
         return .sendRequest
     }
-    
+
 }
 
 // MARK: - Outgoing
 extension ClientStateMachine {
-    
+
     mutating func connectionEstablished() throws -> ClientAction {
         guard self.state == .inactive else {
             throw SOCKSError.InvalidClientState()
@@ -140,12 +145,12 @@ extension ClientStateMachine {
         }
         self.state = .waitingForAuthenticationMethod(greeting)
     }
-    
+
     mutating func sendClientRequest(_ request: SOCKSRequest) throws {
         guard self.state == .waitingForClientRequest else {
             throw SOCKSError.InvalidClientState()
         }
         self.state = .waitingForServerResponse(request)
     }
-    
+
 }

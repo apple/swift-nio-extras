@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-@testable import NIOCore // to inspect the cumulationBuffer
 import NIOEmbedded
 import NIOExtras
 import NIOTestUtils
+import XCTest
+
+@testable import NIOCore  // to inspect the cumulationBuffer
 
 class LineBasedFrameDecoderTest: XCTestCase {
     private var channel: EmbeddedChannel!
@@ -39,9 +40,9 @@ class LineBasedFrameDecoderTest: XCTestCase {
     func testDecodeOneCharacterAtATime() throws {
         let message = "abcdefghij\r"
         // we write one character at a time
-        try message.forEach {
+        for character in message {
             var buffer = self.channel.allocator.buffer(capacity: 1)
-            buffer.writeString("\($0)")
+            buffer.writeString("\(character)")
             XCTAssertTrue(try self.channel.writeInbound(buffer).isEmpty)
         }
         // let's add `\n`
@@ -49,10 +50,14 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.writeString("\n")
         XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
 
-        XCTAssertNoThrow(XCTAssertEqual("abcdefghij",
-                                        (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0[0..<10], as: Unicode.UTF8.self)
-        }))
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                "abcdefghij",
+                (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                    String(decoding: $0[0..<10], as: Unicode.UTF8.self)
+                }
+            )
+        )
         XCTAssertTrue(try self.channel.finish().isClean)
     }
 
@@ -165,15 +170,25 @@ class LineBasedFrameDecoderTest: XCTestCase {
         buffer.writeString("a\nbb\nccc\ndddd\neeeee\nffffff\nXXX")
         XCTAssertNoThrow(try self.channel.writeInbound(buffer))
         for s in ["a", "bb", "ccc", "dddd", "eeeee", "ffffff"] {
-            XCTAssertNoThrow(XCTAssertEqual(s,
-                                            (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-                String(decoding: $0, as: Unicode.UTF8.self)
-            }))
+            XCTAssertNoThrow(
+                XCTAssertEqual(
+                    s,
+                    (try self.channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                        String(decoding: $0, as: Unicode.UTF8.self)
+                    }
+                )
+            )
         }
         XCTAssertNoThrow(XCTAssertNil(try self.channel.readInbound(as: ByteBuffer.self)))
-        XCTAssertNoThrow(try XCTAssertEqual("XXX",
-                                            String(decoding: receivedLeftOversPromise.futureResult.wait().readableBytesView,
-                                                   as: UTF8.self)))
+        XCTAssertNoThrow(
+            try XCTAssertEqual(
+                "XXX",
+                String(
+                    decoding: receivedLeftOversPromise.futureResult.wait().readableBytesView,
+                    as: UTF8.self
+                )
+            )
+        )
     }
 
     func testDripFedCRLN() {
@@ -203,11 +218,16 @@ class LineBasedFrameDecoderTest: XCTestCase {
                 ("a\r\n", [byteBuffer("a")]),
                 ("a\n", [byteBuffer("a")]),
                 ("a\rb\n", [byteBuffer("a\rb")]),
-                ("Content-Length: 17\r\nConnection: close\r\n\r\n", [byteBuffer("Content-Length: 17"),
-                                                                     byteBuffer("Connection: close"),
-                                                                     byteBuffer("")])
+                (
+                    "Content-Length: 17\r\nConnection: close\r\n\r\n",
+                    [
+                        byteBuffer("Content-Length: 17"),
+                        byteBuffer("Connection: close"),
+                        byteBuffer(""),
+                    ]
+                ),
             ]) {
-                return LineBasedFrameDecoder()
+                LineBasedFrameDecoder()
             }
         } catch {
             print(error)
@@ -219,32 +239,41 @@ class LineBasedFrameDecoderTest: XCTestCase {
         let decoder = LineBasedFrameDecoder()
         let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
         var callCount = 0
-        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "1\n\n2\n3\n")) { line in
-            callCount += 1
-            switch callCount {
-            case 1:
-                XCTAssertEqual(ByteBuffer(string: "1"), line)
-            case 2:
-                XCTAssertEqual(ByteBuffer(string: ""), line)
-            case 3:
-                XCTAssertEqual(ByteBuffer(string: "2"), line)
-            case 4:
-                XCTAssertEqual(ByteBuffer(string: "3"), line)
-            default:
-                XCTFail("not expecting call no \(callCount)")
+        XCTAssertNoThrow(
+            try b2mp.process(buffer: ByteBuffer(string: "1\n\n2\n3\n")) { line in
+                callCount += 1
+                switch callCount {
+                case 1:
+                    XCTAssertEqual(ByteBuffer(string: "1"), line)
+                case 2:
+                    XCTAssertEqual(ByteBuffer(string: ""), line)
+                case 3:
+                    XCTAssertEqual(ByteBuffer(string: "2"), line)
+                case 4:
+                    XCTAssertEqual(ByteBuffer(string: "3"), line)
+                default:
+                    XCTFail("not expecting call no \(callCount)")
+                }
             }
-        })
+        )
     }
 
     func testBasicSingleStepNoNewlineComingButEOF() {
         let decoder = LineBasedFrameDecoder()
         let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
-        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
-            XCTFail("not taking calls")
-        })
-        XCTAssertThrowsError(try b2mp.finishProcessing(seenEOF: true, { line in
-            XCTFail("not taking calls")
-        })) { error in
+        XCTAssertNoThrow(
+            try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
+                XCTFail("not taking calls")
+            }
+        )
+        XCTAssertThrowsError(
+            try b2mp.finishProcessing(
+                seenEOF: true,
+                { line in
+                    XCTFail("not taking calls")
+                }
+            )
+        ) { error in
             if let error = error as? NIOExtrasErrors.LeftOverBytesError {
                 XCTAssertEqual(ByteBuffer(string: "new newline eva\r"), error.leftOverBytes)
             } else {
@@ -256,12 +285,19 @@ class LineBasedFrameDecoderTest: XCTestCase {
     func testBasicSingleStepNoNewlineOrEOFComing() {
         let decoder = LineBasedFrameDecoder()
         let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
-        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
-            XCTFail("not taking calls")
-        })
-        XCTAssertThrowsError(try b2mp.finishProcessing(seenEOF: false, { line in
-            XCTFail("not taking calls")
-        })) { error in
+        XCTAssertNoThrow(
+            try b2mp.process(buffer: ByteBuffer(string: "new newline eva\r")) { line in
+                XCTFail("not taking calls")
+            }
+        )
+        XCTAssertThrowsError(
+            try b2mp.finishProcessing(
+                seenEOF: false,
+                { line in
+                    XCTFail("not taking calls")
+                }
+            )
+        ) { error in
             if let error = error as? NIOExtrasErrors.LeftOverBytesError {
                 XCTAssertEqual(ByteBuffer(string: "new newline eva\r"), error.leftOverBytes)
             } else {
@@ -274,21 +310,23 @@ class LineBasedFrameDecoderTest: XCTestCase {
         let decoder = LineBasedFrameDecoder()
         let b2mp = NIOSingleStepByteToMessageProcessor(decoder)
         var callCount = 0
-        XCTAssertNoThrow(try b2mp.process(buffer: ByteBuffer(string: "1\n\n2\n3\n")) { line in
-            callCount += 1
-            switch callCount {
-            case 1:
-                XCTAssertEqual(ByteBuffer(string: "1"), line)
-                XCTAssertNoThrow(try b2mp.finishProcessing(seenEOF: true) { _ in } )
-            case 2:
-                XCTAssertEqual(ByteBuffer(string: ""), line)
-            case 3:
-                XCTAssertEqual(ByteBuffer(string: "2"), line)
-            case 4:
-                XCTAssertEqual(ByteBuffer(string: "3"), line)
-            default:
-                XCTFail("not expecting call no \(callCount)")
+        XCTAssertNoThrow(
+            try b2mp.process(buffer: ByteBuffer(string: "1\n\n2\n3\n")) { line in
+                callCount += 1
+                switch callCount {
+                case 1:
+                    XCTAssertEqual(ByteBuffer(string: "1"), line)
+                    XCTAssertNoThrow(try b2mp.finishProcessing(seenEOF: true) { _ in })
+                case 2:
+                    XCTAssertEqual(ByteBuffer(string: ""), line)
+                case 3:
+                    XCTAssertEqual(ByteBuffer(string: "2"), line)
+                case 4:
+                    XCTAssertEqual(ByteBuffer(string: "3"), line)
+                default:
+                    XCTFail("not expecting call no \(callCount)")
+                }
             }
-        })
+        )
     }
 }

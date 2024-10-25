@@ -14,7 +14,7 @@
 import NIOCore
 
 /// Base type for errors from NIOExtras
-public protocol NIOExtrasError: Equatable, Error { }
+public protocol NIOExtrasError: Equatable, Error {}
 
 /// Errors that are raised in NIOExtras.
 public enum NIOExtrasErrors {

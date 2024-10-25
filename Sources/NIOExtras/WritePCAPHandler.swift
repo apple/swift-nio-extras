@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
+import NIOCore
+
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Musl)
@@ -19,9 +22,6 @@ import Musl
 #else
 import Glibc
 #endif
-import Dispatch
-
-import NIOCore
 
 let sysWrite = write
 
@@ -60,18 +60,18 @@ struct PCAPRecordHeader {
 
         var srcPort: UInt16 {
             switch self {
-            case .v4(src: let src, dst: _):
+            case .v4(let src, dst: _):
                 return UInt16(bigEndian: src.address.sin_port)
-            case .v6(src: let src, dst: _):
+            case .v6(let src, dst: _):
                 return UInt16(bigEndian: src.address.sin6_port)
             }
         }
 
         var dstPort: UInt16 {
             switch self {
-            case .v4(src: _, dst: let dst):
+            case .v4(src: _, let dst):
                 return UInt16(bigEndian: dst.address.sin_port)
-            case .v6(src: _, dst: let dst):
+            case .v6(src: _, let dst):
                 return UInt16(bigEndian: dst.address.sin6_port)
             }
         }
@@ -105,7 +105,7 @@ struct PCAPRecordHeader {
         }
         self = .init(payloadLength: payloadLength, addresses: addressTuple, tcp: tcp)
     }
-    
+
     init(payloadLength: Int, addresses: AddressTuple, tcp: TCPHeader) {
         var tv = timeval()
         gettimeofday(&tv, nil)
@@ -170,10 +170,10 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         case closedInitiatorLocal
         case closedInitiatorRemote
     }
-    
+
     private let fileSink: (ByteBuffer) -> Void
     private let mode: Mode
-    private let maxPayloadSize = Int(UInt16.max - 40 /* needs to fit into the IPv4 header which adds 40 */)
+    private let maxPayloadSize = Int(UInt16.max - 40)  // needs to fit into the IPv4 header which adds 40
     private let settings: Settings
     private var buffer: ByteBuffer!
     private var readInboundBytes: UInt64 = 0
@@ -182,7 +182,7 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
 
     private static let fakeLocalAddress = try! SocketAddress(ipAddress: "111.111.111.111", port: 1111)
     private static let fakeRemoteAddress = try! SocketAddress(ipAddress: "222.222.222.222", port: 2222)
-    
+
     private var localAddress: SocketAddress?
     private var remoteAddress: SocketAddress?
 
@@ -196,17 +196,20 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     /// Initialize a ``NIOWritePCAPHandler``.
     ///
     /// - parameters:
+    ///     - mode: Whether the handler should behave in the client or server mode.
     ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.
     ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
     ///     - settings: The settings for the ``NIOWritePCAPHandler``.
     ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
     ///                 written to disk or elsewhere. See ``SynchronizedFileSink`` for a convenient way to write to
     ///                 disk.
-    public init(mode: Mode,
-                fakeLocalAddress: SocketAddress? = nil,
-                fakeRemoteAddress: SocketAddress? = nil,
-                settings: Settings,
-                fileSink: @escaping (ByteBuffer) -> Void) {
+    public init(
+        mode: Mode,
+        fakeLocalAddress: SocketAddress? = nil,
+        fakeRemoteAddress: SocketAddress? = nil,
+        settings: Settings,
+        fileSink: @escaping (ByteBuffer) -> Void
+    ) {
         self.settings = settings
         self.fileSink = fileSink
         self.mode = mode
@@ -221,26 +224,31 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
     /// Initialize a ``NIOWritePCAPHandler`` with default settings.
     ///
     /// - parameters:
+    ///     - mode: Whether the handler should behave in the client or server mode.
     ///     - fakeLocalAddress: Allows you to optionally override the local address to be different from the real one.
     ///     - fakeRemoteAddress: Allows you to optionally override the remote address to be different from the real one.
     ///     - fileSink: The `fileSink` closure is called every time a new chunk of the `.pcap` file is ready to be
     ///                 written to disk or elsewhere. See `NIOSynchronizedFileSink` for a convenient way to write to
     ///                 disk.
-    public convenience init(mode: Mode,
-                            fakeLocalAddress: SocketAddress? = nil,
-                            fakeRemoteAddress: SocketAddress? = nil,
-                            fileSink: @escaping (ByteBuffer) -> Void) {
-        self.init(mode: mode,
-                  fakeLocalAddress: fakeLocalAddress,
-                  fakeRemoteAddress: fakeRemoteAddress,
-                  settings: Settings(),
-                  fileSink: fileSink)
+    public convenience init(
+        mode: Mode,
+        fakeLocalAddress: SocketAddress? = nil,
+        fakeRemoteAddress: SocketAddress? = nil,
+        fileSink: @escaping (ByteBuffer) -> Void
+    ) {
+        self.init(
+            mode: mode,
+            fakeLocalAddress: fakeLocalAddress,
+            fakeRemoteAddress: fakeRemoteAddress,
+            settings: Settings(),
+            fileSink: fileSink
+        )
     }
-    
+
     private func writeBuffer(_ buffer: ByteBuffer) {
         self.fileSink(buffer)
     }
-    
+
     private func localAddress(context: ChannelHandlerContext) -> SocketAddress {
         if let localAddress = self.localAddress {
             return localAddress
@@ -278,17 +286,17 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
             return self.localAddress(context: context)
         }
     }
-    
+
     private func takeSensiblySizedPayload(buffer: inout ByteBuffer) -> ByteBuffer? {
         guard buffer.readableBytes > 0 else {
             return nil
         }
-        
+
         return buffer.readSlice(length: min(buffer.readableBytes, self.maxPayloadSize))
     }
 
     private func sequenceNumber(byteCount: UInt64) -> UInt32 {
-        return UInt32(byteCount % (UInt64(UInt32.max) + 1))
+        UInt32(byteCount % (UInt64(UInt32.max) + 1))
     }
 }
 
@@ -304,7 +312,7 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
     public func handlerAdded(context: ChannelHandlerContext) {
         self.buffer = context.channel.allocator.buffer(capacity: 256)
     }
-    
+
     public func channelActive(context: ChannelHandlerContext) {
         self.buffer.clear()
         self.readInboundBytes = 1
@@ -312,37 +320,55 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
         do {
             let clientAddress = self.clientAddress(context: context)
             let serverAddress = self.serverAddress(context: context)
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: clientAddress,
-                                                  dst: serverAddress,
-                                                  tcp: TCPHeader(flags: [.syn],
-                                                                 ackNumber: nil,
-                                                                 sequenceNumber: 0,
-                                                                 srcPort: .init(clientAddress.port!),
-                                                                 dstPort: .init(serverAddress.port!))))
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: serverAddress,
-                                                  dst: clientAddress,
-                                                  tcp: TCPHeader(flags: [.syn, .ack],
-                                                                 ackNumber: 1,
-                                                                 sequenceNumber: 0,
-                                                                 srcPort: .init(serverAddress.port!),
-                                                                 dstPort: .init(clientAddress.port!))))
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: clientAddress,
-                                                  dst: serverAddress,
-                                                  tcp: TCPHeader(flags: [.ack],
-                                                                 ackNumber: 1,
-                                                                 sequenceNumber: 1,
-                                                                 srcPort: .init(clientAddress.port!),
-                                                                 dstPort: .init(serverAddress.port!))))
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: clientAddress,
+                    dst: serverAddress,
+                    tcp: TCPHeader(
+                        flags: [.syn],
+                        ackNumber: nil,
+                        sequenceNumber: 0,
+                        srcPort: .init(clientAddress.port!),
+                        dstPort: .init(serverAddress.port!)
+                    )
+                )
+            )
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: serverAddress,
+                    dst: clientAddress,
+                    tcp: TCPHeader(
+                        flags: [.syn, .ack],
+                        ackNumber: 1,
+                        sequenceNumber: 0,
+                        srcPort: .init(serverAddress.port!),
+                        dstPort: .init(clientAddress.port!)
+                    )
+                )
+            )
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: clientAddress,
+                    dst: serverAddress,
+                    tcp: TCPHeader(
+                        flags: [.ack],
+                        ackNumber: 1,
+                        sequenceNumber: 1,
+                        srcPort: .init(clientAddress.port!),
+                        dstPort: .init(serverAddress.port!)
+                    )
+                )
+            )
             self.writeBuffer(self.buffer)
         } catch {
             context.fireErrorCaught(error)
         }
         context.fireChannelActive()
     }
-    
+
     public func channelInactive(context: ChannelHandlerContext) {
         let didLocalInitiateTheClose: Bool
         switch self.closeState {
@@ -354,48 +380,70 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             self.closeState = .closedInitiatorRemote
             didLocalInitiateTheClose = false
         }
-        
+
         self.buffer.clear()
         do {
-            let closeInitiatorAddress = didLocalInitiateTheClose ? self.localAddress(context: context) : self.remoteAddress(context: context)
-            let closeRecipientAddress = didLocalInitiateTheClose ? self.remoteAddress(context: context) : self.localAddress(context: context)
-            let initiatorSeq = self.sequenceNumber(byteCount: didLocalInitiateTheClose ?
-                                                    self.writtenOutboundBytes : self.readInboundBytes)
-            let recipientSeq = self.sequenceNumber(byteCount: didLocalInitiateTheClose ?
-                                                    self.readInboundBytes : self.writtenOutboundBytes)
-            
+            let closeInitiatorAddress =
+                didLocalInitiateTheClose ? self.localAddress(context: context) : self.remoteAddress(context: context)
+            let closeRecipientAddress =
+                didLocalInitiateTheClose ? self.remoteAddress(context: context) : self.localAddress(context: context)
+            let initiatorSeq = self.sequenceNumber(
+                byteCount: didLocalInitiateTheClose ? self.writtenOutboundBytes : self.readInboundBytes
+            )
+            let recipientSeq = self.sequenceNumber(
+                byteCount: didLocalInitiateTheClose ? self.readInboundBytes : self.writtenOutboundBytes
+            )
+
             // terminate the connection cleanly
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: closeInitiatorAddress,
-                                                  dst: closeRecipientAddress,
-                                                  tcp: TCPHeader(flags: [.fin],
-                                                                 ackNumber: nil,
-                                                                 sequenceNumber: initiatorSeq,
-                                                                 srcPort: .init(closeInitiatorAddress.port!),
-                                                                 dstPort: .init(closeRecipientAddress.port!))))
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: closeRecipientAddress,
-                                                  dst: closeInitiatorAddress,
-                                                  tcp: TCPHeader(flags: [.ack, .fin],
-                                                                 ackNumber: initiatorSeq + 1,
-                                                                 sequenceNumber: recipientSeq,
-                                                                 srcPort: .init(closeRecipientAddress.port!),
-                                                                 dstPort: .init(closeInitiatorAddress.port!))))
-            try self.buffer.writePCAPRecord(.init(payloadLength: 0,
-                                                  src: closeInitiatorAddress,
-                                                  dst: closeRecipientAddress,
-                                                  tcp: TCPHeader(flags: [.ack],
-                                                                 ackNumber: recipientSeq + 1,
-                                                                 sequenceNumber: initiatorSeq + 1,
-                                                                 srcPort: .init(closeInitiatorAddress.port!),
-                                                                 dstPort: .init(closeRecipientAddress.port!))))
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: closeInitiatorAddress,
+                    dst: closeRecipientAddress,
+                    tcp: TCPHeader(
+                        flags: [.fin],
+                        ackNumber: nil,
+                        sequenceNumber: initiatorSeq,
+                        srcPort: .init(closeInitiatorAddress.port!),
+                        dstPort: .init(closeRecipientAddress.port!)
+                    )
+                )
+            )
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: closeRecipientAddress,
+                    dst: closeInitiatorAddress,
+                    tcp: TCPHeader(
+                        flags: [.ack, .fin],
+                        ackNumber: initiatorSeq + 1,
+                        sequenceNumber: recipientSeq,
+                        srcPort: .init(closeRecipientAddress.port!),
+                        dstPort: .init(closeInitiatorAddress.port!)
+                    )
+                )
+            )
+            try self.buffer.writePCAPRecord(
+                .init(
+                    payloadLength: 0,
+                    src: closeInitiatorAddress,
+                    dst: closeRecipientAddress,
+                    tcp: TCPHeader(
+                        flags: [.ack],
+                        ackNumber: recipientSeq + 1,
+                        sequenceNumber: initiatorSeq + 1,
+                        srcPort: .init(closeInitiatorAddress.port!),
+                        dstPort: .init(closeRecipientAddress.port!)
+                    )
+                )
+            )
             self.writeBuffer(self.buffer)
         } catch {
             context.fireErrorCaught(error)
         }
         context.fireChannelInactive()
     }
-    
+
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         defer {
             context.fireChannelRead(data)
@@ -403,24 +451,30 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
         guard self.closeState == .notClosing else {
             return
         }
-        
+
         let data = self.unwrapInboundIn(data)
         guard data.readableBytes > 0 else {
             return
         }
-        
+
         self.buffer.clear()
         do {
             var data = data
             while var payloadToSend = self.takeSensiblySizedPayload(buffer: &data) {
-                try self.buffer.writePCAPRecord(.init(payloadLength: payloadToSend.readableBytes,
-                                                      src: self.remoteAddress(context: context),
-                                                      dst: self.localAddress(context: context),
-                                                      tcp: TCPHeader(flags: [],
-                                                                     ackNumber: nil,
-                                                                     sequenceNumber: self.sequenceNumber(byteCount: self.readInboundBytes),
-                                                                     srcPort: .init(self.remoteAddress(context: context).port!),
-                                                                     dstPort: .init(self.localAddress(context: context).port!))))
+                try self.buffer.writePCAPRecord(
+                    .init(
+                        payloadLength: payloadToSend.readableBytes,
+                        src: self.remoteAddress(context: context),
+                        dst: self.localAddress(context: context),
+                        tcp: TCPHeader(
+                            flags: [],
+                            ackNumber: nil,
+                            sequenceNumber: self.sequenceNumber(byteCount: self.readInboundBytes),
+                            srcPort: .init(self.remoteAddress(context: context).port!),
+                            dstPort: .init(self.localAddress(context: context).port!)
+                        )
+                    )
+                )
                 self.readInboundBytes += UInt64(payloadToSend.readableBytes)
                 self.buffer.writeBuffer(&payloadToSend)
             }
@@ -430,7 +484,7 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             context.fireErrorCaught(error)
         }
     }
-    
+
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         var buffer = self.unwrapInboundIn(data)
 
@@ -438,14 +492,20 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             do {
                 self.buffer.clear()
                 while var payloadToSend = self.takeSensiblySizedPayload(buffer: &buffer) {
-                    try self.buffer.writePCAPRecord(.init(payloadLength: payloadToSend.readableBytes,
-                                                          src: self.localAddress(context: context),
-                                                          dst: self.remoteAddress(context: context),
-                                                          tcp: TCPHeader(flags: [],
-                                                                         ackNumber: nil,
-                                                                         sequenceNumber: self.sequenceNumber(byteCount: self.writtenOutboundBytes),
-                                                                         srcPort: .init(self.localAddress(context: context).port!),
-                                                                         dstPort: .init(self.remoteAddress(context: context).port!))))
+                    try self.buffer.writePCAPRecord(
+                        .init(
+                            payloadLength: payloadToSend.readableBytes,
+                            src: self.localAddress(context: context),
+                            dst: self.remoteAddress(context: context),
+                            tcp: TCPHeader(
+                                flags: [],
+                                ackNumber: nil,
+                                sequenceNumber: self.sequenceNumber(byteCount: self.writtenOutboundBytes),
+                                srcPort: .init(self.localAddress(context: context).port!),
+                                dstPort: .init(self.remoteAddress(context: context).port!)
+                            )
+                        )
+                    )
                     self.writtenOutboundBytes += UInt64(payloadToSend.readableBytes)
                     self.buffer.writeBuffer(&payloadToSend)
                 }
@@ -467,15 +527,15 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
             context.write(data, promise: promise)
         }
     }
-    
+
     public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {
         if let event = event as? ChannelEvent {
             if event == .inputClosed {
                 switch self.closeState {
                 case .closedInitiatorLocal:
-                    () // fair enough, we already closed locally
+                    ()  // fair enough, we already closed locally
                 case .closedInitiatorRemote:
-                    () // that's odd but okay
+                    ()  // that's odd but okay
                 case .notClosing:
                     self.closeState = .closedInitiatorRemote
                 }
@@ -483,13 +543,13 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
         }
         context.fireUserInboundEventTriggered(event)
     }
-    
+
     public func close(context: ChannelHandlerContext, mode: CloseMode, promise: EventLoopPromise<Void>?) {
         switch self.closeState {
         case .closedInitiatorLocal:
-            () // weird, this looks like a double-close
+            ()  // weird, this looks like a double-close
         case .closedInitiatorRemote:
-            () // fair enough, already closed I guess
+            ()  // fair enough, already closed I guess
         case .notClosing:
             self.closeState = .closedInitiatorLocal
         }
@@ -499,75 +559,75 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
 
 extension ByteBuffer {
     mutating func writePCAPHeader() {
-        // guint32 magic_number;   /* magic number */
-        self.writeInteger(0xa1b2c3d4, endianness: .host, as: UInt32.self)
-        // guint16 version_major;  /* major version number */
+        // guint32 magic_number;   // magic number
+        self.writeInteger(0xa1b2_c3d4, endianness: .host, as: UInt32.self)
+        // guint16 version_major;  // major version number
         self.writeInteger(2, endianness: .host, as: UInt16.self)
-        // guint16 version_minor;  /* minor version number *
+        // guint16 version_minor;  // minor version number
         self.writeInteger(4, endianness: .host, as: UInt16.self)
-        // gint32  thiszone;       /* GMT to local correction */
+        // gint32  thiszone;       // GMT to local correction
         self.writeInteger(0, endianness: .host, as: UInt32.self)
-        // guint32 sigfigs;        /* accuracy of timestamps */
+        // guint32 sigfigs;        // accuracy of timestamps
         self.writeInteger(0, endianness: .host, as: UInt32.self)
-        // guint32 snaplen;        /* max length of captured packets, in octets */
+        // guint32 snaplen;        // max length of captured packets, in octets
         self.writeInteger(.max, endianness: .host, as: UInt32.self)
-        // guint32 network;        /* data link type */
+        // guint32 network;        // data link type
         self.writeInteger(0, endianness: .host, as: UInt32.self)
     }
-    
+
     mutating func writePCAPRecord(_ record: PCAPRecordHeader) throws {
         let rawDataLength = record.payloadLength
-        let tcpLength = rawDataLength + 20 /* TCP header length */
+        let tcpLength = rawDataLength + 20  // TCP header length
 
         // record
-        // guint32 ts_sec;         /* timestamp seconds */
+        // guint32 ts_sec;         // timestamp seconds
         self.writeInteger(.init(record.time.tv_sec), endianness: .host, as: UInt32.self)
-        // guint32 ts_usec;        /* timestamp microseconds */
+        // guint32 ts_usec;        // timestamp microseconds
         self.writeInteger(.init(record.time.tv_usec), endianness: .host, as: UInt32.self)
         // continued below ...
 
         switch record.addresses {
         case .v4(let la, let ra):
-            let ipv4WholeLength = tcpLength + 20 /* IPv4 header length, included in IPv4 */
-            let recordLength = ipv4WholeLength + 4 /* 32 bits for protocol id */
-            
+            let ipv4WholeLength = tcpLength + 20  // IPv4 header length, included in IPv4
+            let recordLength = ipv4WholeLength + 4  // 32 bits for protocol id
+
             // record, continued
-            // guint32 incl_len;       /* number of octets of packet saved in file */
+            // guint32 incl_len;       // number of octets of packet saved in file
             self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            // guint32 orig_len;       /* actual length of packet */
+            // guint32 orig_len;       // actual length of packet
             self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            
-            self.writeInteger(2, endianness: .host, as: UInt32.self) // IPv4
+
+            self.writeInteger(2, endianness: .host, as: UInt32.self)  // IPv4
 
             // IPv4 packet
-            self.writeInteger(0x45, as: UInt8.self) // IP version (4) & IHL (5)
-            self.writeInteger(0, as: UInt8.self) // DSCP
+            self.writeInteger(0x45, as: UInt8.self)  // IP version (4) & IHL (5)
+            self.writeInteger(0, as: UInt8.self)  // DSCP
             self.writeInteger(.init(ipv4WholeLength), as: UInt16.self)
-            
-            self.writeInteger(0, as: UInt16.self) // identification
-            self.writeInteger(0x4000 /* this set's "don't fragment" */, as: UInt16.self) // flags & fragment offset
-            self.writeInteger(.max /* we don't care about TTL */, as: UInt8.self) // TTL
-            self.writeInteger(6, as: UInt8.self) // TCP
-            self.writeInteger(0, as: UInt16.self) // checksum
+
+            self.writeInteger(0, as: UInt16.self)  // identification
+            self.writeInteger(0x4000, as: UInt16.self)  // flags & fragment offset, 0x4000 sets "don't fragment"
+            self.writeInteger(.max, as: UInt8.self)  // TTL, `.max` as we don't care about the TTL
+            self.writeInteger(6, as: UInt8.self)  // TCP
+            self.writeInteger(0, as: UInt16.self)  // checksum
             self.writeInteger(la.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
             self.writeInteger(ra.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
         case .v6(let la, let ra):
             let ipv6PayloadLength = tcpLength
-            let recordLength = ipv6PayloadLength + 4 /* 32 bits for protocol id */ + 40 /* IPv6 header length */
-            
+            let recordLength = ipv6PayloadLength + 4 + 40  // IPv6 header length (+4 gives 32 bits for protocol id)
+
             // record, continued
-            // guint32 incl_len;       /* number of octets of packet saved in file */
+            // guint32 incl_len;       // number of octets of packet saved in file
             self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            // guint32 orig_len;       /* actual length of packet */
+            // guint32 orig_len;       // actual length of packet
             self.writeInteger(.init(recordLength), endianness: .host, as: UInt32.self)
-            
-            self.writeInteger(24, endianness: .host, as: UInt32.self) // IPv6
-            
+
+            self.writeInteger(24, endianness: .host, as: UInt32.self)  // IPv6
+
             // IPv6 packet
-            self.writeInteger(/* version */ (6 << 28), as: UInt32.self) // IP version (6) & fancy stuff
+            self.writeInteger((6 << 28), as: UInt32.self)  // IP version (6) & fancy stuff
             self.writeInteger(.init(ipv6PayloadLength), as: UInt16.self)
-            self.writeInteger(6, as: UInt8.self) // TCP
-            self.writeInteger(.max /* we don't care about TTL */, as: UInt8.self) // hop limit (like TTL)
+            self.writeInteger(6, as: UInt8.self)  // TCP
+            self.writeInteger(.max, as: UInt8.self)  // hop limit (like TTL & we don't care about TTL)
 
             var laAddress = la.address
             withUnsafeBytes(of: &laAddress.sin6_addr) { ptr in
@@ -585,13 +645,15 @@ extension ByteBuffer {
         self.writeInteger(record.tcp.srcPort, as: UInt16.self)
         self.writeInteger(record.tcp.dstPort, as: UInt16.self)
 
-        self.writeInteger(record.tcp.sequenceNumber, as: UInt32.self) // seq no
-        self.writeInteger(record.tcp.ackNumber ?? 0, as: UInt32.self) // ack no
+        self.writeInteger(record.tcp.sequenceNumber, as: UInt32.self)  // seq no
+        self.writeInteger(record.tcp.ackNumber ?? 0, as: UInt32.self)  // ack no
 
-        self.writeInteger(5 << 12 | UInt16(record.tcp.flags.rawValue), as: UInt16.self) // data offset + reserved bits + fancy stuff
-        self.writeInteger(.max /* we don't do actual window sizes */, as: UInt16.self) // window size
-        self.writeInteger(0xbad /* fake */, as: UInt16.self) // checksum
-        self.writeInteger(0, as: UInt16.self) // urgent pointer
+        // data offset + reserved bits + fancy stuff
+        self.writeInteger(5 << 12 | UInt16(record.tcp.flags.rawValue), as: UInt16.self)
+
+        self.writeInteger(.max, as: UInt16.self)  // window size, `.max` as we don't do actual window sizes
+        self.writeInteger(0xbad, as: UInt16.self)  // checksum (a fake one)
+        self.writeInteger(0, as: UInt16.self)  // urgent pointer
     }
 }
 
@@ -606,27 +668,27 @@ extension NIOWritePCAPHandler {
         private let workQueue: DispatchQueue
         private let writesGroup = DispatchGroup()
         private let errorHandler: (Swift.Error) -> Void
-        private var state: State = .running /* protected by `workQueue` */
-        
+        private var state: State = .running  // protected by `workQueue`
+
         public enum FileWritingMode {
             case appendToExistingPCAPFile
             case createNewPCAPFile
         }
-        
+
         public struct Error: Swift.Error {
             public var errorCode: Int
-            
+
             internal enum ErrorCode: Int {
                 case cannotOpenFileError = 1
                 case cannotWriteToFileError
             }
         }
-        
+
         private enum State {
             case running
             case error(Swift.Error)
         }
-        
+
         /// Creates a `SynchronizedFileSink` for writing to a `.pcap` file at `path`.
         ///
         /// Typically, after you created a `SynchronizedFileSink`, you will hand `myFileSink.write` to
@@ -652,9 +714,11 @@ extension NIOWritePCAPHandler {
         ///                     you must then `syncClose` the `SynchronizedFileSink`. When `errorHandler` has been
         ///                     called, no further writes will be attempted and `errorHandler` will also not be called
         ///                     again.
-        public static func fileSinkWritingToFile(path: String,
-                                                 fileWritingMode: FileWritingMode = .createNewPCAPFile,
-                                                 errorHandler: @escaping (Swift.Error) -> Void) throws -> SynchronizedFileSink {
+        public static func fileSinkWritingToFile(
+            path: String,
+            fileWritingMode: FileWritingMode = .createNewPCAPFile,
+            errorHandler: @escaping (Swift.Error) -> Void
+        ) throws -> SynchronizedFileSink {
             let oflag: CInt = fileWritingMode == FileWritingMode.createNewPCAPFile ? (O_TRUNC | O_CREAT) : O_APPEND
             let fd = try path.withCString { pathPtr -> CInt in
                 let fd = open(pathPtr, O_WRONLY | oflag, 0o600)
@@ -663,21 +727,25 @@ extension NIOWritePCAPHandler {
                 }
                 return fd
             }
-            
+
             if fileWritingMode == .createNewPCAPFile {
                 let writeOk = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
-                    return sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
+                    sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
                 }
                 guard writeOk else {
                     throw SynchronizedFileSink.Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                 }
             }
-            return SynchronizedFileSink(fileHandle: NIOFileHandle(descriptor: fd),
-                                        errorHandler: errorHandler)
+            return SynchronizedFileSink(
+                fileHandle: NIOFileHandle(descriptor: fd),
+                errorHandler: errorHandler
+            )
         }
-        
-        private init(fileHandle: NIOFileHandle,
-                     errorHandler: @escaping (Swift.Error) -> Void) {
+
+        private init(
+            fileHandle: NIOFileHandle,
+            errorHandler: @escaping (Swift.Error) -> Void
+        ) {
             self.fileHandle = fileHandle
             self.workQueue = DispatchQueue(label: "io.swiftnio.extras.WritePCAPHandler.SynchronizedFileSink.workQueue")
             self.errorHandler = errorHandler
@@ -710,7 +778,7 @@ extension NIOWritePCAPHandler {
                 }
             }
         }
-        
+
         public func write(buffer: ByteBuffer) {
             self.workQueue.async(group: self.writesGroup) {
                 guard case .running = self.state else {

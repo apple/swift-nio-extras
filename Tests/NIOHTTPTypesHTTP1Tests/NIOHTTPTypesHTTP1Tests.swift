@@ -48,41 +48,65 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         super.tearDown()
     }
 
-    static let request = HTTPRequest(method: .get, scheme: "https", authority: "www.example.com", path: "/", headerFields: [
-        .accept: "*/*",
-        .acceptEncoding: "gzip",
-        .acceptEncoding: "br",
-        .cookie: "a=b",
-        .cookie: "c=d",
-        .trailer: "X-Foo",
-    ])
+    static let request = HTTPRequest(
+        method: .get,
+        scheme: "https",
+        authority: "www.example.com",
+        path: "/",
+        headerFields: [
+            .accept: "*/*",
+            .acceptEncoding: "gzip",
+            .acceptEncoding: "br",
+            .cookie: "a=b",
+            .cookie: "c=d",
+            .trailer: "X-Foo",
+        ]
+    )
 
-    static let requestNoSplitCookie = HTTPRequest(method: .get, scheme: "https", authority: "www.example.com", path: "/", headerFields: [
-        .accept: "*/*",
-        .acceptEncoding: "gzip",
-        .acceptEncoding: "br",
-        .cookie: "a=b; c=d",
-        .trailer: "X-Foo",
-    ])
+    static let requestNoSplitCookie = HTTPRequest(
+        method: .get,
+        scheme: "https",
+        authority: "www.example.com",
+        path: "/",
+        headerFields: [
+            .accept: "*/*",
+            .acceptEncoding: "gzip",
+            .acceptEncoding: "br",
+            .cookie: "a=b; c=d",
+            .trailer: "X-Foo",
+        ]
+    )
 
-    static let oldRequest = HTTPRequestHead(version: .http1_1, method: .GET, uri: "/", headers: [
-        "Host": "www.example.com",
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip",
-        "Accept-Encoding": "br",
-        "Cookie": "a=b; c=d",
-        "Trailer": "X-Foo",
-    ])
+    static let oldRequest = HTTPRequestHead(
+        version: .http1_1,
+        method: .GET,
+        uri: "/",
+        headers: [
+            "Host": "www.example.com",
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip",
+            "Accept-Encoding": "br",
+            "Cookie": "a=b; c=d",
+            "Trailer": "X-Foo",
+        ]
+    )
 
-    static let response = HTTPResponse(status: .ok, headerFields: [
-        .server: "HTTPServer/1.0",
-        .trailer: "X-Foo",
-    ])
+    static let response = HTTPResponse(
+        status: .ok,
+        headerFields: [
+            .server: "HTTPServer/1.0",
+            .trailer: "X-Foo",
+        ]
+    )
 
-    static let oldResponse = HTTPResponseHead(version: .http1_1, status: .ok, headers: [
-        "Server": "HTTPServer/1.0",
-        "Trailer": "X-Foo",
-    ])
+    static let oldResponse = HTTPResponseHead(
+        version: .http1_1,
+        status: .ok,
+        headers: [
+            "Server": "HTTPServer/1.0",
+            "Trailer": "X-Foo",
+        ]
+    )
 
     static let trailers: HTTPFields = [.xFoo: "Bar"]
 
