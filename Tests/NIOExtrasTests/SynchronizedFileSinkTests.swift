@@ -67,7 +67,7 @@ private func withTemporaryFile<T>(
     _ body: (NIOCore.NIOFileHandle, String) throws -> T
 ) throws -> T {
     let temporaryFilePath = "\(temporaryDirectory)/nio_extras_\(UUID())"
-    FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8))
+    XCTAssertTrue(FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8)))
     defer {
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }
@@ -86,7 +86,7 @@ private func withTemporaryFile<T>(
     _ body: (NIOCore.NIOFileHandle, String) async throws -> T
 ) async throws -> T {
     let temporaryFilePath = "\(temporaryDirectory)/nio_extras_\(UUID())"
-    FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8))
+    XCTAssertTrue(FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8)))
     defer {
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }

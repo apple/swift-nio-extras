@@ -204,7 +204,6 @@ class PCAPRingBufferTest: XCTestCase {
             )
         }
 
-        let channel = EmbeddedChannel()
         let trigger = self.dataForTests()[0..<triggerEndIndex]
             .compactMap { t in t.readableBytes }.reduce(0, +)
 
@@ -213,20 +212,14 @@ class PCAPRingBufferTest: XCTestCase {
             maximumBytes: 1_000_000
         )
 
-        let addHandlers =
-            channel.pipeline.addHandler(
-                NIOWritePCAPHandler(mode: .client, fileSink: pcapRingBuffer.addFragment),
-                name: "capture"
-            )
-            .flatMap { () -> EventLoopFuture<Void> in
-                let triggerHandler = TriggerOnCumulativeSizeHandler(
-                    triggerBytes: trigger,
-                    pcapRingBuffer: pcapRingBuffer,
-                    sink: testRecordedBytes
-                )
-                return channel.pipeline.addHandler(triggerHandler, name: "trigger")
-            }
-        XCTAssertNoThrow(try addHandlers.wait())
+        let channel = EmbeddedChannel(handlers: [
+            NIOWritePCAPHandler(mode: .client, fileSink: pcapRingBuffer.addFragment),
+            TriggerOnCumulativeSizeHandler(
+                triggerBytes: trigger,
+                pcapRingBuffer: pcapRingBuffer,
+                sink: testRecordedBytes
+            ),
+        ])
 
         channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())

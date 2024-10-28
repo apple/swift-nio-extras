@@ -31,8 +31,9 @@ private final class HTTPHandler: ChannelInboundHandler {
                     self.wrapOutboundOut(.head(HTTPResponseHead(version: head.version, status: .badRequest))),
                     promise: nil
                 )
+                let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
                 context.writeAndFlush(self.wrapOutboundOut(.end(nil))).whenComplete { (_: Result<(), Error>) in
-                    context.close(promise: nil)
+                    loopBoundContext.value.close(promise: nil)
                 }
                 return
             }
@@ -59,10 +60,10 @@ private final class HTTPHandler: ChannelInboundHandler {
             context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
             buffer.clear()
             buffer.writeStaticString("done with the request now\n")
+            let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
             _ = context.eventLoop.scheduleTask(in: .seconds(30)) { [buffer] in
-                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
-                context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
-
+                loopBoundContext.value.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+                loopBoundContext.value.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             }
         }
     }

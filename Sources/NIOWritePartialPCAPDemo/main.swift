@@ -130,21 +130,22 @@ let allDonePromise = group.next().makePromise(of: Void.self)
 let maximumFragments = 4
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
-        let pcapRingBuffer = NIOPCAPRingBuffer(
-            maximumFragments: maximumFragments,
-            maximumBytes: 1_000_000
-        )
-        return channel.pipeline.addHandler(
-            NIOWritePCAPHandler(
-                mode: .client,
-                fileSink: pcapRingBuffer.addFragment
+        channel.eventLoop.makeCompletedFuture {
+            let pcapRingBuffer = NIOPCAPRingBuffer(
+                maximumFragments: maximumFragments,
+                maximumBytes: 1_000_000
             )
-        ).flatMap {
-            channel.pipeline.addHTTPClientHandlers()
-        }.flatMap {
-            channel.pipeline.addHandler(TriggerPCAPHandler(pcapRingBuffer: pcapRingBuffer, sink: fileSink.write))
-        }.flatMap {
-            channel.pipeline.addHandler(SendSimpleSequenceRequestHandler(allDonePromise: allDonePromise))
+            try channel.pipeline.syncOperations.addHandler(
+                NIOWritePCAPHandler(
+                    mode: .client,
+                    fileSink: pcapRingBuffer.addFragment
+                )
+            )
+            try channel.pipeline.syncOperations.addHTTPClientHandlers()
+            try channel.pipeline.syncOperations.addHandlers([
+                TriggerPCAPHandler(pcapRingBuffer: pcapRingBuffer, sink: fileSink.write),
+                SendSimpleSequenceRequestHandler(allDonePromise: allDonePromise),
+            ])
         }
     }
     .connect(host: "httpbin.org", port: 80)

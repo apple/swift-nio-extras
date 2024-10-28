@@ -162,13 +162,14 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
             return
         }
 
+        let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
         let timeout = context.eventLoop.scheduleTask(deadline: self.deadline) {
             switch self.state {
             case .initialized:
                 preconditionFailure("How can we have a scheduled timeout, if the connection is not even up?")
 
             case .connectSent, .headReceived:
-                self.failWithError(Error.httpProxyHandshakeTimeout(), context: context)
+                self.failWithError(Error.httpProxyHandshakeTimeout(), context: loopBoundContext.value)
 
             case .failed, .completed:
                 break
