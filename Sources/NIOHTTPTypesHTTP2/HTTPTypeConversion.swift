@@ -32,8 +32,8 @@ private enum HTTP2TypeConversionError: Error {
     case pseudoFieldInTrailers
 }
 
-private extension HPACKIndexing {
-    init(_ newIndexingStrategy: HTTPField.DynamicTableIndexingStrategy) {
+extension HPACKIndexing {
+    fileprivate init(_ newIndexingStrategy: HTTPField.DynamicTableIndexingStrategy) {
         switch newIndexingStrategy {
         case .avoid: self = .nonIndexable
         case .disallow: self = .neverIndexed
@@ -42,8 +42,8 @@ private extension HPACKIndexing {
     }
 }
 
-private extension HTTPField.DynamicTableIndexingStrategy {
-    init(_ oldIndexing: HPACKIndexing) {
+extension HTTPField.DynamicTableIndexingStrategy {
+    fileprivate init(_ oldIndexing: HPACKIndexing) {
         switch oldIndexing {
         case .indexable: self = .automatic
         case .nonIndexable: self = .avoid
@@ -221,7 +221,8 @@ extension HTTPResponse {
             throw HTTP2TypeConversionError.missingStatus
         }
         guard let status = Int(statusString),
-              (0 ... 999).contains(status) else {
+            (0...999).contains(status)
+        else {
             throw HTTP2TypeConversionError.invalidStatus
         }
 

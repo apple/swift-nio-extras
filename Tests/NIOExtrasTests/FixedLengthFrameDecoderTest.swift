@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
 import NIOExtras
 import NIOTestUtils
+import XCTest
 
 class FixedLengthFrameDecoderTest: XCTestCase {
     public func testDecodeIfFewerBytesAreSent() throws {
@@ -30,9 +30,12 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         XCTAssertTrue(try channel.writeInbound(buffer).isEmpty)
         XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
-        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0, as: Unicode.UTF8.self)
-        })
+        XCTAssertEqual(
+            "xxxxxxxx",
+            try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }
+        )
         XCTAssertTrue(try channel.finish().isClean)
     }
 
@@ -46,13 +49,19 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxxaaaaaaaabbb")
         XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
-        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0, as: Unicode.UTF8.self)
-            })
+        XCTAssertEqual(
+            "xxxxxxxx",
+            try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }
+        )
 
-        XCTAssertEqual("aaaaaaaa", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0, as: Unicode.UTF8.self)
-            })
+        XCTAssertEqual(
+            "aaaaaaaa",
+            try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }
+        )
 
         XCTAssertNoThrow(XCTAssertNil(try channel.readInbound(as: ByteBuffer.self)))
         XCTAssertThrowsError(try channel.finish()) { error in
@@ -75,9 +84,12 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxxxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
-        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0, as: Unicode.UTF8.self)
-            })
+        XCTAssertEqual(
+            "xxxxxxxx",
+            try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }
+        )
 
         let removeFuture = channel.pipeline.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
@@ -106,9 +118,12 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         buffer.writeString("xxxxxxxx")
         XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
-        XCTAssertEqual("xxxxxxxx", try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
-            String(decoding: $0, as: Unicode.UTF8.self)
-            })
+        XCTAssertEqual(
+            "xxxxxxxx",
+            try (channel.readInbound(as: ByteBuffer.self)?.readableBytesView).map {
+                String(decoding: $0, as: Unicode.UTF8.self)
+            }
+        )
 
         let removeFuture = channel.pipeline.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
@@ -118,7 +133,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
     }
 
     func testBasicValidation() {
-        for length in 1 ... 20 {
+        for length in 1...20 {
             let inputs = [
                 String(decoding: Array(repeating: UInt8(ascii: "a"), count: length), as: Unicode.UTF8.self),
                 String(decoding: Array(repeating: UInt8(ascii: "b"), count: length), as: Unicode.UTF8.self),
@@ -130,9 +145,11 @@ class FixedLengthFrameDecoderTest: XCTestCase {
                 return buffer
             }
             let inputOutputPairs: [(String, [ByteBuffer])] = inputs.map { ($0, [byteBuffer($0)]) }
-            XCTAssertNoThrow(try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: inputOutputPairs) {
-                FixedLengthFrameDecoder(frameLength: length)
-            })
+            XCTAssertNoThrow(
+                try ByteToMessageDecoderVerifier.verifyDecoder(stringInputOutputPairs: inputOutputPairs) {
+                    FixedLengthFrameDecoder(frameLength: length)
+                }
+            )
         }
     }
 }

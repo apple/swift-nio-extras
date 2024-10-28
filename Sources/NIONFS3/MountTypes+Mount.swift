@@ -57,8 +57,10 @@ extension ByteBuffer {
         switch reply.result {
         case .okay(let reply):
             bytesWritten += self.writeNFS3FileHandle(reply.fileHandle)
-            precondition(reply.authFlavors == [.unix] || reply.authFlavors == [.noAuth],
-                         "Sorry, anything but [.unix] / [.system] / [.noAuth] unimplemented.")
+            precondition(
+                reply.authFlavors == [.unix] || reply.authFlavors == [.noAuth],
+                "Sorry, anything but [.unix] / [.system] / [.noAuth] unimplemented."
+            )
             bytesWritten += self.writeInteger(UInt32(reply.authFlavors.count), as: UInt32.self)
             for flavor in reply.authFlavors {
                 bytesWritten += self.writeInteger(flavor.rawValue, as: UInt32.self)
@@ -71,15 +73,17 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3ReplyMount() throws -> MountReplyMount {
-        let result = try self.readNFS3Result(readOkay: { buffer -> MountReplyMount.Okay in
-            let fileHandle = try buffer.readNFS3FileHandle()
-            let authFlavors = try buffer.readNFS3List(readEntry: { buffer in
-                try buffer.readRPCAuthFlavor()
-            })
-            return MountReplyMount.Okay(fileHandle: fileHandle, authFlavors: authFlavors)
+        let result = try self.readNFS3Result(
+            readOkay: { buffer -> MountReplyMount.Okay in
+                let fileHandle = try buffer.readNFS3FileHandle()
+                let authFlavors = try buffer.readNFS3List(readEntry: { buffer in
+                    try buffer.readRPCAuthFlavor()
+                })
+                return MountReplyMount.Okay(fileHandle: fileHandle, authFlavors: authFlavors)
 
-        },
-                                            readFail: { _ in NFS3Nothing() })
+            },
+            readFail: { _ in NFS3Nothing() }
+        )
         return MountReplyMount(result: result)
     }
 }

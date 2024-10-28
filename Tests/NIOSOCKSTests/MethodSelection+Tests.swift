@@ -13,22 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-@testable import NIOSOCKS
 import XCTest
 
+@testable import NIOSOCKS
+
 public class MethodSelectionTests: XCTestCase {
- 
+
     func testReadFromByteBuffer() {
         var buffer = ByteBuffer(bytes: [0x05, 0x00])
         XCTAssertEqual(buffer.readableBytes, 2)
         XCTAssertNoThrow(XCTAssertEqual(try buffer.readMethodSelection(), .init(method: .noneRequired)))
         XCTAssertEqual(buffer.readableBytes, 0)
     }
-    
+
     func testWriteToByteBuffer() {
         var buffer = ByteBuffer()
         XCTAssertEqual(buffer.writeMethodSelection(.init(method: .noneRequired)), 2)
         XCTAssertEqual(buffer, ByteBuffer(bytes: [0x05, 0x00]))
     }
-    
+
 }

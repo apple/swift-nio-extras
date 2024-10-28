@@ -45,13 +45,19 @@ public struct NFS3ReplyFSInfo: Hashable & Sendable {
     }
 
     public struct Okay: Hashable & Sendable {
-        public init(attributes: NFS3FileAttr?,
-                    rtmax: UInt32, rtpref: UInt32, rtmult: UInt32,
-                    wtmax: UInt32, wtpref: UInt32, wtmult: UInt32,
-                    dtpref: UInt32,
-                    maxFileSize: NFS3Size,
-                    timeDelta: NFS3Time,
-                    properties: NFS3ReplyFSInfo.Properties) {
+        public init(
+            attributes: NFS3FileAttr?,
+            rtmax: UInt32,
+            rtpref: UInt32,
+            rtmult: UInt32,
+            wtmax: UInt32,
+            wtpref: UInt32,
+            wtmult: UInt32,
+            dtpref: UInt32,
+            maxFileSize: NFS3Size,
+            timeDelta: NFS3Time,
+            properties: NFS3ReplyFSInfo.Properties
+        ) {
             self.attributes = attributes
             self.rtmax = rtmax
             self.rtpref = rtpref
@@ -109,18 +115,20 @@ extension ByteBuffer {
 
         switch reply.result {
         case .okay(let reply):
-            bytesWritten += self.writeNFS3Optional(reply.attributes, writer: { $0.writeNFS3FileAttr($1) })
-            + self.writeMultipleIntegers(
-                reply.rtmax,
-                reply.rtpref,
-                reply.rtmult,
-                reply.wtmax,
-                reply.wtpref,
-                reply.wtmult,
-                reply.dtpref,
-                reply.maxFileSize.rawValue)
-            + self.writeNFS3Time(reply.timeDelta)
-            + self.writeInteger(reply.properties.rawValue)
+            bytesWritten +=
+                self.writeNFS3Optional(reply.attributes, writer: { $0.writeNFS3FileAttr($1) })
+                + self.writeMultipleIntegers(
+                    reply.rtmax,
+                    reply.rtpref,
+                    reply.rtmult,
+                    reply.wtmax,
+                    reply.wtpref,
+                    reply.wtmult,
+                    reply.dtpref,
+                    reply.maxFileSize.rawValue
+                )
+                + self.writeNFS3Time(reply.timeDelta)
+                + self.writeInteger(reply.properties.rawValue)
         case .fail(_, let fail):
             bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }
@@ -129,7 +137,8 @@ extension ByteBuffer {
 
     private mutating func readNFS3ReplyFSInfoOkay() throws -> NFS3ReplyFSInfo.Okay {
         let fileAttr = try self.readNFS3Optional { try $0.readNFS3FileAttr() }
-        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+        guard let values = self.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self)
+        else {
             throw NFS3Error.illegalRPCTooShort
         }
         let rtmax = values.0
@@ -143,17 +152,27 @@ extension ByteBuffer {
         let timeDelta = try self.readNFS3Time()
         let properties = try self.readNFS3CallFSInfoProperties()
 
-        return .init(attributes: fileAttr,
-                     rtmax: rtmax, rtpref: rtpref, rtmult: rtmult,
-                     wtmax: wtmax, wtpref: wtpref, wtmult: wtmult,
-                     dtpref: dtpref,
-                     maxFileSize: maxFileSize, timeDelta: timeDelta, properties: properties)
+        return .init(
+            attributes: fileAttr,
+            rtmax: rtmax,
+            rtpref: rtpref,
+            rtmult: rtmult,
+            wtmax: wtmax,
+            wtpref: wtpref,
+            wtmult: wtmult,
+            dtpref: dtpref,
+            maxFileSize: maxFileSize,
+            timeDelta: timeDelta,
+            properties: properties
+        )
     }
 
     public mutating func readNFS3ReplyFSInfo() throws -> NFS3ReplyFSInfo {
-        return NFS3ReplyFSInfo(result: try self.readNFS3Result(
-            readOkay: { try $0.readNFS3ReplyFSInfoOkay() },
-            readFail: { NFS3ReplyFSInfo.Fail(attributes: try $0.readNFS3FileAttr()) }
-        ))
+        NFS3ReplyFSInfo(
+            result: try self.readNFS3Result(
+                readOkay: { try $0.readNFS3ReplyFSInfoOkay() },
+                readFail: { NFS3ReplyFSInfo.Fail(attributes: try $0.readNFS3FileAttr()) }
+            )
+        )
     }
 }

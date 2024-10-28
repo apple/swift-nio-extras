@@ -64,18 +64,20 @@ extension ByteBuffer {
             throw NFS3Error.illegalRPCTooShort
         }
 
-        return NFS3CallRead(fileHandle: fileHandle,
-                            offset: .init(rawValue: values.0),
-                            count: .init(rawValue: values.1))
+        return NFS3CallRead(
+            fileHandle: fileHandle,
+            offset: .init(rawValue: values.0),
+            count: .init(rawValue: values.1)
+        )
     }
 
     @discardableResult public mutating func writeNFS3CallRead(_ call: NFS3CallRead) -> Int {
-        return self.writeNFS3FileHandle(call.fileHandle)
-        + self.writeMultipleIntegers(call.offset.rawValue, call.count.rawValue)
+        self.writeNFS3FileHandle(call.fileHandle)
+            + self.writeMultipleIntegers(call.offset.rawValue, call.count.rawValue)
     }
 
     public mutating func readNFS3ReplyRead() throws -> NFS3ReplyRead {
-        return NFS3ReplyRead(
+        NFS3ReplyRead(
             result: try self.readNFS3Result(
                 readOkay: { buffer in
                     let attrs = try buffer.readNFS3Optional { buffer in
@@ -85,17 +87,20 @@ extension ByteBuffer {
                         throw NFS3Error.illegalRPCTooShort
                     }
                     let bytes = try buffer.readNFS3Blob()
-                    return NFS3ReplyRead.Okay(attributes: attrs,
-                                              count: NFS3Count(rawValue: values.0),
-                                             eof: values.1 == 0 ? false : true,
-                                             data: bytes)
+                    return NFS3ReplyRead.Okay(
+                        attributes: attrs,
+                        count: NFS3Count(rawValue: values.0),
+                        eof: values.1 == 0 ? false : true,
+                        data: bytes
+                    )
                 },
                 readFail: { buffer in
                     let attrs = try buffer.readNFS3Optional { buffer in
                         try buffer.readNFS3FileAttr()
                     }
                     return NFS3ReplyRead.Fail(attributes: attrs)
-                })
+                }
+            )
         )
     }
 
@@ -124,7 +129,7 @@ extension ByteBuffer {
             return 0
         case .writeBlob(let blob, numberOfFillBytes: let fillBytes):
             return self.writeImmutableBuffer(blob)
-            + self.writeRepeatingByte(0x41, count: fillBytes)
+                + self.writeRepeatingByte(0x41, count: fillBytes)
         }
     }
 }

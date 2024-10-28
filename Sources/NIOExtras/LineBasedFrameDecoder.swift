@@ -35,13 +35,13 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMe
     public typealias InboundIn = ByteBuffer
     /// `ByteBuffer`s will be passed to the next stage.
     public typealias InboundOut = ByteBuffer
-    
+
     @available(*, deprecated, message: "No longer used")
     public var cumulationBuffer: ByteBuffer?
     // keep track of the last scan offset from the buffer's reader index (if we didn't find the delimiter)
     private var lastScanOffset = 0
-    
-    public init() { }
+
+    public init() {}
 
     /// Decode data in the supplied buffer.
     /// - Parameters:
@@ -62,7 +62,7 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMe
     ///   - buffer: Buffer containing data to decode.
     /// - Returns: The decoded object or `nil` if we require more bytes.
     public func decode(buffer: inout NIOCore.ByteBuffer) throws -> NIOCore.ByteBuffer? {
-        return try self.findNextFrame(buffer: &buffer)
+        try self.findNextFrame(buffer: &buffer)
     }
 
     /// Decode all remaining data.
@@ -72,7 +72,11 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMe
     ///   - buffer: Buffer containing the data to decode.
     ///   - seenEOF: Has end of file been seen.
     /// - Returns: Always .needMoreData as all data will be consumed.
-    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public func decodeLast(
+        context: ChannelHandlerContext,
+        buffer: inout ByteBuffer,
+        seenEOF: Bool
+    ) throws -> DecodingState {
         while try self.decode(context: context, buffer: &buffer) == .continue {}
         if buffer.readableBytes > 0 {
             context.fireErrorCaught(NIOExtrasErrors.LeftOverBytesError(leftOverBytes: buffer))
@@ -102,10 +106,11 @@ public class LineBasedFrameDecoder: ByteToMessageDecoder & NIOSingleStepByteToMe
     private func findNextFrame(buffer: inout ByteBuffer) throws -> ByteBuffer? {
         let view = buffer.readableBytesView.dropFirst(self.lastScanOffset)
         // look for the delimiter
-        if let delimiterIndex = view.firstIndex(of: 0x0A) { // '\n'
+        if let delimiterIndex = view.firstIndex(of: 0x0A) {  // '\n'
             let length = delimiterIndex - buffer.readerIndex
-            let dropCarriageReturn = delimiterIndex > buffer.readableBytesView.startIndex &&
-                buffer.readableBytesView[delimiterIndex - 1] == 0x0D // '\r'
+            let dropCarriageReturn =
+                delimiterIndex > buffer.readableBytesView.startIndex
+                && buffer.readableBytesView[delimiterIndex - 1] == 0x0D  // '\r'
             let buff = buffer.readSlice(length: dropCarriageReturn ? length - 1 : length)
             // drop the delimiter (and trailing carriage return if appicable)
             buffer.moveReaderIndex(forwardBy: dropCarriageReturn ? 2 : 1)

@@ -13,23 +13,29 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import XCTest
-
 import NIOCore
 import NIOEmbedded
+import XCTest
+
 @testable import NIOExtras
 
 final class SynchronizedFileSinkTests: XCTestCase {
     func testSimpleFileSink() throws {
         try withTemporaryFile { file, path in
-            let sink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: path, errorHandler: { XCTFail("Caught error \($0)") })
+            let sink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(
+                path: path,
+                errorHandler: { XCTFail("Caught error \($0)") }
+            )
 
             sink.write(buffer: ByteBuffer(string: "Hello, "))
             sink.write(buffer: ByteBuffer(string: "world!"))
             try sink.syncClose()
 
             let data = try Data(contentsOf: URL(fileURLWithPath: path))
-            XCTAssertEqual(data, Data(NIOWritePCAPHandler.pcapFileHeader.readableBytesView) + Data("Hello, world!".utf8))
+            XCTAssertEqual(
+                data,
+                Data(NIOWritePCAPHandler.pcapFileHeader.readableBytesView) + Data("Hello, world!".utf8)
+            )
         }
     }
 
@@ -37,22 +43,31 @@ final class SynchronizedFileSinkTests: XCTestCase {
         guard #available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *) else { return }
         XCTAsyncTest {
             try await withTemporaryFile { file, path in
-                let sink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(path: path, errorHandler: { XCTFail("Caught error \($0)") })
+                let sink = try NIOWritePCAPHandler.SynchronizedFileSink.fileSinkWritingToFile(
+                    path: path,
+                    errorHandler: { XCTFail("Caught error \($0)") }
+                )
 
                 sink.write(buffer: ByteBuffer(string: "Hello, "))
                 sink.write(buffer: ByteBuffer(string: "world!"))
                 try await sink.close()
 
                 let data = try Data(contentsOf: URL(fileURLWithPath: path))
-                XCTAssertEqual(data, Data(NIOWritePCAPHandler.pcapFileHeader.readableBytesView) + Data("Hello, world!".utf8))
+                XCTAssertEqual(
+                    data,
+                    Data(NIOWritePCAPHandler.pcapFileHeader.readableBytesView) + Data("Hello, world!".utf8)
+                )
             }
         }
     }
 }
 
-fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.NIOFileHandle, String) throws -> T) throws -> T {
+private func withTemporaryFile<T>(
+    content: String? = nil,
+    _ body: (NIOCore.NIOFileHandle, String) throws -> T
+) throws -> T {
     let temporaryFilePath = "\(temporaryDirectory)/nio_extras_\(UUID())"
-    FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8))
+    XCTAssertTrue(FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8)))
     defer {
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }
@@ -66,9 +81,12 @@ fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.N
 }
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
-fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.NIOFileHandle, String) async throws -> T) async throws -> T {
+private func withTemporaryFile<T>(
+    content: String? = nil,
+    _ body: (NIOCore.NIOFileHandle, String) async throws -> T
+) async throws -> T {
     let temporaryFilePath = "\(temporaryDirectory)/nio_extras_\(UUID())"
-    FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8))
+    XCTAssertTrue(FileManager.default.createFile(atPath: temporaryFilePath, contents: content?.data(using: .utf8)))
     defer {
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }
@@ -81,16 +99,16 @@ fileprivate func withTemporaryFile<T>(content: String? = nil, _ body: (NIOCore.N
     return try await body(fileHandle, temporaryFilePath)
 }
 
-fileprivate var temporaryDirectory: String {
-#if os(Linux)
+private var temporaryDirectory: String {
+    #if os(Linux)
     return "/tmp"
-#else
+    #else
     if #available(macOS 10.12, iOS 10, tvOS 10, watchOS 3, *) {
         return FileManager.default.temporaryDirectory.path
     } else {
         return "/tmp"
     }
-#endif // os
+    #endif  // os
 }
 
 extension XCTestCase {
@@ -117,7 +135,7 @@ extension XCTestCase {
                 try await operation()
             } catch {
                 XCTFail("Error thrown while executing \(function): \(error)", file: file, line: line)
-                Thread.callStackSymbols.forEach { print($0) }
+                for callStack in Thread.callStackSymbols { print(callStack) }
             }
             expectation.fulfill()
         }

@@ -14,21 +14,21 @@
 
 /// Wrapper for SOCKS protcol error.
 public enum SOCKSError {
-    
+
     /// The SOCKS client was in a different state to that required.
     public struct InvalidClientState: Error, Hashable {
         public init() {
-            
+
         }
     }
-    
+
     /// The SOCKS server was in a different state to that required.
     public struct InvalidServerState: Error, Hashable {
         public init() {
-            
+
         }
     }
-    
+
     /// The protocol version was something other than *5*. Note that
     /// we currently only supported SOCKv5.
     public struct InvalidProtocolVersion: Error, Hashable {
@@ -66,7 +66,7 @@ public enum SOCKSError {
     /// The client and server were unable to agree on an authentication method.
     public struct NoValidAuthenticationMethod: Error, Hashable {
         public init() {
-            
+
         }
     }
 
@@ -77,12 +77,12 @@ public enum SOCKSError {
             self.reply = reply
         }
     }
-    
+
     /// The client or server receieved data when it did not expect to.
     public struct UnexpectedRead: Error, Hashable {
         public init() {
-            
+
         }
     }
-    
+
 }

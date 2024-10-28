@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 class RequestResponseWithIDHandlerTest: XCTestCase {
     private var eventLoop: EmbeddedEventLoop!
@@ -41,7 +41,11 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     }
 
     func testSimpleRequestWorks() {
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>()
+            ).wait()
+        )
         self.buffer.writeString("hello")
 
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -49,13 +53,21 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
         let p: EventLoopPromise<ValueWithRequestID<String>> = self.channel.eventLoop.makePromise()
         // write request
-        XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                                                         p)))
+        XCTAssertNoThrow(
+            try self.channel.writeOutbound(
+                (
+                    ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+                    p
+                )
+            )
+        )
         // write response
         XCTAssertNoThrow(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "okay")))
         // verify request was forwarded
-        XCTAssertEqual(ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                                        try self.channel.readOutbound())
+        XCTAssertEqual(
+            ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+            try self.channel.readOutbound()
+        )
         // verify response was not forwarded
         XCTAssertEqual(nil, try self.channel.readInbound(as: ValueWithRequestID<IOData>.self))
         // verify the promise got succeeded with the response
@@ -64,7 +76,11 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testEnqueingMultipleRequestsWorks() throws {
         struct DummyError: Error {}
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Int>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Int>>()
+            ).wait()
+        )
 
         var futures: [EventLoopFuture<ValueWithRequestID<Int>>] = []
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -78,8 +94,16 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
             futures.append(p.futureResult)
 
             // write request
-            XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: reqId,
-                                                                    value: IOData.byteBuffer(self.buffer)), p)))
+            XCTAssertNoThrow(
+                try self.channel.writeOutbound(
+                    (
+                        ValueWithRequestID(
+                            requestID: reqId,
+                            value: IOData.byteBuffer(self.buffer)
+                        ), p
+                    )
+                )
+            )
         }
 
         // let's have 3 successful responses
@@ -99,8 +123,12 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
             default:
                 XCTFail("could not find request")
             }
-            XCTAssertNoThrow(XCTAssertEqual(ValueWithRequestID(requestID: reqIdExpected, value: reqIdExpected),
-                                            try futures[reqIdExpected].wait()))
+            XCTAssertNoThrow(
+                XCTAssertEqual(
+                    ValueWithRequestID(requestID: reqIdExpected, value: reqIdExpected),
+                    try futures[reqIdExpected].wait()
+                )
+            )
         }
 
         // validate the Channel is active
@@ -122,13 +150,25 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testRequestsEnqueuedAfterErrorAreFailed() {
         struct DummyError: Error {}
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()
+            ).wait()
+        )
 
         self.channel.pipeline.fireErrorCaught(DummyError())
 
         let p: EventLoopPromise<ValueWithRequestID<Void>> = self.eventLoop.makePromise()
-        XCTAssertThrowsError(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1,
-                                                                    value: IOData.byteBuffer(self.buffer)), p))) { error in
+        XCTAssertThrowsError(
+            try self.channel.writeOutbound(
+                (
+                    ValueWithRequestID(
+                        requestID: 1,
+                        value: IOData.byteBuffer(self.buffer)
+                    ), p
+                )
+            )
+        ) { error in
             XCTAssertNotNil(error as? DummyError)
         }
         XCTAssertThrowsError(try p.futureResult.wait()) { error in
@@ -140,19 +180,28 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         struct DummyError1: Error {}
         struct DummyError2: Error {}
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()
+            ).wait()
+        )
 
         let p: EventLoopPromise<ValueWithRequestID<Void>> = self.eventLoop.makePromise()
         // right now, everything's still okay so the enqueued request won't immediately be failed
-        XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                                                         p)))
+        XCTAssertNoThrow(
+            try self.channel.writeOutbound(
+                (
+                    ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+                    p
+                )
+            )
+        )
 
         // but whilst we're waiting for the response, an error turns up
         self.channel.pipeline.fireErrorCaught(DummyError1())
 
         // we'll also fire a second error through the pipeline that shouldn't do anything
         self.channel.pipeline.fireErrorCaught(DummyError2())
-
 
         // and just after the error, the response arrives too (but too late)
         XCTAssertNoThrow(try self.channel.writeInbound(()))
@@ -163,7 +212,11 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     }
 
     func testClosedConnectionFailsOutstandingPromises() {
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<Void>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<Void>>()
+            ).wait()
+        )
 
         let promise = self.eventLoop.makePromise(of: ValueWithRequestID<Void>.self)
         XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1, value: "Hello!"), promise)))
@@ -175,7 +228,11 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     }
 
     func testOutOfOrderResponsesWork() {
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()
+            ).wait()
+        )
         self.buffer.writeString("hello")
 
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -201,7 +258,11 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     }
 
     func testErrorOnResponseForNonExistantRequest() {
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()
+            ).wait()
+        )
         self.buffer.writeString("hello")
 
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -212,7 +273,8 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         // write request
         XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1, value: "1"), p1)))
         // write wrong response
-        XCTAssertThrowsError(try self.channel.writeInbound(ValueWithRequestID(requestID: 2, value: "okay 2"))) { error in
+        XCTAssertThrowsError(try self.channel.writeInbound(ValueWithRequestID(requestID: 2, value: "okay 2"))) {
+            error in
             guard let error = error as? NIOExtrasErrors.ResponseForInvalidRequest<ValueWithRequestID<String>> else {
                 XCTFail("wrong error")
                 return
@@ -236,10 +298,15 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
             func channelInactive(context: ChannelHandlerContext) {
                 let responsePromise = context.eventLoop.makePromise(of: ValueWithRequestID<String>.self)
                 let writePromise = context.eventLoop.makePromise(of: Void.self)
-                context.writeAndFlush(self.wrapOutboundOut(
-                    (ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(ByteBuffer(string: "hi"))), responsePromise)
+                context.writeAndFlush(
+                    self.wrapOutboundOut(
+                        (
+                            ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(ByteBuffer(string: "hi"))),
+                            responsePromise
+                        )
                     ),
-                                      promise: writePromise)
+                    promise: writePromise
+                )
                 var writePromiseCompleted = false
                 defer {
                     XCTAssertTrue(writePromiseCompleted)
@@ -269,10 +336,12 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
             }
         }
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandlers(
-            NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>(),
-            EmitRequestOnInactiveHandler()
-        ).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandlers(
+                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>(),
+                EmitRequestOnInactiveHandler()
+            ).wait()
+        )
         self.buffer.writeString("hello")
 
         // pretend to connect to the EmbeddedChannel knows it's supposed to be active
@@ -280,14 +349,22 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
         let p: EventLoopPromise<ValueWithRequestID<String>> = self.channel.eventLoop.makePromise()
         // write request
-        XCTAssertNoThrow(try self.channel.writeOutbound((ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                                                         p)))
+        XCTAssertNoThrow(
+            try self.channel.writeOutbound(
+                (
+                    ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+                    p
+                )
+            )
+        )
         // write response
         XCTAssertNoThrow(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "okay")))
 
         // verify request was forwarded
-        XCTAssertEqual(ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                                        try self.channel.readOutbound())
+        XCTAssertEqual(
+            ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+            try self.channel.readOutbound()
+        )
 
         // verify the promise got succeeded with the response
         XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), try p.futureResult.wait())

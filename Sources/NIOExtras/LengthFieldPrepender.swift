@@ -24,15 +24,14 @@ extension ByteBuffer {
         precondition(integer & 0xFF_FF_FF == integer, "integer value does not fit into 24 bit integer")
         switch endianness {
         case .little:
-            return writeInteger(UInt8(integer & 0xFF), endianness: .little) +
-                writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .little)
+            return writeInteger(UInt8(integer & 0xFF), endianness: .little)
+                + writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .little)
         case .big:
-            return writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .big) +
-                writeInteger(UInt8(integer & 0xFF), endianness: .big)
+            return writeInteger(UInt16((integer >> 8) & 0xFF_FF), endianness: .big)
+                + writeInteger(UInt8(integer & 0xFF), endianness: .big)
         }
     }
 }
-
 
 /// Error types from ``LengthFieldPrepender``
 public enum LengthFieldPrependerError: Error {
@@ -64,7 +63,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
         case four
         /// Eight bytes
         case eight
-        
+
         fileprivate var bitLength: NIOLengthFieldBitLength {
             switch self {
             case .one: return .oneByte
@@ -82,7 +81,7 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
 
     private let lengthFieldLength: NIOLengthFieldBitLength
     private let lengthFieldEndianness: Endianness
-    
+
     private var lengthBuffer: ByteBuffer?
 
     /// Create ``LengthFieldPrepender`` with a given length field length.
@@ -101,8 +100,8 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
     public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
         // The value contained in the length field must be able to be represented by an integer type on the platform.
         // ie. .eight == 64bit which would not fit into the Int type on a 32bit platform.
-        precondition(lengthFieldBitLength.length <= Int.bitWidth/8)
-        
+        precondition(lengthFieldBitLength.length <= Int.bitWidth / 8)
+
         self.lengthFieldLength = lengthFieldBitLength
         self.lengthFieldEndianness = lengthFieldEndianness
     }
@@ -111,12 +110,12 @@ public final class LengthFieldPrepender: ChannelOutboundHandler {
 
         let dataBuffer = self.unwrapOutboundIn(data)
         let dataLength = dataBuffer.readableBytes
-        
+
         guard dataLength <= self.lengthFieldLength.max else {
             promise?.fail(LengthFieldPrependerError.messageDataTooLongForLengthField)
             return
         }
-        
+
         var dataLengthBuffer: ByteBuffer
 
         if let existingBuffer = self.lengthBuffer {

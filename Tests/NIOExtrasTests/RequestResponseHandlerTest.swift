@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 class RequestResponseHandlerTest: XCTestCase {
     private var eventLoop: EmbeddedEventLoop!
@@ -142,7 +142,6 @@ class RequestResponseHandlerTest: XCTestCase {
 
         // we'll also fire a second error through the pipeline that shouldn't do anything
         self.channel.pipeline.fireErrorCaught(DummyError2())
-
 
         // and just after the error, the response arrives too (but too late)
         XCTAssertNoThrow(try self.channel.writeInbound(()))

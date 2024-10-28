@@ -28,10 +28,10 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
 
     /// this struct encapsulates the state of a single http response decompression
     private struct Compression {
-        
+
         /// the used algorithm
         var algorithm: NIOHTTPDecompression.CompressionAlgorithm
-        
+
         /// the number of already consumed compressed bytes
         var compressedLength: Int
     }
@@ -73,7 +73,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                     self.compression = Compression(algorithm: algorithm, compressedLength: 0)
                     try self.decompressor.initializeDecoder()
                 }
-                
+
                 context.fireChannelRead(data)
             } catch {
                 context.fireErrorCaught(error)
@@ -83,26 +83,29 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                 context.fireChannelRead(data)
                 return
             }
-            
+
             do {
                 compression.compressedLength += part.readableBytes
                 while part.readableBytes > 0 && !self.decompressionComplete {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    let result = try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.compressedLength)
+                    let result = try self.decompressor.decompress(
+                        part: &part,
+                        buffer: &buffer,
+                        compressedLength: compression.compressedLength
+                    )
                     if result.complete {
                         self.decompressionComplete = true
                     }
                     context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
                 }
-                
+
                 // assign the changed local property back to the class state
                 self.compression = compression
 
                 if part.readableBytes > 0 {
                     context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.invalidTrailingData)
                 }
-            }
-            catch {
+            } catch {
                 context.fireErrorCaught(error)
             }
         case .end:

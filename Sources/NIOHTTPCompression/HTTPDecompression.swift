@@ -31,9 +31,9 @@ public enum NIOHTTPDecompression {
         /// - warning: Setting `limit` to `.none` leaves you vulnerable to denial of service attacks.
         public static let none = DecompressionLimit(limit: .none)
         /// Limit will be set on the request body size.
-        public static func size(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .size(value)) }
+        public static func size(_ value: Int) -> DecompressionLimit { DecompressionLimit(limit: .size(value)) }
         /// Limit will be set on a ratio between compressed body size and decompressed result.
-        public static func ratio(_ value: Int) -> DecompressionLimit { return DecompressionLimit(limit: .ratio(value)) }
+        public static func ratio(_ value: Int) -> DecompressionLimit { DecompressionLimit(limit: .ratio(value)) }
 
         func exceeded(compressed: Int, decompressed: Int) -> Bool {
             switch self.limit {
@@ -76,7 +76,7 @@ public enum NIOHTTPDecompression {
         public static let truncatedData = Self(.truncatedData)
 
         public var description: String {
-            return String(describing: self.backing)
+            String(describing: self.backing)
         }
     }
 
@@ -128,7 +128,7 @@ public enum NIOHTTPDecompression {
         /// The state would need to be reset to continue decoding a subsequent gzip member.
         /// This must be done if there is more data after a gzip member, in order for the decompression to be compliant with the gzip standard (RFC 1952).
         static let windowBitsWithAutomaticCompressionFormatDetection: Int32 = 15 + 32
-        
+
         private let limit: NIOHTTPDecompression.DecompressionLimit
         private var stream = z_stream()
         private var inflated = 0
@@ -137,7 +137,11 @@ public enum NIOHTTPDecompression {
             self.limit = limit
         }
 
-        mutating func decompress(part: inout ByteBuffer, buffer: inout ByteBuffer, compressedLength: Int) throws -> InflateResult {
+        mutating func decompress(
+            part: inout ByteBuffer,
+            buffer: inout ByteBuffer,
+            compressedLength: Int
+        ) throws -> InflateResult {
             let result = try self.stream.inflatePart(input: &part, output: &buffer)
             self.inflated += result.written
 

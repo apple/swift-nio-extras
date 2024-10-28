@@ -13,11 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-
 import NIOCore
-import NIOPosix
-import NIOHTTP1
 import NIOExtras
+import NIOHTTP1
+import NIOPosix
 
 private final class HTTPHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPServerRequestPart
@@ -28,32 +27,47 @@ private final class HTTPHandler: ChannelInboundHandler {
         switch req {
         case .head(let head):
             guard head.version == HTTPVersion(major: 1, minor: 1) else {
-                context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: head.version, status: .badRequest))), promise: nil)
+                context.write(
+                    self.wrapOutboundOut(.head(HTTPResponseHead(version: head.version, status: .badRequest))),
+                    promise: nil
+                )
+                let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
                 context.writeAndFlush(self.wrapOutboundOut(.end(nil))).whenComplete { (_: Result<(), Error>) in
-                    context.close(promise: nil)
+                    loopBoundContext.value.close(promise: nil)
                 }
                 return
             }
         case .body:
-            () // ignore
+            ()  // ignore
         case .end:
             var buffer = context.channel.allocator.buffer(capacity: 128)
             buffer.writeStaticString("received request; waiting 30s then finishing up request\n")
-            buffer.writeStaticString("press Ctrl+C in the server's terminal or run the following command to initiate server shutdown\n")
-            buffer.writeString("    kill -INT \(getpid())\n")
-            context.write(self.wrapOutboundOut(.head(HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1),
-                                                                  status: .ok))), promise: nil)
+            buffer.writeStaticString(
+                "press Ctrl+C in the server's terminal or run the following command to initiate server shutdown\n"
+            )
+            buffer.writeString("    kill -INT \(getpid())\n")  // ignore-unacceptable-language
+            context.write(
+                self.wrapOutboundOut(
+                    .head(
+                        HTTPResponseHead(
+                            version: HTTPVersion(major: 1, minor: 1),
+                            status: .ok
+                        )
+                    )
+                ),
+                promise: nil
+            )
             context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
             buffer.clear()
             buffer.writeStaticString("done with the request now\n")
+            let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
             _ = context.eventLoop.scheduleTask(in: .seconds(30)) { [buffer] in
-                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
-                context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
-
+                loopBoundContext.value.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+                loopBoundContext.value.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             }
         }
     }
-    
+
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         print(error)
     }
@@ -90,7 +104,10 @@ private func runServer() throws {
                 .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
                 .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
                 .childChannelInitializer { channel in
-                    channel.pipeline.configureHTTPServerPipeline(withPipeliningAssistance: true, withErrorHandling: true).flatMap {
+                    channel.pipeline.configureHTTPServerPipeline(
+                        withPipeliningAssistance: true,
+                        withErrorHandling: true
+                    ).flatMap {
                         channel.pipeline.addHandler(HTTPHandler())
                     }
                 }

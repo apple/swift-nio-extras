@@ -35,28 +35,49 @@ public protocol NFS3FileSystemNoAuth {
 extension NFS3FileSystemNoAuth {
     public func readdir(_ call: NFS3CallReadDir, promise originalPromise: EventLoopPromise<NFS3ReplyReadDir>) {
         let promise = originalPromise.futureResult.eventLoop.makePromise(of: NFS3ReplyReadDirPlus.self)
-        self.readdirplus(NFS3CallReadDirPlus(fileHandle: call.fileHandle,
-                                             cookie: call.cookie,
-                                             cookieVerifier: call.cookieVerifier,
-                                             dirCount: NFS3Count(rawValue: .max),
-                                             maxCount: call.maxResultByteCount),
+        self.readdirplus(
+            NFS3CallReadDirPlus(
+                fileHandle: call.fileHandle,
+                cookie: call.cookie,
+                cookieVerifier: call.cookieVerifier,
+                dirCount: NFS3Count(rawValue: .max),
+                maxCount: call.maxResultByteCount
+            ),
 
-                         promise: promise)
+            promise: promise
+        )
 
         promise.futureResult.whenComplete { readDirPlusResult in
             switch readDirPlusResult {
             case .success(let readDirPlusSuccessResult):
                 switch readDirPlusSuccessResult.result {
                 case .okay(let readDirPlusOkay):
-                    originalPromise.succeed(NFS3ReplyReadDir(result: .okay(.init(cookieVerifier: readDirPlusOkay.cookieVerifier,
-                                                                                 entries: readDirPlusOkay.entries.map { readDirPlusEntry in
-                        NFS3ReplyReadDir.Entry(fileID: readDirPlusEntry.fileID,
-                                               fileName: readDirPlusEntry.fileName,
-                                               cookie: readDirPlusEntry.cookie)
-                    }, eof: readDirPlusOkay.eof))))
+                    originalPromise.succeed(
+                        NFS3ReplyReadDir(
+                            result: .okay(
+                                .init(
+                                    cookieVerifier: readDirPlusOkay.cookieVerifier,
+                                    entries: readDirPlusOkay.entries.map { readDirPlusEntry in
+                                        NFS3ReplyReadDir.Entry(
+                                            fileID: readDirPlusEntry.fileID,
+                                            fileName: readDirPlusEntry.fileName,
+                                            cookie: readDirPlusEntry.cookie
+                                        )
+                                    },
+                                    eof: readDirPlusOkay.eof
+                                )
+                            )
+                        )
+                    )
                 case .fail(let nfsStatus, let readDirPlusFailure):
-                    originalPromise.succeed(NFS3ReplyReadDir(result: .fail(nfsStatus,
-                                                                           .init(dirAttributes: readDirPlusFailure.dirAttributes))))
+                    originalPromise.succeed(
+                        NFS3ReplyReadDir(
+                            result: .fail(
+                                nfsStatus,
+                                .init(dirAttributes: readDirPlusFailure.dirAttributes)
+                            )
+                        )
+                    )
 
                 }
             case .failure(let error):

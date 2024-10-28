@@ -13,21 +13,26 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-@testable import NIOSOCKS
 import XCTest
+
+@testable import NIOSOCKS
 
 public class ServerResponseTests: XCTestCase {
 }
 
 // MARK: - ServeResponse
 extension ServerResponseTests {
-    
+
     func testServerResponseReadFromByteBuffer() {
         var buffer = ByteBuffer(bytes: [0x05, 0x00, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x00, 0x50])
         XCTAssertEqual(buffer.readableBytes, 10)
-        XCTAssertNoThrow(XCTAssertEqual(try buffer.readServerResponse(),
-                                            .init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "1.2.3.4", port: 80)))))
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                try buffer.readServerResponse(),
+                .init(reply: .succeeded, boundAddress: .address(try! .init(ipAddress: "1.2.3.4", port: 80)))
+            )
+        )
         XCTAssertEqual(buffer.readableBytes, 0)
     }
-    
+
 }

@@ -59,24 +59,29 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeNFS3CallAccess(_ call: NFS3CallAccess) -> Int {
-        return self.writeNFS3FileHandle(call.object)
-        + self.writeInteger(call.access.rawValue)
+        self.writeNFS3FileHandle(call.object)
+            + self.writeInteger(call.access.rawValue)
     }
 
     public mutating func readNFS3ReplyAccess() throws -> NFS3ReplyAccess {
-        return NFS3ReplyAccess(result: try self.readNFS3Result(
-            readOkay: { buffer in
-                let attrs = try buffer.readNFS3Optional { buffer in
-                    try buffer.readNFS3FileAttr()
+        NFS3ReplyAccess(
+            result: try self.readNFS3Result(
+                readOkay: { buffer in
+                    let attrs = try buffer.readNFS3Optional { buffer in
+                        try buffer.readNFS3FileAttr()
+                    }
+                    let access = try buffer.readNFS3Access()
+                    return NFS3ReplyAccess.Okay(dirAttributes: attrs, access: access)
+                },
+                readFail: { buffer in
+                    NFS3ReplyAccess.Fail(
+                        dirAttributes: try buffer.readNFS3Optional { buffer in
+                            try buffer.readNFS3FileAttr()
+                        }
+                    )
                 }
-                let access = try buffer.readNFS3Access()
-                return NFS3ReplyAccess.Okay(dirAttributes: attrs, access: access)
-            },
-            readFail: { buffer in
-                return NFS3ReplyAccess.Fail(dirAttributes: try buffer.readNFS3Optional { buffer in
-                    try buffer.readNFS3FileAttr()
-                })
-            }))
+            )
+        )
     }
 
     @discardableResult public mutating func writeNFS3ReplyAccess(_ accessResult: NFS3ReplyAccess) -> Int {
@@ -86,8 +91,9 @@ extension ByteBuffer {
         case .okay(let result):
             bytesWritten += self.writeInteger(NFS3Status.ok.rawValue)
             if let attrs = result.dirAttributes {
-                bytesWritten += self.writeInteger(1, as: UInt32.self)
-                + self.writeNFS3FileAttr(attrs)
+                bytesWritten +=
+                    self.writeInteger(1, as: UInt32.self)
+                    + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, as: UInt32.self)
             }
@@ -96,8 +102,9 @@ extension ByteBuffer {
             precondition(status != .ok)
             bytesWritten += self.writeInteger(status.rawValue)
             if let attrs = fail.dirAttributes {
-                bytesWritten += self.writeInteger(1, as: UInt32.self)
-                + self.writeNFS3FileAttr(attrs)
+                bytesWritten +=
+                    self.writeInteger(1, as: UInt32.self)
+                    + self.writeNFS3FileAttr(attrs)
             } else {
                 bytesWritten += self.writeInteger(0, as: UInt32.self)
             }

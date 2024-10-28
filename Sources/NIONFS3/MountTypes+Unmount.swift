@@ -38,10 +38,10 @@ extension ByteBuffer {
     }
 
     @discardableResult public mutating func writeNFS3ReplyUnmount(_ reply: MountReplyUnmount) -> Int {
-        return 0
+        0
     }
 
     public mutating func readNFS3ReplyUnmount() throws -> MountReplyUnmount {
-        return MountReplyUnmount()
+        MountReplyUnmount()
     }
 }

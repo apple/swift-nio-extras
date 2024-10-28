@@ -25,10 +25,9 @@ extension StringProtocol {
     ///    - prefix: The string to match at the beginning of `self`
     /// - returns: Whether or not `self` starts with the same unicode scalars as `prefix`.
     func startsWithExactly<S: StringProtocol>(_ prefix: S) -> Bool {
-        return self.utf8.starts(with: prefix.utf8)
+        self.utf8.starts(with: prefix.utf8)
     }
 }
-
 
 /// Given a header value, extracts the q value if there is one present. If one is not present,
 /// returns the default q value, 1.0.
@@ -73,7 +72,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     public typealias OutboundIn = HTTPServerResponsePart
     /// This class emits `HTTPServerResponsePart` outbound.
     public typealias OutboundOut = HTTPServerResponsePart
-    
+
     /// A closure that accepts a response header, optionally modifies it, and returns `true` if the response it belongs to should be compressed.
     ///
     /// - Parameter responseHeaders: The headers that will be used for the response. These can be modified as needed at this stage, to clean up any marker headers used to statelessly determine if compression should occur, and the new headers will be used when writing the response. Compression headers are not yet provided and should not be set; ``HTTPResponseCompressor`` will set them accordingly based on the result of this predicate.
@@ -85,7 +84,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         _ responseHeaders: inout HTTPResponseHead,
         _ isCompressionSupported: Bool
     ) -> CompressionIntent
-    
+
     /// A signal a ``ResponseCompressionPredicate`` returns to indicate if it intends for compression to be used or not when supported by HTTP.
     public struct CompressionIntent: Sendable, Hashable {
         /// The internal type ``CompressionIntent`` uses.
@@ -95,15 +94,15 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
             /// The response should not be compressed even if supported by the HTTP protocol.
             case doNotCompress
         }
-        
+
         /// The raw value of the intent.
         let rawValue: RawValue
-        
+
         /// Initialize the raw value with an internal intent.
         init(_ rawValue: RawValue) {
             self.rawValue = rawValue
         }
-        
+
         /// The response should be compressed if supported by the HTTP protocol.
         public static let compressIfPossible = CompressionIntent(.compressIfPossible)
         /// The response should not be compressed even if supported by the HTTP protocol.
@@ -117,7 +116,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         /// Data was somehow lost without being written.
         case noDataToWrite
     }
-    
+
     private var compressor: NIOCompression.Compressor
 
     // A queue of accept headers.
@@ -135,11 +134,14 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         // TODO: This version is kept around for backwards compatibility and should be merged with the signature below in the next major version: https://github.com/apple/swift-nio-extras/issues/226
         self.init(initialByteBufferCapacity: initialByteBufferCapacity, responseCompressionPredicate: nil)
     }
-    
+
     /// Initialize a ``HTTPResponseCompressor``.
     /// - Parameter initialByteBufferCapacity: Initial size of buffer to allocate when hander is first added.
     /// - Parameter responseCompressionPredicate: The predicate used to determine if the response should be compressed or not based on its headers. Defaults to `nil`, which will compress every response this handler sees. This predicate is always called whether the client supports compression for this response or not, so it can be used to clean up any marker headers you may use to determine if compression should be performed or not. Please see ``ResponseCompressionPredicate`` for more details.
-    public init(initialByteBufferCapacity: Int = 1024, responseCompressionPredicate: ResponseCompressionPredicate? = nil) {
+    public init(
+        initialByteBufferCapacity: Int = 1024,
+        responseCompressionPredicate: ResponseCompressionPredicate? = nil
+    ) {
         self.initialByteBufferCapacity = initialByteBufferCapacity
         self.responseCompressionPredicate = responseCompressionPredicate
         self.compressor = NIOCompression.Compressor()
@@ -148,7 +150,9 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     /// Setup and add to the pipeline.
     /// - Parameter context: Calling context.
     public func handlerAdded(context: ChannelHandlerContext) {
-        pendingResponse = PartialHTTPResponse(bodyBuffer: context.channel.allocator.buffer(capacity: initialByteBufferCapacity))
+        pendingResponse = PartialHTTPResponse(
+            bodyBuffer: context.channel.allocator.buffer(capacity: initialByteBufferCapacity)
+        )
         pendingWritePromise = context.eventLoop.makePromise()
     }
 
@@ -174,19 +178,20 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
             /// Grab the algorithm to use from the bottom of the accept queue, which will help determine if we support compression for this response or not.
             let algorithm = compressionAlgorithm()
             let requestSupportsCompression = algorithm != nil && responseHead.status.mayHaveResponseBody
-            
+
             /// If a predicate was set, ask it if we should compress when compression is supported, and give the predicate a chance to clean up any marker headers that may have been set even if compression were not supported.
-            let predicateCompressionIntent = responseCompressionPredicate?(&responseHead, requestSupportsCompression) ?? .compressIfPossible
-            
+            let predicateCompressionIntent =
+                responseCompressionPredicate?(&responseHead, requestSupportsCompression) ?? .compressIfPossible
+
             /// Make sure that compression should proceed, otherwise stop here and supply the response headers before configuring the compressor.
             guard let algorithm, requestSupportsCompression, predicateCompressionIntent == .compressIfPossible else {
                 context.write(wrapOutboundOut(.head(responseHead)), promise: promise)
                 return
             }
-            
+
             /// Previous handlers in the pipeline might have already set this header even though they should not have as it is compressor responsibility to decide what encoding to use.
             responseHead.headers.replaceOrAdd(name: "Content-Encoding", value: algorithm.description)
-            
+
             /// Initialize the compressor and write the header data, which marks the compressor as "active" allowing the `.body` and `.end` cases to properly compress the response rather than passing it as is.
             compressor.initialize(encoding: algorithm)
             pendingResponse.bufferResponseHead(responseHead)
@@ -303,11 +308,11 @@ private struct PartialHTTPResponse {
     private let initialBufferSize: Int
 
     var isCompleteResponse: Bool {
-        return head != nil && end != nil
+        head != nil && end != nil
     }
 
     var mustFlush: Bool {
-        return end != nil
+        end != nil
     }
 
     init(bodyBuffer: ByteBuffer) {
@@ -357,15 +362,17 @@ private struct PartialHTTPResponse {
     ///
     /// Calling this function resets the buffer, freeing any excess memory allocated in the internal
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
-    mutating func flush(compressor: inout NIOCompression.Compressor, allocator: ByteBufferAllocator) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
+    mutating func flush(
+        compressor: inout NIOCompression.Compressor,
+        allocator: ByteBufferAllocator
+    ) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
         var outputBody: ByteBuffer? = nil
         if self.body.readableBytes > 0 || mustFlush {
             let compressedBody = compressor.compress(inputBuffer: &self.body, allocator: allocator, finalise: mustFlush)
             if isCompleteResponse {
                 head!.headers.remove(name: "transfer-encoding")
                 head!.headers.replaceOrAdd(name: "content-length", value: "\(compressedBody.readableBytes)")
-            }
-            else if head != nil && head!.status.mayHaveResponseBody {
+            } else if head != nil && head!.status.mayHaveResponseBody {
                 head!.headers.remove(name: "content-length")
                 head!.headers.replaceOrAdd(name: "transfer-encoding", value: "chunked")
             }
@@ -377,4 +384,3 @@ private struct PartialHTTPResponse {
         return response
     }
 }
-

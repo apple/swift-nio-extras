@@ -18,9 +18,11 @@ import NIOHTTP1
 
 class HTTP1ThreadedRawPerformanceTest: HTTP1ThreadedPerformanceTest {
     init() {
-        super.init(numberOfRepeats: 50,
-                   numberOfClients: System.coreCount,
-                   requestsPerClient: 500,
-                   extraInitialiser: { channel in return channel.eventLoop.makeSucceededFuture(()) })
+        super.init(
+            numberOfRepeats: 50,
+            numberOfClients: System.coreCount,
+            requestsPerClient: 500,
+            extraInitialiser: { channel in channel.eventLoop.makeSucceededFuture(()) }
+        )
     }
 }

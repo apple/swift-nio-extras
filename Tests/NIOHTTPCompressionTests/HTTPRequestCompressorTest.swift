@@ -12,45 +12,51 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import CNIOExtrasZlib
 import NIOCore
 import NIOEmbedded
 import NIOHTTP1
+import XCTest
+
 @testable import NIOHTTPCompression
 
 class HTTPRequestCompressorTest: XCTestCase {
-    
+
     func compressionChannel(_ compression: NIOCompression.Algorithm = .gzip) throws -> EmbeddedChannel {
         let channel = EmbeddedChannel()
         //XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPRequestEncoder(), name: "encoder").wait())
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPRequestCompressor(encoding: compression), name: "compressor").wait())
+        XCTAssertNoThrow(
+            try channel.pipeline.addHandler(NIOHTTPRequestCompressor(encoding: compression), name: "compressor").wait()
+        )
         return channel
     }
-    
+
     func write(body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         try write(head: requestHead, body: body, to: channel)
     }
-    
+
     func write(head: HTTPRequestHead, body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         var promiseArray = PromiseArray(on: channel.eventLoop)
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(head)), promise: promiseArray.makePromise())
 
         for bodyChunk in body {
-            channel.pipeline.write(NIOAny(HTTPClientRequestPart.body(.byteBuffer(bodyChunk))), promise: promiseArray.makePromise())
+            channel.pipeline.write(
+                NIOAny(HTTPClientRequestPart.body(.byteBuffer(bodyChunk))),
+                promise: promiseArray.makePromise()
+            )
         }
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
         channel.pipeline.flush()
-        
+
         try promiseArray.waitUntilComplete()
     }
-    
+
     func writeWithIntermittantFlush(body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         try writeWithIntermittantFlush(head: requestHead, body: body, to: channel)
     }
-    
+
     func writeWithIntermittantFlush(head: HTTPRequestHead, body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         var promiseArray = PromiseArray(on: channel.eventLoop)
         var count = 3
@@ -69,7 +75,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         }
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
         channel.pipeline.flush()
-        
+
         try promiseArray.waitUntilComplete()
     }
 
@@ -92,19 +98,19 @@ class HTTPRequestCompressorTest: XCTestCase {
         }
         return (head: requestHead, body: byteBuffer)
     }
-    
-    func readVerifyPart(from channel: EmbeddedChannel, verify: (HTTPClientRequestPart)->()) throws {
+
+    func readVerifyPart(from channel: EmbeddedChannel, verify: (HTTPClientRequestPart) -> Void) throws {
         channel.pipeline.read()
         loop: while let requestPart: HTTPClientRequestPart = try channel.readOutbound() {
             verify(requestPart)
         }
     }
-    
+
     func testGzipContentEncoding() throws {
         let channel = try compressionChannel()
         var buffer = ByteBufferAllocator().buffer(capacity: 0)
         buffer.writeString("Test")
-        
+
         _ = try write(body: [buffer], to: channel)
         try readVerifyPart(from: channel) { part in
             if case .head(let head) = part {
@@ -112,12 +118,12 @@ class HTTPRequestCompressorTest: XCTestCase {
             }
         }
     }
-    
+
     func testDeflateContentEncoding() throws {
         let channel = try compressionChannel(.deflate)
         var buffer = ByteBufferAllocator().buffer(capacity: 0)
         buffer.writeString("Test")
-        
+
         _ = try write(body: [buffer], to: channel)
         try readVerifyPart(from: channel) { part in
             if case .head(let head) = part {
@@ -125,19 +131,19 @@ class HTTPRequestCompressorTest: XCTestCase {
             }
         }
     }
-    
+
     func testOneBuffer() throws {
         let channel = try compressionChannel()
         var buffer = ByteBufferAllocator().buffer(capacity: 1024 * Int.bitWidth / 8)
         for _ in 0..<1024 {
             buffer.writeInteger(Int.random(in: Int.min...Int.max))
         }
-        
+
         _ = try write(body: [buffer], to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
@@ -159,11 +165,11 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
-    
+
     func testMultipleBuffersDeflate() throws {
         let channel = try compressionChannel(.deflate)
         var buffers: [ByteBuffer] = []
@@ -181,11 +187,11 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
         z_stream.decompressDeflate(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "deflate")
     }
-    
+
     func testMultipleBuffersWithFlushes() throws {
         let channel = try compressionChannel()
         var buffers: [ByteBuffer] = []
@@ -203,7 +209,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
         XCTAssertEqual(result.head.headers["transfer-encoding"].first, "chunked")
@@ -216,12 +222,15 @@ class HTTPRequestCompressorTest: XCTestCase {
         for _ in 0..<1024 {
             buffer.writeInteger(Int.random(in: Int.min...Int.max))
         }
-        
+
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
         channel.pipeline.flush()
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))), promise: promiseArray.makePromise())
+        channel.pipeline.write(
+            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            promise: promiseArray.makePromise()
+        )
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         try promiseArray.waitUntilComplete()
@@ -229,22 +238,25 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
-    
+
     func testFlushBeforeEnd() throws {
         let channel = try compressionChannel()
         var buffer = ByteBufferAllocator().buffer(capacity: 1024 * Int.bitWidth / 8)
         for _ in 0..<1024 {
             buffer.writeInteger(Int.random(in: Int.min...Int.max))
         }
-        
+
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))), promise: promiseArray.makePromise())
+        channel.pipeline.write(
+            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            promise: promiseArray.makePromise()
+        )
         channel.pipeline.flush()
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
         channel.pipeline.flush()
@@ -253,18 +265,18 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
-    
+
     func testDoubleFlush() throws {
         let channel = try compressionChannel()
         var buffer = ByteBufferAllocator().buffer(capacity: 1024 * Int.bitWidth / 8)
         for _ in 0..<1024 {
             buffer.writeInteger(Int.random(in: Int.min...Int.max))
         }
-        
+
         let algo = NIOCompression.Algorithm.gzip
         if algo == NIOCompression.Algorithm.deflate {
             print("Hello")
@@ -272,7 +284,10 @@ class HTTPRequestCompressorTest: XCTestCase {
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))), promise: promiseArray.makePromise())
+        channel.pipeline.write(
+            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            promise: promiseArray.makePromise()
+        )
         channel.pipeline.flush()
         channel.pipeline.flush()
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
@@ -282,14 +297,14 @@ class HTTPRequestCompressorTest: XCTestCase {
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
         z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
-        
+
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
     }
-    
+
     func testNoBody() throws {
         let channel = try compressionChannel()
-        
+
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
         channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
@@ -301,7 +316,7 @@ class HTTPRequestCompressorTest: XCTestCase {
             switch part {
             case .head(let head):
                 XCTAssertNil(head.headers["Content-Encoding"].first)
-            case.body:
+            case .body:
                 XCTFail("Shouldn't return a body")
             case .end:
                 break
@@ -313,28 +328,30 @@ class HTTPRequestCompressorTest: XCTestCase {
 struct PromiseArray {
     var promises: [EventLoopPromise<Void>]
     let eventLoop: EventLoop
-    
+
     init(on eventLoop: EventLoop) {
         self.promises = []
         self.eventLoop = eventLoop
     }
-    
+
     mutating func makePromise() -> EventLoopPromise<Void> {
         let promise: EventLoopPromise<Void> = eventLoop.makePromise()
         self.promises.append(promise)
         return promise
     }
-    
+
     func waitUntilComplete() throws {
         let resultFutures = promises.map { $0.futureResult }
         _ = try EventLoopFuture.whenAllComplete(resultFutures, on: eventLoop).wait()
     }
 }
 
-private extension ByteBuffer {
+extension ByteBuffer {
     @discardableResult
-    mutating func withUnsafeMutableReadableUInt8Bytes<T>(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> T) rethrows -> T {
-        return try self.withUnsafeMutableReadableBytes { (ptr: UnsafeMutableRawBufferPointer) -> T in
+    fileprivate mutating func withUnsafeMutableReadableUInt8Bytes<T>(
+        _ body: (UnsafeMutableBufferPointer<UInt8>) throws -> T
+    ) rethrows -> T {
+        try self.withUnsafeMutableReadableBytes { (ptr: UnsafeMutableRawBufferPointer) -> T in
             let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
             let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
             return try body(inputBufferPointer)
@@ -342,8 +359,10 @@ private extension ByteBuffer {
     }
 
     @discardableResult
-    mutating func writeWithUnsafeMutableUInt8Bytes(_ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Int) rethrows -> Int {
-        return try self.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { (ptr: UnsafeMutableRawBufferPointer) -> Int in
+    fileprivate mutating func writeWithUnsafeMutableUInt8Bytes(
+        _ body: (UnsafeMutableBufferPointer<UInt8>) throws -> Int
+    ) rethrows -> Int {
+        try self.writeWithUnsafeMutableBytes(minimumWritableBytes: 0) { (ptr: UnsafeMutableRawBufferPointer) -> Int in
             let baseInputPointer = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self)
             let inputBufferPointer = UnsafeMutableBufferPointer(start: baseInputPointer, count: ptr.count)
             return try body(inputBufferPointer)
@@ -351,16 +370,17 @@ private extension ByteBuffer {
     }
 }
 
-private extension z_stream {
-    static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
+extension z_stream {
+    fileprivate static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
         decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 15)
     }
 
-    static func decompressGzip(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
+    fileprivate static func decompressGzip(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
         decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 16 + 15)
     }
 
-    private static func decompress(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer, windowSize: Int32) {
+    private static func decompress(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer, windowSize: Int32)
+    {
         compressedBytes.withUnsafeMutableReadableUInt8Bytes { inputPointer in
             outputBuffer.writeWithUnsafeMutableUInt8Bytes { outputPointer -> Int in
                 var stream = z_stream()
@@ -389,4 +409,3 @@ private extension z_stream {
         }
     }
 }
-

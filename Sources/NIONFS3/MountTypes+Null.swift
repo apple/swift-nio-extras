@@ -21,10 +21,10 @@ public struct MountCallNull: Hashable & Sendable {
 
 extension ByteBuffer {
     public mutating func readMountCallNull() throws -> MountCallNull {
-        return MountCallNull()
+        MountCallNull()
     }
 
     @discardableResult public mutating func writeMountCallNull(_ call: MountCallNull) -> Int {
-        return 0
+        0
     }
 }
