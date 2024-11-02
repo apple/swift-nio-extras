@@ -232,8 +232,8 @@ final class NIOResumableUploadTests: XCTestCase {
     }
 }
 
-private extension HTTPField.Name {
-    static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
-    static let uploadIncomplete = Self("Upload-Incomplete")!
-    static let uploadOffset = Self("Upload-Offset")!
+extension HTTPField.Name {
+    fileprivate static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
+    fileprivate static let uploadIncomplete = Self("Upload-Incomplete")!
+    fileprivate static let uploadOffset = Self("Upload-Offset")!
 }

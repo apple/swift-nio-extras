@@ -161,7 +161,13 @@ extension HTTPResumableUpload {
         }
     }
 
-    private func uploadAppending(otherHandler: HTTPResumableUploadHandler, channel: Channel, offset: Int64, contentLength: Int64?, complete: Bool) {
+    private func uploadAppending(
+        otherHandler: HTTPResumableUploadHandler,
+        channel: Channel,
+        offset: Int64,
+        contentLength: Int64?,
+        complete: Bool
+    ) {
         self.runInEventLoop {
             let conflict: Bool
             if self.uploadHandler == nil && self.offset == offset && !self.responseStarted {
@@ -217,7 +223,10 @@ extension HTTPResumableUpload {
             let resumePath = self.context.startUpload(self)
             self.resumePath = resumePath
 
-            let informationalResponse = HTTPResumableUploadProtocol.featureDetectionResponse(resumePath: resumePath, in: self.context)
+            let informationalResponse = HTTPResumableUploadProtocol.featureDetectionResponse(
+                resumePath: resumePath,
+                in: self.context
+            )
             handler.writeAndFlush(.head(informationalResponse), promise: nil)
 
             let strippedRequest = HTTPResumableUploadProtocol.stripRequest(request)
@@ -237,7 +246,13 @@ extension HTTPResumableUpload {
                 handler.upload = upload
                 self.uploadHandler = nil
                 self.uploadHandlerChannel.withLockedValue { $0 = nil }
-                upload.uploadAppending(otherHandler: handler, channel: channel, offset: offset, contentLength: contentLength, complete: complete)
+                upload.uploadAppending(
+                    otherHandler: handler,
+                    channel: channel,
+                    offset: offset,
+                    contentLength: contentLength,
+                    complete: complete
+                )
             } else {
                 let response = HTTPResumableUploadProtocol.notFoundResponse()
                 self.respondAndDetach(response, handler: handler)

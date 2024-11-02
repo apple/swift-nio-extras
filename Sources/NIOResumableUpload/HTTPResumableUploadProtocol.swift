@@ -156,25 +156,28 @@ enum HTTPResumableUploadProtocol {
     }
 }
 
-private extension HTTPField.Name {
-    static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
-    static let uploadIncomplete = Self("Upload-Incomplete")!
-    static let uploadOffset = Self("Upload-Offset")!
+extension HTTPField.Name {
+    fileprivate static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
+    fileprivate static let uploadIncomplete = Self("Upload-Incomplete")!
+    fileprivate static let uploadOffset = Self("Upload-Offset")!
 }
 
-private extension HTTPFields {
+extension HTTPFields {
     private struct UploadIncompleteFieldValue: StructuredFieldValue {
         static var structuredFieldType: StructuredFieldValues.StructuredFieldType { .item }
         var item: Bool
     }
 
-    var uploadIncomplete: Bool? {
+    fileprivate var uploadIncomplete: Bool? {
         get {
             guard let headerValue = self[.uploadIncomplete] else {
                 return nil
             }
             do {
-                let value = try StructuredFieldValueDecoder().decode(UploadIncompleteFieldValue.self, from: Array(headerValue.utf8))
+                let value = try StructuredFieldValueDecoder().decode(
+                    UploadIncompleteFieldValue.self,
+                    from: Array(headerValue.utf8)
+                )
                 return value.item
             } catch {
                 return nil
@@ -183,7 +186,10 @@ private extension HTTPFields {
 
         set {
             if let newValue {
-                let value = String(decoding: try! StructuredFieldValueEncoder().encode(UploadIncompleteFieldValue(item: newValue)), as: UTF8.self)
+                let value = String(
+                    decoding: try! StructuredFieldValueEncoder().encode(UploadIncompleteFieldValue(item: newValue)),
+                    as: UTF8.self
+                )
                 self[.uploadIncomplete] = value
             } else {
                 self[.uploadIncomplete] = nil
@@ -196,13 +202,16 @@ private extension HTTPFields {
         var item: Int64
     }
 
-    var uploadOffset: Int64? {
+    fileprivate var uploadOffset: Int64? {
         get {
             guard let headerValue = self[.uploadOffset] else {
                 return nil
             }
             do {
-                let value = try StructuredFieldValueDecoder().decode(UploadOffsetFieldValue.self, from: Array(headerValue.utf8))
+                let value = try StructuredFieldValueDecoder().decode(
+                    UploadOffsetFieldValue.self,
+                    from: Array(headerValue.utf8)
+                )
                 return value.item
             } catch {
                 return nil
@@ -211,7 +220,10 @@ private extension HTTPFields {
 
         set {
             if let newValue {
-                let value = String(decoding: try! StructuredFieldValueEncoder().encode(UploadOffsetFieldValue(item: newValue)), as: UTF8.self)
+                let value = String(
+                    decoding: try! StructuredFieldValueEncoder().encode(UploadOffsetFieldValue(item: newValue)),
+                    as: UTF8.self
+                )
                 self[.uploadOffset] = value
             } else {
                 self[.uploadOffset] = nil
