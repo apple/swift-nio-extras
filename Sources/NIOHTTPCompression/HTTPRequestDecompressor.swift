@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import CNIOExtrasZlib
-import NIOHTTP1
 import NIOCore
+import NIOHTTP1
 
 /// Channel hander to decompress incoming HTTP data.
 public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
@@ -49,13 +49,12 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
 
         switch request {
         case .head(let head):
-            if
-                let encoding = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased(),
+            if let encoding = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased(),
                 let algorithm = NIOHTTPDecompression.CompressionAlgorithm(header: encoding),
                 let length = head.headers[canonicalForm: "Content-Length"].first.flatMap({ Int($0) })
             {
                 do {
-                    try self.decompressor.initializeDecoder(encoding: algorithm)
+                    try self.decompressor.initializeDecoder()
                     self.compression = Compression(algorithm: algorithm, contentLength: length)
                 } catch let error {
                     context.fireErrorCaught(error)
@@ -73,7 +72,11 @@ public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableCh
             while part.readableBytes > 0 && !self.decompressionComplete {
                 do {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    let result = try self.decompressor.decompress(part: &part, buffer: &buffer, compressedLength: compression.contentLength)
+                    let result = try self.decompressor.decompress(
+                        part: &part,
+                        buffer: &buffer,
+                        compressedLength: compression.contentLength
+                    )
                     if result.complete {
                         self.decompressionComplete = true
                     }

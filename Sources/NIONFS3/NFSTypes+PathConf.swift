@@ -29,7 +29,15 @@ public struct NFS3ReplyPathConf: Hashable & Sendable {
     }
 
     public struct Okay: Hashable & Sendable {
-        public init(attributes: NFS3FileAttr?, linkMax: UInt32, nameMax: UInt32, noTrunc: NFS3Bool, chownRestricted: NFS3Bool, caseInsensitive: NFS3Bool, casePreserving: NFS3Bool) {
+        public init(
+            attributes: NFS3FileAttr?,
+            linkMax: UInt32,
+            nameMax: UInt32,
+            noTrunc: NFS3Bool,
+            chownRestricted: NFS3Bool,
+            caseInsensitive: NFS3Bool,
+            casePreserving: NFS3Bool
+        ) {
             self.attributes = attributes
             self.linkMax = linkMax
             self.nameMax = nameMax
@@ -70,30 +78,37 @@ extension ByteBuffer {
     }
 
     public mutating func readNFS3ReplyPathConf() throws -> NFS3ReplyPathConf {
-        return NFS3ReplyPathConf(
+        NFS3ReplyPathConf(
             result: try self.readNFS3Result(
                 readOkay: { buffer in
                     let attrs = try buffer.readNFS3Optional { buffer in
                         try buffer.readNFS3FileAttr()
                     }
-                    guard let values = buffer.readMultipleIntegers(as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self) else {
+                    guard
+                        let values = buffer.readMultipleIntegers(
+                            as: (UInt32, UInt32, UInt32, UInt32, UInt32, UInt32).self
+                        )
+                    else {
                         throw NFS3Error.illegalRPCTooShort
                     }
 
-                    return NFS3ReplyPathConf.Okay(attributes: attrs,
-                                                 linkMax: values.0,
-                                                 nameMax: values.1,
-                                                 noTrunc: values.2 == 0 ? false : true,
-                                                 chownRestricted: values.3 == 0 ? false : true,
-                                                 caseInsensitive: values.4 == 0 ? false : true,
-                                                 casePreserving: values.5 == 0 ? false : true)
+                    return NFS3ReplyPathConf.Okay(
+                        attributes: attrs,
+                        linkMax: values.0,
+                        nameMax: values.1,
+                        noTrunc: values.2 == 0 ? false : true,
+                        chownRestricted: values.3 == 0 ? false : true,
+                        caseInsensitive: values.4 == 0 ? false : true,
+                        casePreserving: values.5 == 0 ? false : true
+                    )
                 },
                 readFail: { buffer in
                     let attrs = try buffer.readNFS3Optional { buffer in
                         try buffer.readNFS3FileAttr()
                     }
                     return NFS3ReplyPathConf.Fail(attributes: attrs)
-                })
+                }
+            )
         )
     }
 
@@ -102,15 +117,16 @@ extension ByteBuffer {
 
         switch pathconf.result {
         case .okay(let pathconf):
-            bytesWritten += self.writeNFS3Optional(pathconf.attributes, writer: { $0.writeNFS3FileAttr($1) })
-            + self.writeMultipleIntegers(
-                pathconf.linkMax,
-                pathconf.nameMax,
-                pathconf.noTrunc ? UInt32(1) : 0,
-                pathconf.chownRestricted ? UInt32(1) : 0,
-                pathconf.caseInsensitive ? UInt32(1) : 0,
-                pathconf.casePreserving ? UInt32(1) : 0
-            )
+            bytesWritten +=
+                self.writeNFS3Optional(pathconf.attributes, writer: { $0.writeNFS3FileAttr($1) })
+                + self.writeMultipleIntegers(
+                    pathconf.linkMax,
+                    pathconf.nameMax,
+                    pathconf.noTrunc ? UInt32(1) : 0,
+                    pathconf.chownRestricted ? UInt32(1) : 0,
+                    pathconf.caseInsensitive ? UInt32(1) : 0,
+                    pathconf.casePreserving ? UInt32(1) : 0
+                )
         case .fail(_, let fail):
             bytesWritten += self.writeNFS3Optional(fail.attributes, writer: { $0.writeNFS3FileAttr($1) })
         }

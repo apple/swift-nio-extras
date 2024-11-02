@@ -12,17 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 class DebugOutboundEventsHandlerTest: XCTestCase {
 
     private var channel: EmbeddedChannel!
     private var lastEvent: DebugOutboundEventsHandler.Event!
     private var handlerUnderTest: DebugOutboundEventsHandler!
-    
+
     override func setUp() {
         super.setUp()
         channel = EmbeddedChannel()
@@ -31,7 +31,7 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
         }
         try? channel.pipeline.addHandler(handlerUnderTest).wait()
     }
-    
+
     override func tearDown() {
         channel = nil
         lastEvent = nil
@@ -43,40 +43,40 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
         channel.pipeline.register(promise: nil)
         XCTAssertEqual(lastEvent, .register)
     }
-    
+
     func testBind() throws {
         let address = try SocketAddress(unixDomainSocketPath: "path")
         channel.bind(to: address, promise: nil)
         XCTAssertEqual(lastEvent, .bind(address: address))
     }
-    
+
     func testConnect() throws {
         let address = try SocketAddress(unixDomainSocketPath: "path")
         channel.connect(to: address, promise: nil)
         XCTAssertEqual(lastEvent, .connect(address: address))
     }
-    
+
     func testWrite() {
         let data = NIOAny(" 1 2 3 ")
         channel.write(data, promise: nil)
         XCTAssertEqual(lastEvent, .write(data: data))
     }
-    
+
     func testFlush() {
         channel.flush()
         XCTAssertEqual(lastEvent, .flush)
     }
-    
+
     func testRead() {
         channel.read()
         XCTAssertEqual(lastEvent, .read)
     }
-    
+
     func testClose() {
         channel.close(mode: .all, promise: nil)
         XCTAssertEqual(lastEvent, .close(mode: .all))
     }
-    
+
     func testTriggerUserOutboundEvent() {
         let event = "user event"
         channel.triggerUserOutboundEvent(event, promise: nil)
@@ -85,7 +85,7 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
 
 }
 
-extension DebugOutboundEventsHandler.Event: Equatable {
+extension DebugOutboundEventsHandler.Event {
     public static func == (lhs: DebugOutboundEventsHandler.Event, rhs: DebugOutboundEventsHandler.Event) -> Bool {
         switch (lhs, rhs) {
         case (.register, .register):
@@ -108,6 +108,10 @@ extension DebugOutboundEventsHandler.Event: Equatable {
             return false
         }
     }
-    
 }
 
+#if compiler(>=6.0)
+extension DebugOutboundEventsHandler.Event: @retroactive Equatable {}
+#else
+extension DebugOutboundEventsHandler.Event: Equatable {}
+#endif

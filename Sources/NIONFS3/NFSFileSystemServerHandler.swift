@@ -19,12 +19,20 @@ public final class NFS3FileSystemServerHandler<FS: NFS3FileSystemNoAuth> {
     public typealias OutboundOut = ByteBuffer
 
     private var error: Error? = nil
-    private var b2md = NIOSingleStepByteToMessageProcessor(NFS3CallDecoder(),
-                                                           maximumBufferSize: 4 * 1024 * 1024)
+    private var b2md = NIOSingleStepByteToMessageProcessor(
+        NFS3CallDecoder(),
+        maximumBufferSize: 4 * 1024 * 1024
+    )
     private let filesystem: FS
-    private let rpcReplySuccess: RPCReplyStatus = .messageAccepted(.init(verifier: .init(flavor: .noAuth,
-                                                                                         opaque: nil),
-                                                                         status: .success))
+    private let rpcReplySuccess: RPCReplyStatus = .messageAccepted(
+        .init(
+            verifier: .init(
+                flavor: .noAuth,
+                opaque: nil
+            ),
+            status: .success
+        )
+    )
     private var invoker: NFS3FileSystemInvoker<FS, NFS3FileSystemServerHandler<FS>>?
     private var context: ChannelHandlerContext? = nil
     private var writeBuffer = ByteBuffer()
@@ -49,8 +57,12 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let data = self.unwrapInboundIn(data)
         guard self.error == nil else {
-            context.fireErrorCaught(ByteToMessageDecoderError.dataReceivedInErrorState(self.error!,
-                                                                                       data))
+            context.fireErrorCaught(
+                ByteToMessageDecoderError.dataReceivedInErrorState(
+                    self.error!,
+                    data
+                )
+            )
             return
         }
 
@@ -68,10 +80,14 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch error as? NFS3Error {
         case .unknownProgramOrProcedure(.call(let call)):
-            let acceptedReply = RPCAcceptedReply(verifier: .init(flavor: .noAuth, opaque: nil),
-                                                 status: .procedureUnavailable)
-            let reply = RPCNFS3Reply(rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
-                                    nfsReply: .null)
+            let acceptedReply = RPCAcceptedReply(
+                verifier: .init(flavor: .noAuth, opaque: nil),
+                status: .procedureUnavailable
+            )
+            let reply = RPCNFS3Reply(
+                rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
+                nfsReply: .null
+            )
             self.writeBuffer.clear()
             self.writeBuffer.writeRPCNFS3Reply(reply)
             return
@@ -85,9 +101,13 @@ extension NFS3FileSystemServerHandler: ChannelInboundHandler {
 extension NFS3FileSystemServerHandler: NFS3FileSystemResponder {
     func sendSuccessfulReply(_ reply: NFS3Reply, call: RPCNFS3Call) {
         if let context = self.context {
-            let reply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
-                                                    status: self.rpcReplySuccess),
-                                    nfsReply: reply)
+            let reply = RPCNFS3Reply(
+                rpcReply: .init(
+                    xid: call.rpcCall.xid,
+                    status: self.rpcReplySuccess
+                ),
+                nfsReply: reply
+            )
 
             self.writeBuffer.clear()
             switch self.writeBuffer.writeRPCNFS3ReplyPartially(reply).1 {
@@ -107,10 +127,20 @@ extension NFS3FileSystemServerHandler: NFS3FileSystemResponder {
 
     func sendError(_ error: Error, call: RPCNFS3Call) {
         if let context = self.context {
-            let reply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
-                                                    status: self.rpcReplySuccess),
-                                    nfsReply: .mount(.init(result: .fail(.errorSERVERFAULT,
-                                                                         NFS3Nothing()))))
+            let reply = RPCNFS3Reply(
+                rpcReply: .init(
+                    xid: call.rpcCall.xid,
+                    status: self.rpcReplySuccess
+                ),
+                nfsReply: .mount(
+                    .init(
+                        result: .fail(
+                            .errorSERVERFAULT,
+                            NFS3Nothing()
+                        )
+                    )
+                )
+            )
 
             self.writeBuffer.clear()
             self.writeBuffer.writeRPCNFS3Reply(reply)

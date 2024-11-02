@@ -12,22 +12,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-
 import NIOCore
 import NIOEmbedded
 import NIOExtras
+import XCTest
 
 final class JSONRPCFramingContentLengthHeaderEncoderTests: XCTestCase {
-    private var channel: EmbeddedChannel! // not a real network connection
+    private var channel: EmbeddedChannel!  // not a real network connection
 
     override func setUp() {
         self.channel = EmbeddedChannel()
 
         // let's add the framing handler to the pipeline as that's what we're testing here.
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameEncoder()).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameEncoder()).wait()
+        )
         // let's also add the decoder so we can round-trip
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(ByteToMessageHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder())).wait())
+        XCTAssertNoThrow(
+            try self.channel.pipeline.addHandler(
+                ByteToMessageHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder())
+            ).wait()
+        )
         // this pretends to connect the channel to this IP address.
         XCTAssertNoThrow(self.channel.connect(to: try .init(ipAddress: "1.2.3.4", port: 5678)))
     }
@@ -41,15 +46,19 @@ final class JSONRPCFramingContentLengthHeaderEncoderTests: XCTestCase {
     }
 
     private func readOutboundString() throws -> String? {
-        return try self.channel.readOutbound(as: ByteBuffer.self).map {
+        try self.channel.readOutbound(as: ByteBuffer.self).map {
             String(decoding: $0.readableBytesView, as: Unicode.UTF8.self)
         }
     }
 
     func testEmptyMessage() {
         XCTAssertNoThrow(try self.channel.writeOutbound(self.channel.allocator.buffer(capacity: 0)))
-        XCTAssertNoThrow(XCTAssertEqual("Content-Length: 0\r\n\r\n",
-                                        try self.readOutboundString()))
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                "Content-Length: 0\r\n\r\n",
+                try self.readOutboundString()
+            )
+        )
         XCTAssertNoThrow(XCTAssertNil(try self.readOutboundString()))
     }
 
@@ -57,15 +66,21 @@ final class JSONRPCFramingContentLengthHeaderEncoderTests: XCTestCase {
         var buffer = self.channel.allocator.buffer(capacity: 8)
         buffer.writeString("01234567")
         XCTAssertNoThrow(try self.channel.writeOutbound(buffer))
-        XCTAssertNoThrow(try {
-            while let encoded = try self.channel.readOutbound(as: ByteBuffer.self) {
-                // round trip it back
-                try self.channel.writeInbound(encoded)
-            }
-        }())
-        XCTAssertNoThrow(XCTAssertEqual("01234567",
-                                        try self.channel.readInbound(as: ByteBuffer.self).map {
-                                            String(decoding: $0.readableBytesView, as: Unicode.UTF8.self)
-                                        }))
+        XCTAssertNoThrow(
+            try {
+                while let encoded = try self.channel.readOutbound(as: ByteBuffer.self) {
+                    // round trip it back
+                    try self.channel.writeInbound(encoded)
+                }
+            }()
+        )
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                "01234567",
+                try self.channel.readInbound(as: ByteBuffer.self).map {
+                    String(decoding: $0.readableBytesView, as: Unicode.UTF8.self)
+                }
+            )
+        )
     }
 }

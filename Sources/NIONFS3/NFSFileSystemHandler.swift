@@ -25,15 +25,22 @@ import NIOCore
 /// because NFS3 tranditionally just trusts the UNIX uid/gid that the client provided. So there's no security value
 /// added by verifying them. However, the client may rely on the server to check the UNIX permissions (whilst trusting
 /// the uid/gid) which cannot be done with this handler.
-public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: ChannelDuplexHandler, NFS3FileSystemResponder {
+public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: ChannelDuplexHandler, NFS3FileSystemResponder
+{
     public typealias OutboundIn = Never
     public typealias InboundIn = RPCNFS3Call
     public typealias OutboundOut = RPCNFS3Reply
 
     private let filesystem: FS
-    private let rpcReplySuccess: RPCReplyStatus = .messageAccepted(.init(verifier: .init(flavor: .noAuth,
-                                                                                         opaque: nil),
-                                                                         status: .success))
+    private let rpcReplySuccess: RPCReplyStatus = .messageAccepted(
+        .init(
+            verifier: .init(
+                flavor: .noAuth,
+                opaque: nil
+            ),
+            status: .success
+        )
+    )
     private var invoker: NFS3FileSystemInvoker<FS, NFS3FileSystemNoAuthHandler<FS>>?
     private var context: ChannelHandlerContext? = nil
 
@@ -53,24 +60,37 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
 
     func sendSuccessfulReply(_ reply: NFS3Reply, call: RPCNFS3Call) {
         if let context = self.context {
-            let reply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
-                                                     status: self.rpcReplySuccess),
-                                     nfsReply: reply)
+            let reply = RPCNFS3Reply(
+                rpcReply: .init(
+                    xid: call.rpcCall.xid,
+                    status: self.rpcReplySuccess
+                ),
+                nfsReply: reply
+            )
             context.writeAndFlush(self.wrapOutboundOut(reply), promise: nil)
         }
     }
 
     func sendError(_ error: Error, call: RPCNFS3Call) {
         if let context = self.context {
-            let nfsErrorReply = RPCNFS3Reply(rpcReply: .init(xid: call.rpcCall.xid,
-                                                             status: self.rpcReplySuccess),
-                                             nfsReply: .mount(.init(result: .fail(.errorSERVERFAULT,
-                                                                                  NFS3Nothing()))))
+            let nfsErrorReply = RPCNFS3Reply(
+                rpcReply: .init(
+                    xid: call.rpcCall.xid,
+                    status: self.rpcReplySuccess
+                ),
+                nfsReply: .mount(
+                    .init(
+                        result: .fail(
+                            .errorSERVERFAULT,
+                            NFS3Nothing()
+                        )
+                    )
+                )
+            )
             context.writeAndFlush(self.wrapOutboundOut(nfsErrorReply), promise: nil)
             context.fireErrorCaught(error)
         }
     }
-
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let call = self.unwrapInboundIn(data)
@@ -82,10 +102,14 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch error as? NFS3Error {
         case .unknownProgramOrProcedure(.call(let call)):
-            let acceptedReply = RPCAcceptedReply(verifier: RPCOpaqueAuth(flavor: .noAuth, opaque: nil),
-                                                 status: .procedureUnavailable)
-            let reply = RPCNFS3Reply(rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
-                                     nfsReply: .null)
+            let acceptedReply = RPCAcceptedReply(
+                verifier: RPCOpaqueAuth(flavor: .noAuth, opaque: nil),
+                status: .procedureUnavailable
+            )
+            let reply = RPCNFS3Reply(
+                rpcReply: RPCReply(xid: call.xid, status: .messageAccepted(acceptedReply)),
+                nfsReply: .null
+            )
             context.writeAndFlush(self.wrapOutboundOut(reply), promise: nil)
             return
         default:

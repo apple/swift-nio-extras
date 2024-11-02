@@ -71,7 +71,15 @@ public enum RPCMessage: Hashable & Sendable {
 
 /// RFC 5531: struct call_body
 public struct RPCCall: Hashable & Sendable {
-    public init(xid: UInt32, rpcVersion: UInt32, program: UInt32, programVersion: UInt32, procedure: UInt32, credentials: RPCCredentials, verifier: RPCOpaqueAuth) {
+    public init(
+        xid: UInt32,
+        rpcVersion: UInt32,
+        program: UInt32,
+        programVersion: UInt32,
+        procedure: UInt32,
+        credentials: RPCCredentials,
+        verifier: RPCOpaqueAuth
+    ) {
         self.xid = xid
         self.rpcVersion = rpcVersion
         self.program = program
@@ -82,7 +90,7 @@ public struct RPCCall: Hashable & Sendable {
     }
 
     public var xid: UInt32
-    public var rpcVersion: UInt32 // must be 2
+    public var rpcVersion: UInt32  // must be 2
     public var program: UInt32
     public var programVersion: UInt32
     public var procedure: UInt32
@@ -93,7 +101,7 @@ public struct RPCCall: Hashable & Sendable {
 extension RPCCall {
     public var programAndProcedure: RPCNFS3ProcedureID {
         get {
-            return RPCNFS3ProcedureID(program: self.program, procedure: self.procedure)
+            RPCNFS3ProcedureID(program: self.program, procedure: self.procedure)
         }
         set {
             self.program = newValue.program
@@ -147,21 +155,21 @@ public struct RPCAcceptedReply: Hashable & Sendable {
 }
 
 public enum RPCAuthStatus: UInt32, Hashable & Sendable {
-   case ok = 0  /* success                        */
-   case badCredentials = 1  /* bad credential (seal broken)   */
-   case rejectedCredentials = 2  /* client must begin new session  */
-   case badVerifier = 3  /* bad verifier (seal broken)     */
-   case rejectedVerifier = 4  /* verifier expired or replayed   */
-   case rejectedForSecurityReasons = 5  /* rejected for security reasons  */
-   case invalidResponseVerifier = 6  /* bogus response verifier        */
-   case failedForUnknownReason = 7  /* reason unknown                 */
-   case kerberosError = 8  /* kerberos generic error */
-   case credentialExpired = 9 /* time of credential expired */
-   case ticketFileProblem = 10 /* problem with ticket file */
-   case cannotDecodeAuthenticator = 11 /* can't decode authenticator */
-   case illegalNetworkAddressInTicket = 12 /* wrong net address in ticket */
-   case noCredentialsForUser = 13 /* no credentials for user */
-   case problemWithGSSContext = 14 /* problem with context */
+    case ok = 0  // success
+    case badCredentials = 1  // bad credential (seal broken)
+    case rejectedCredentials = 2  // client must begin new session
+    case badVerifier = 3  // bad verifier (seal broken)
+    case rejectedVerifier = 4  // verifier expired or replayed
+    case rejectedForSecurityReasons = 5  // rejected for security reasons
+    case invalidResponseVerifier = 6  // bogus response verifier
+    case failedForUnknownReason = 7  // reason unknown
+    case kerberosError = 8  // kerberos generic error
+    case credentialExpired = 9  // time of credential expired
+    case ticketFileProblem = 10  // problem with ticket file
+    case cannotDecodeAuthenticator = 11  // can't decode authenticator
+    case illegalNetworkAddressInTicket = 12  // wrong net address in ticket
+    case noCredentialsForUser = 13  // no credentials for user
+    case problemWithGSSContext = 14  // problem with context
 }
 
 public enum RPCRejectedReply: Hashable & Sendable {

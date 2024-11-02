@@ -37,14 +37,17 @@ final class RollingPCAPPerformanceTest: Benchmark {
             _ = try! channel.finish()
         }
 
-        let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: 25,
-                                               maximumBytes: 1_000_000)
-        let pcapHandler = NIOWritePCAPHandler(mode: .client,
-                                              fileSink: pcapRingBuffer.addFragment)
+        let pcapRingBuffer = NIOPCAPRingBuffer(
+            maximumFragments: 25,
+            maximumBytes: 1_000_000
+        )
+        let pcapHandler = NIOWritePCAPHandler(
+            mode: .client,
+            fileSink: pcapRingBuffer.addFragment
+        )
         try channel.pipeline.addHandler(pcapHandler, position: .first).wait()
 
-
-        for _ in 0 ..< self.numberOfRepeats {
+        for _ in 0..<self.numberOfRepeats {
             channel.writeAndFlush(self.byteBuffer, promise: nil)
             _ = try channel.readOutbound(as: ByteBuffer.self)
         }

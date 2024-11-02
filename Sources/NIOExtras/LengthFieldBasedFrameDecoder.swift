@@ -25,12 +25,14 @@ extension ByteBuffer {
         switch endianness {
         case .big:
             guard let uint16 = self.getInteger(at: index, endianness: .big, as: UInt16.self),
-                  let uint8 = self.getInteger(at: index + 2, endianness: .big, as: UInt8.self) else { return nil }
+                let uint8 = self.getInteger(at: index + 2, endianness: .big, as: UInt8.self)
+            else { return nil }
             mostSignificant = uint16
             leastSignificant = uint8
         case .little:
             guard let uint8 = self.getInteger(at: index, endianness: .little, as: UInt8.self),
-                  let uint16 = self.getInteger(at: index + 1, endianness: .little, as: UInt16.self) else { return nil }
+                let uint16 = self.getInteger(at: index + 1, endianness: .little, as: UInt16.self)
+            else { return nil }
             mostSignificant = uint16
             leastSignificant = uint8
         }
@@ -58,7 +60,7 @@ public enum NIOLengthFieldBasedFrameDecoderError: Error {
 /// contained within the buffer.
 ///
 /// For example, if you received the following four fragmented packets:
-/// 
+///
 ///     +---+----+------+----+
 ///     | A | BC | DEFG | HI |
 ///     +---+----+------+----+
@@ -87,7 +89,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
         case four
         /// Eight bytes
         case eight
-        
+
         fileprivate var bitLength: NIOLengthFieldBitLength {
             switch self {
             case .one: return .oneByte
@@ -116,10 +118,10 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     @available(*, deprecated, message: "No longer used")
     public var cumulationBuffer: ByteBuffer?
     private var readState: DecoderReadState = .waitingForHeader
-    
+
     private let lengthFieldLength: NIOLengthFieldBitLength
     private let lengthFieldEndianness: Endianness
-    
+
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
     ///
     /// - parameters:
@@ -128,7 +130,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public convenience init(lengthFieldLength: ByteLength, lengthFieldEndianness: Endianness = .big) {
         self.init(lengthFieldBitLength: lengthFieldLength.bitLength, lengthFieldEndianness: lengthFieldEndianness)
     }
-    
+
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
     ///
     /// - parameters:
@@ -145,19 +147,19 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///   - buffer: data to decode.
     /// - Returns: `DecodingState` describing what's needed next.
     public func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-        
+
         if case .waitingForHeader = self.readState {
             try self.readNextLengthFieldToState(buffer: &buffer)
         }
-        
+
         guard case .waitingForFrame(let frameLength) = self.readState else {
             return .needMoreData
         }
-        
+
         guard let frameBuffer = try self.readNextFrame(buffer: &buffer, frameLength: frameLength) else {
             return .needMoreData
         }
-        
+
         context.fireChannelRead(self.wrapInboundOut(frameBuffer))
 
         return .continue
@@ -170,7 +172,11 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///   - buffer: The data to decode
     ///   - seenEOF: If End of File has been seen.
     /// - Returns: .needMoreData always as all data has been consumed.
-    public func decodeLast(context: ChannelHandlerContext, buffer: inout ByteBuffer, seenEOF: Bool) throws -> DecodingState {
+    public func decodeLast(
+        context: ChannelHandlerContext,
+        buffer: inout ByteBuffer,
+        seenEOF: Bool
+    ) throws -> DecodingState {
         // we'll just try to decode as much as we can as usually
         while case .continue = try self.decode(context: context, buffer: &buffer) {}
         if buffer.readableBytes > 0 {
@@ -199,13 +205,13 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     ///    - buffer: The buffer containing the frame data.
     ///    - frameLength: The length of the frame data to be read.
     private func readNextFrame(buffer: inout ByteBuffer, frameLength: Int) throws -> ByteBuffer? {
-        
+
         guard let contentsFieldSlice = buffer.readSlice(length: frameLength) else {
             return nil
         }
 
         self.readState = .waitingForHeader
-        
+
         return contentsFieldSlice
     }
 
@@ -238,9 +244,10 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
                 return size
             }
         }
-        
+
         if let frameLength = frameLength,
-           frameLength > LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize {
+            frameLength > LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize
+        {
             throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
         }
         return frameLength

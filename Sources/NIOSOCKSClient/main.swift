@@ -18,11 +18,11 @@ import NIOSOCKS
 
 class EchoHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
-    
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         context.writeAndFlush(data, promise: nil)
     }
-    
+
 }
 
 let targetIPAddress = "127.0.0.1"
@@ -34,9 +34,9 @@ let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
         channel.pipeline.addHandlers([
             SOCKSClientHandler(targetAddress: targetAddress),
-            EchoHandler()
+            EchoHandler(),
         ])
-}
+    }
 let channel = try bootstrap.connect(host: "127.0.0.1", port: 1080).wait()
 
 while let string = readLine(strippingNewline: true) {

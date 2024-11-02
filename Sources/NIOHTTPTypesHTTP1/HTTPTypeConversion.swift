@@ -15,14 +15,27 @@
 import HTTPTypes
 import NIOHTTP1
 
-private enum HTTP1TypeConversionError: Error {
-    case invalidMethod
-    case missingPath
-    case invalidStatusCode
+public struct HTTP1TypeConversionError: Error, Equatable {
+    private enum Internal {
+        case invalidMethod
+        case missingPath
+        case invalidStatusCode
+    }
+    private let value: Internal
+    private init(_ value: Internal) {
+        self.value = value
+    }
+
+    /// Failed to create HTTPRequest.Method from HTTPMethod
+    public static var invalidMethod: Self { .init(.invalidMethod) }
+    /// Failed to extract a path from HTTPRequest
+    public static var missingPath: Self { .init(.missingPath) }
+    /// HTTPResponseHead had an invalid status code
+    public static var invalidStatusCode: Self { .init(.invalidStatusCode) }
 }
 
 extension HTTPMethod {
-    init(_ newMethod: HTTPRequest.Method) {
+    public init(_ newMethod: HTTPRequest.Method) {
         switch newMethod {
         case .get: self = .GET
         case .head: self = .HEAD
@@ -68,7 +81,7 @@ extension HTTPMethod {
 }
 
 extension HTTPRequest.Method {
-    init(_ oldMethod: HTTPMethod) throws {
+    public init(_ oldMethod: HTTPMethod) throws {
         switch oldMethod {
         case .GET: self = .get
         case .PUT: self = .put
@@ -104,7 +117,7 @@ extension HTTPRequest.Method {
         case .MKACTIVITY: self = .init("MKACTIVITY")!
         case .UNSUBSCRIBE: self = .init("UNSUBSCRIBE")!
         case .SOURCE: self = .init("SOURCE")!
-        case .RAW(value: let value):
+        case .RAW(let value):
             guard let method = HTTPRequest.Method(value) else {
                 throw HTTP1TypeConversionError.invalidMethod
             }
@@ -114,16 +127,16 @@ extension HTTPRequest.Method {
 }
 
 extension HTTPHeaders {
-    init(_ newFields: HTTPFields) {
+    public init(_ newFields: HTTPFields) {
         let fields = newFields.map { ($0.name.rawName, $0.value) }
         self.init(fields)
     }
 }
 
 extension HTTPFields {
-    init(_ oldHeaders: HTTPHeaders, splitCookie: Bool) {
+    public init(_ oldHeaders: HTTPHeaders, splitCookie: Bool) {
         self.init()
-        self.reserveCapacity(count)
+        self.reserveCapacity(oldHeaders.count)
         var firstHost = true
         for field in oldHeaders {
             if firstHost && field.name.lowercased() == "host" {
@@ -132,9 +145,11 @@ extension HTTPFields {
             }
             if let name = HTTPField.Name(field.name) {
                 if splitCookie && name == .cookie, #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
-                    self.append(contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
-                        HTTPField(name: name, value: String($0))
-                    })
+                    self.append(
+                        contentsOf: field.value.split(separator: "; ", omittingEmptySubsequences: false).map {
+                            HTTPField(name: name, value: String($0))
+                        }
+                    )
                 } else {
                     self.append(HTTPField(name: name, value: field.value))
                 }
@@ -144,7 +159,7 @@ extension HTTPFields {
 }
 
 extension HTTPRequestHead {
-    init(_ newRequest: HTTPRequest) throws {
+    public init(_ newRequest: HTTPRequest) throws {
         guard let path = newRequest.method == .connect ? newRequest.authority : newRequest.path else {
             throw HTTP1TypeConversionError.missingPath
         }
@@ -174,7 +189,7 @@ extension HTTPRequestHead {
 }
 
 extension HTTPRequest {
-    init(_ oldRequest: HTTPRequestHead, secure: Bool, splitCookie: Bool) throws {
+    public init(_ oldRequest: HTTPRequestHead, secure: Bool, splitCookie: Bool) throws {
         let method = try Method(oldRequest.method)
         let scheme = secure ? "https" : "http"
         let authority = oldRequest.headers["Host"].first
@@ -189,7 +204,7 @@ extension HTTPRequest {
 }
 
 extension HTTPResponseHead {
-    init(_ newResponse: HTTPResponse) {
+    public init(_ newResponse: HTTPResponse) {
         self.init(
             version: .http1_1,
             status: HTTPResponseStatus(
@@ -202,11 +217,14 @@ extension HTTPResponseHead {
 }
 
 extension HTTPResponse {
-    init(_ oldResponse: HTTPResponseHead) throws {
+    public init(_ oldResponse: HTTPResponseHead) throws {
         guard oldResponse.status.code <= 999 else {
             throw HTTP1TypeConversionError.invalidStatusCode
         }
-        let status = HTTPResponse.Status(code: Int(oldResponse.status.code), reasonPhrase: oldResponse.status.reasonPhrase)
+        let status = HTTPResponse.Status(
+            code: Int(oldResponse.status.code),
+            reasonPhrase: oldResponse.status.reasonPhrase
+        )
         self.init(status: status, headerFields: HTTPFields(oldResponse.headers, splitCookie: false))
     }
 }

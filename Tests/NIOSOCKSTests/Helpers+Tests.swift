@@ -13,35 +13,40 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-@testable import NIOSOCKS
 import XCTest
 
+@testable import NIOSOCKS
+
 public class HelperTests: XCTestCase {
-    
+
     // Returning nil should unwind the changes
     func testUnwindingReturnNil() {
         var buffer = ByteBuffer(bytes: [1, 2, 3, 4, 5])
-        XCTAssertNil(buffer.parseUnwindingIfNeeded { buffer -> Int? in
-            XCTAssertEqual(buffer.readBytes(length: 5), [1, 2, 3, 4, 5])
-            return nil
-        })
+        XCTAssertNil(
+            buffer.parseUnwindingIfNeeded { buffer -> Int? in
+                XCTAssertEqual(buffer.readBytes(length: 5), [1, 2, 3, 4, 5])
+                return nil
+            }
+        )
         XCTAssertEqual(buffer, ByteBuffer(bytes: [1, 2, 3, 4, 5]))
     }
-    
+
     func testUnwindingThrowError() {
-        
+
         struct TestError: Error, Hashable {}
-        
+
         var buffer = ByteBuffer(bytes: [1, 2, 3, 4, 5])
-        XCTAssertThrowsError(try buffer.parseUnwindingIfNeeded { buffer -> Int? in
-            XCTAssertEqual(buffer.readBytes(length: 5), [1, 2, 3, 4, 5])
-            throw TestError()
-        }) { e in
+        XCTAssertThrowsError(
+            try buffer.parseUnwindingIfNeeded { buffer -> Int? in
+                XCTAssertEqual(buffer.readBytes(length: 5), [1, 2, 3, 4, 5])
+                throw TestError()
+            }
+        ) { e in
             XCTAssertEqual(e as? TestError, TestError())
         }
         XCTAssertEqual(buffer, ByteBuffer(bytes: [1, 2, 3, 4, 5]))
     }
-    
+
     // If we don't return nil and don't throw an error then all should be good
     func testUnwindingNotRequired() {
         var buffer = ByteBuffer(bytes: [1, 2, 3, 4, 5])
@@ -50,5 +55,5 @@ public class HelperTests: XCTestCase {
         }
         XCTAssertEqual(buffer, ByteBuffer(bytes: []))
     }
-    
+
 }

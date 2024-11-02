@@ -15,7 +15,7 @@
 import NIOCore
 
 extension ByteBuffer {
-    
+
     mutating func parseUnwindingIfNeeded<T>(_ closure: (inout ByteBuffer) throws -> T?) rethrows -> T? {
         let save = self
         do {
@@ -29,9 +29,9 @@ extension ByteBuffer {
             throw error
         }
     }
-    
+
     mutating func readAndValidateProtocolVersion() throws -> UInt8? {
-        return try self.parseUnwindingIfNeeded { buffer -> UInt8? in
+        try self.parseUnwindingIfNeeded { buffer -> UInt8? in
             guard let version = buffer.readInteger(as: UInt8.self) else {
                 return nil
             }
@@ -41,9 +41,9 @@ extension ByteBuffer {
             return version
         }
     }
-    
+
     mutating func readAndValidateReserved() throws -> UInt8? {
-        return try self.parseUnwindingIfNeeded { buffer -> UInt8? in
+        try self.parseUnwindingIfNeeded { buffer -> UInt8? in
             guard let reserved = buffer.readInteger(as: UInt8.self) else {
                 return nil
             }
@@ -53,5 +53,5 @@ extension ByteBuffer {
             return reserved
         }
     }
-    
+
 }

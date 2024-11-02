@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-import NIOPosix
 import NIOHTTP1
+import NIOPosix
 
 // MARK: Handlers
 final class SimpleHTTPServer: ChannelInboundHandler {
@@ -96,7 +96,7 @@ final class RepeatedRequests: ChannelInboundHandler {
         return reqs
     }
 
-    var completedFuture: EventLoopFuture<Int> { return self.isDonePromise.futureResult }
+    var completedFuture: EventLoopFuture<Int> { self.isDonePromise.futureResult }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         context.channel.close(promise: nil)
@@ -131,10 +131,12 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
     var group: MultiThreadedEventLoopGroup!
     var serverChannel: Channel!
 
-    init(numberOfRepeats: Int,
-         numberOfClients: Int,
-         requestsPerClient: Int,
-         extraInitialiser: @escaping (Channel) -> EventLoopFuture<Void>) {
+    init(
+        numberOfRepeats: Int,
+        numberOfClients: Int,
+        requestsPerClient: Int,
+        extraInitialiser: @escaping (Channel) -> EventLoopFuture<Void>
+    ) {
         self.numberOfRepeats = numberOfRepeats
         self.numberOfClients = numberOfClients
         self.requestsPerClient = requestsPerClient
@@ -169,13 +171,15 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
             requestHandlers.reserveCapacity(self.numberOfClients)
             var clientChannels: [Channel] = []
             clientChannels.reserveCapacity(self.numberOfClients)
-            for _ in 0 ..< self.numberOfClients {
+            for _ in 0..<self.numberOfClients {
                 let clientChannel = try! ClientBootstrap(group: self.group)
                     .channelInitializer { channel in
                         channel.pipeline.addHTTPClientHandlers().flatMap {
-                            let repeatedRequestsHandler = RepeatedRequests(numberOfRequests: self.requestsPerClient,
-                                                                           eventLoop: channel.eventLoop,
-                                                                           head: self.head)
+                            let repeatedRequestsHandler = RepeatedRequests(
+                                numberOfRequests: self.requestsPerClient,
+                                eventLoop: channel.eventLoop,
+                                head: self.head
+                            )
                             requestHandlers.append(repeatedRequestsHandler)
                             return channel.pipeline.addHandler(repeatedRequestsHandler)
                         }.flatMap {
@@ -196,7 +200,12 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
             try! allWrites.wait()
 
             let streamCompletedFutures = requestHandlers.map { rh in rh.completedFuture }
-            let requestsServed = EventLoopFuture<Int>.reduce(0, streamCompletedFutures, on: streamCompletedFutures.first!.eventLoop, +)
+            let requestsServed = EventLoopFuture<Int>.reduce(
+                0,
+                streamCompletedFutures,
+                on: streamCompletedFutures.first!.eventLoop,
+                +
+            )
             reqs.append(try! requestsServed.wait())
         }
         return reqs.reduce(0, +) / self.numberOfRepeats

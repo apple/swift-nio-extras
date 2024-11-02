@@ -18,13 +18,13 @@ import NIOCore
 /// authentication method it would like to use out of those
 /// offered.
 public struct SelectedAuthenticationMethod: Hashable, Sendable {
-    
+
     /// The SOCKS protocol version - we currently only support v5.
     public let version: UInt8 = 5
-    
+
     /// The server's selected authentication method.
     public var method: AuthenticationMethod
-    
+
     /// Creates a new `MethodSelection` wrapping an ``AuthenticationMethod``.
     /// - parameter method: The selected `AuthenticationMethod`.
     public init(method: AuthenticationMethod) {
@@ -33,9 +33,9 @@ public struct SelectedAuthenticationMethod: Hashable, Sendable {
 }
 
 extension ByteBuffer {
-    
+
     mutating func readMethodSelection() throws -> SelectedAuthenticationMethod? {
-        return try self.parseUnwindingIfNeeded { buffer in
+        try self.parseUnwindingIfNeeded { buffer in
             guard
                 try buffer.readAndValidateProtocolVersion() != nil,
                 let method = buffer.readInteger(as: UInt8.self)
@@ -45,9 +45,9 @@ extension ByteBuffer {
             return .init(method: .init(value: method))
         }
     }
-    
+
     @discardableResult mutating func writeMethodSelection(_ method: SelectedAuthenticationMethod) -> Int {
-        return self.writeInteger(method.version) + self.writeInteger(method.method.value)
+        self.writeInteger(method.version) + self.writeInteger(method.method.value)
     }
-    
+
 }

@@ -106,7 +106,10 @@ private final class ChannelCollector {
             if openChannels.isEmpty {
                 self.shutdownCompleted()
             } else {
-                self.lifecycleState = .shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise)
+                self.lifecycleState = .shuttingDown(
+                    openChannels: openChannels,
+                    fullyShutdownPromise: fullyShutdownPromise
+                )
             }
 
         case .shutdownCompleted:

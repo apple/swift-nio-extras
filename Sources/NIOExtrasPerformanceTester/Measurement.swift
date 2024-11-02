@@ -23,7 +23,7 @@ public func measure(_ fn: () throws -> Int) rethrows -> [Double] {
         return Double(end - start) / Double(TimeAmount.seconds(1).nanoseconds)
     }
 
-    _ = try measureOne(fn) /* pre-heat and throw away */
+    _ = try measureOne(fn)  // pre-heat and throw away
     var measurements = Array(repeating: 0.0, count: 10)
     for i in 0..<10 {
         measurements[i] = try measureOne(fn)
@@ -32,7 +32,7 @@ public func measure(_ fn: () throws -> Int) rethrows -> [Double] {
     return measurements
 }
 
-public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void {
+public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows {
     print("measuring\(warning): \(desc): ", terminator: "")
     let measurements = try measure(fn)
     print(measurements.reduce(into: "") { $0.append("\($1), ") })

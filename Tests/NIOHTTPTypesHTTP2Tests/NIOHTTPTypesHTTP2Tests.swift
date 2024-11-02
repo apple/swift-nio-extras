@@ -63,14 +63,20 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         super.tearDown()
     }
 
-    static let request = HTTPRequest(method: .get, scheme: "https", authority: "www.example.com", path: "/", headerFields: [
-        .accept: "*/*",
-        .acceptEncoding: "gzip",
-        .acceptEncoding: "br",
-        .trailer: "X-Foo",
-        .cookie: "a=b",
-        .cookie: "c=d",
-    ])
+    static let request = HTTPRequest(
+        method: .get,
+        scheme: "https",
+        authority: "www.example.com",
+        path: "/",
+        headerFields: [
+            .accept: "*/*",
+            .acceptEncoding: "gzip",
+            .acceptEncoding: "br",
+            .trailer: "X-Foo",
+            .cookie: "a=b",
+            .cookie: "c=d",
+        ]
+    )
 
     static let oldRequest: HPACKHeaders = [
         ":method": "GET",
@@ -85,10 +91,13 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         "cookie": "c=d",
     ]
 
-    static let response = HTTPResponse(status: .ok, headerFields: [
-        .server: "HTTPServer/1.0",
-        .trailer: "X-Foo",
-    ])
+    static let response = HTTPResponse(
+        status: .ok,
+        headerFields: [
+            .server: "HTTPServer/1.0",
+            .trailer: "X-Foo",
+        ]
+    )
 
     static let oldResponse: HPACKHeaders = [
         ":status": "200",

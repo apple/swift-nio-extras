@@ -14,10 +14,11 @@
 
 import NIOCore
 import NIOEmbedded
-@testable import NIOExtras
 import NIOPosix
 import NIOTestUtils
 import XCTest
+
+@testable import NIOExtras
 
 private final class WaitForQuiesceUserEvent: ChannelInboundHandler {
     typealias InboundIn = Never
@@ -87,7 +88,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertTrue(childChannels.allSatisfy { $0.isActive })
 
         // now close all the child channels
-        childChannels.forEach { $0.close(promise: nil) }
+        for childChannel in childChannels { childChannel.close(promise: nil) }
         el.run()
 
         XCTAssertTrue(childChannels.allSatisfy { !$0.isActive })

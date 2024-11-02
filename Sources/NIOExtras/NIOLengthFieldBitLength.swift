@@ -46,7 +46,7 @@ public struct NIOLengthFieldBitLength: Sendable {
     public static let thirtyTwoBits = NIOLengthFieldBitLength(bitLength: .bits32)
     /// Sixty-four bits - the same as ``eightBytes``
     public static let sixtyFourBits = NIOLengthFieldBitLength(bitLength: .bits64)
-    
+
     internal var length: Int {
         switch bitLength {
         case .bits8:
@@ -61,7 +61,7 @@ public struct NIOLengthFieldBitLength: Sendable {
             return 8
         }
     }
-    
+
     internal var max: UInt {
         switch bitLength {
         case .bits8:

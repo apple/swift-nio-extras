@@ -13,9 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCore
-import NIOPosix
 import NIOExtras
 import NIOHTTP1
+import NIOPosix
 
 /// Trigger recording pcap data when a "precondition failed" is seen.
 class TriggerPCAPHandler: ChannelInboundHandler {
@@ -23,9 +23,9 @@ class TriggerPCAPHandler: ChannelInboundHandler {
     typealias OutboundOut = HTTPClientRequestPart
 
     private let pcapRingBuffer: NIOPCAPRingBuffer
-    private let sink: (ByteBuffer) -> ()
+    private let sink: (ByteBuffer) -> Void
 
-    init(pcapRingBuffer: NIOPCAPRingBuffer, sink: @escaping (ByteBuffer) -> ()) {
+    init(pcapRingBuffer: NIOPCAPRingBuffer, sink: @escaping (ByteBuffer) -> Void) {
         self.pcapRingBuffer = pcapRingBuffer
         self.sink = sink
     }
@@ -55,43 +55,56 @@ class TriggerPCAPHandler: ChannelInboundHandler {
 class SendSimpleSequenceRequestHandler: ChannelInboundHandler {
     typealias InboundIn = HTTPClientResponsePart
     typealias OutboundOut = HTTPClientRequestPart
-    
+
     private let allDonePromise: EventLoopPromise<Void>
 
     private var nextRequestNumber = 0
-    private var requestsToMake: [HTTPResponseStatus] = [ .ok, .created, .accepted, .nonAuthoritativeInformation,
-                                                         .noContent, .resetContent, .preconditionFailed,
-                                                         .partialContent, .multiStatus, .alreadyReported ]
+    private var requestsToMake: [HTTPResponseStatus] = [
+        .ok, .created, .accepted, .nonAuthoritativeInformation,
+        .noContent, .resetContent, .preconditionFailed,
+        .partialContent, .multiStatus, .alreadyReported,
+    ]
 
     init(allDonePromise: EventLoopPromise<Void>) {
         self.allDonePromise = allDonePromise
     }
-    
+
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if case .end = self.unwrapInboundIn(data) {
             self.makeNextRequestOrComplete(context: context)
         }
     }
-    
+
     func errorCaught(context: ChannelHandlerContext, error: Error) {
         self.allDonePromise.fail(error)
         context.close(promise: nil)
     }
-    
+
     func channelActive(context: ChannelHandlerContext) {
         self.makeNextRequestOrComplete(context: context)
     }
 
     private func makeNextRequestOrComplete(context: ChannelHandlerContext) {
         if self.nextRequestNumber < self.requestsToMake.count {
-            let headers = HTTPHeaders([("host", "httpbin.org"),
-                                       ("accept", "application/json")])
+            let headers = HTTPHeaders([
+                ("host", "httpbin.org"),
+                ("accept", "application/json"),
+            ])
             let currentStatus = self.requestsToMake[self.nextRequestNumber].code
             self.nextRequestNumber += 1
-            context.write(self.wrapOutboundOut(.head(.init(version: .init(major: 1, minor: 1),
-                                                           method: .GET,
-                                                           uri: "/status/\(currentStatus)",
-                                                           headers: headers))), promise: nil)
+            context.write(
+                self.wrapOutboundOut(
+                    .head(
+                        .init(
+                            version: .init(major: 1, minor: 1),
+                            method: .GET,
+                            uri: "/status/\(currentStatus)",
+                            headers: headers
+                        )
+                    )
+                ),
+                promise: nil
+            )
             context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
         } else {
             self.allDonePromise.succeed(())
@@ -117,15 +130,22 @@ let allDonePromise = group.next().makePromise(of: Void.self)
 let maximumFragments = 4
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
-        let pcapRingBuffer = NIOPCAPRingBuffer(maximumFragments: maximumFragments,
-                                               maximumBytes: 1_000_000)
-        return channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client,
-                                                               fileSink: pcapRingBuffer.addFragment)).flatMap {
-            channel.pipeline.addHTTPClientHandlers()
-        }.flatMap {
-            channel.pipeline.addHandler(TriggerPCAPHandler(pcapRingBuffer: pcapRingBuffer, sink: fileSink.write))
-        }.flatMap {
-            channel.pipeline.addHandler(SendSimpleSequenceRequestHandler(allDonePromise: allDonePromise))
+        channel.eventLoop.makeCompletedFuture {
+            let pcapRingBuffer = NIOPCAPRingBuffer(
+                maximumFragments: maximumFragments,
+                maximumBytes: 1_000_000
+            )
+            try channel.pipeline.syncOperations.addHandler(
+                NIOWritePCAPHandler(
+                    mode: .client,
+                    fileSink: pcapRingBuffer.addFragment
+                )
+            )
+            try channel.pipeline.syncOperations.addHTTPClientHandlers()
+            try channel.pipeline.syncOperations.addHandlers([
+                TriggerPCAPHandler(pcapRingBuffer: pcapRingBuffer, sink: fileSink.write),
+                SendSimpleSequenceRequestHandler(allDonePromise: allDonePromise),
+            ])
         }
     }
     .connect(host: "httpbin.org", port: 80)

@@ -11,13 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import NIOCore
+
 #if canImport(Darwin)
 import Darwin
+#elseif canImport(Musl)
+import Musl
 #else
 import Glibc
 #endif
-
-import NIOCore
 
 /// `ChannelInboundHandler` that prints all inbound events that pass through the pipeline by default,
 /// overridable by providing your own closure for custom logging. See ``DebugOutboundEventsHandler`` for outbound events.
@@ -48,12 +50,12 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
         /// An error was caught.
         case errorCaught(Error)
     }
-    
-    var logger: (Event, ChannelHandlerContext) -> ()
+
+    var logger: (Event, ChannelHandlerContext) -> Void
 
     /// Initialiser.
     /// - Parameter logger: Method for logging events which occur.
-    public init(logger: @escaping (Event, ChannelHandlerContext) -> () = DebugInboundEventsHandler.defaultPrint) {
+    public init(logger: @escaping (Event, ChannelHandlerContext) -> Void = DebugInboundEventsHandler.defaultPrint) {
         self.logger = logger
     }
 
