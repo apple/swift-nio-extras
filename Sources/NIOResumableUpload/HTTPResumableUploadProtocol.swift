@@ -234,6 +234,15 @@ enum HTTPResumableUploadProtocol {
         finalResponse.headerFields.uploadOffset = offset
         return finalResponse
     }
+
+    static func processOptionsResponse(_ response: HTTPResponse) -> HTTPResponse {
+        var response = response
+        if response.status == .notImplemented {
+            response = HTTPResponse(status: .ok)
+        }
+        response.headerFields.uploadLimit = .init(minSize: 0)
+        return response
+    }
 }
 
 extension HTTPField.Name {

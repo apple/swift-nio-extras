@@ -38,6 +38,8 @@ final class HTTPResumableUpload {
     private var requestIsCreation: Bool = false
     /// The end of the current request is the end of the upload.
     private var requestIsComplete: Bool = true
+    /// Whether the request is OPTIONS
+    private var requestIsOptions: Bool = false
     /// The interop version of the current request
     private var interopVersion: HTTPResumableUploadProtocol.InteropVersion = .latest
     /// Whether you have received the entire upload.
@@ -307,8 +309,9 @@ extension HTTPResumableUpload {
                     self.respondAndDetach(response, handler: handler)
                 }
             case .options:
-                let response = HTTPResumableUploadProtocol.optionsResponse(version: version)
-                self.respondAndDetach(response, handler: handler)
+                self.requestIsOptions = true
+                let channel = self.createChannel(handler: handler, parent: channel)
+                channel.receive(.head(request))
             }
         } catch {
             let response = HTTPResumableUploadProtocol.badRequestResponse()
@@ -425,7 +428,17 @@ extension HTTPResumableUpload {
                 uploadHandler.write(part, promise: promise)
             }
         } else {
-            uploadHandler.write(part, promise: promise)
+            if self.requestIsOptions {
+                switch part {
+                case .head(let head):
+                    let response = HTTPResumableUploadProtocol.processOptionsResponse(head)
+                    uploadHandler.write(.head(response), promise: promise)
+                case .body, .end:
+                    uploadHandler.write(part, promise: promise)
+                }
+            } else {
+                uploadHandler.write(part, promise: promise)
+            }
         }
     }
 

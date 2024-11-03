@@ -20,20 +20,33 @@ import NIOResumableUpload
 import XCTest
 
 /// A handler that keeps track of all reads made on a channel.
-private final class InboundRecorder<Frame>: ChannelInboundHandler {
-    typealias InboundIn = Frame
+private final class InboundRecorder<FrameIn, FrameOut>: ChannelDuplexHandler {
+    typealias InboundIn = FrameIn
+    typealias OutboundIn = Never
+    typealias OutboundOut = FrameOut
 
-    var receivedFrames: [Frame] = []
+    private var context: ChannelHandlerContext? = nil
+
+    var receivedFrames: [FrameIn] = []
+
+    func channelActive(context: ChannelHandlerContext) {
+        self.context = context
+    }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         self.receivedFrames.append(self.unwrapInboundIn(data))
+    }
+
+    func write(_ frame: FrameOut) {
+        self.write(context: self.context!, data: self.wrapOutboundOut(frame), promise: nil)
+        self.flush(context: self.context!)
     }
 }
 
 final class NIOResumableUploadTests: XCTestCase {
     func testNonUpload() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -50,7 +63,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testNotResumableUpload() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -69,7 +82,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testOptions() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, HTTPResponsePart>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -78,6 +91,13 @@ final class NIOResumableUploadTests: XCTestCase {
         request.headerFields[.uploadDraftInteropVersion] = "6"
         try channel.writeInbound(HTTPRequestPart.head(request))
         try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 2)
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(request))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.end(nil))
+
+        recorder.write(HTTPResponsePart.head(HTTPResponse(status: .notImplemented)))
+        recorder.write(HTTPResponsePart.end(nil))
 
         let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
         guard case .head(let response) = responsePart else {
@@ -95,7 +115,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadUninterruptedV3() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -127,7 +147,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadUninterruptedV5() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -159,7 +179,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadUninterruptedV6() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -192,7 +212,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadInterruptedV3() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -254,7 +274,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadInterruptedV5() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -318,7 +338,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadInterruptedV6() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -383,7 +403,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadChunkedV3() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -453,7 +473,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadChunkedV5() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
@@ -525,7 +545,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
     func testResumableUploadChunkedV6() throws {
         let channel = EmbeddedChannel()
-        let recorder = InboundRecorder<HTTPRequestPart>()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
         try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
