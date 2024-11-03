@@ -142,7 +142,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 3)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "Hello")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.end(nil))
@@ -175,7 +175,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 3)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "Hello")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.end(nil))
@@ -307,7 +307,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 4)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
@@ -372,7 +372,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 4)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
@@ -514,7 +514,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 4)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
@@ -587,7 +587,7 @@ final class NIOResumableUploadTests: XCTestCase {
 
         XCTAssertEqual(recorder.receivedFrames.count, 4)
         var expectedRequest = request
-        expectedRequest.headerFields[.uploadIncomplete] = nil
+        expectedRequest.headerFields[.uploadComplete] = nil
         XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
         XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
         XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))

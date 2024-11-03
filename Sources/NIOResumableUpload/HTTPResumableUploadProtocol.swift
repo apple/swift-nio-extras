@@ -46,7 +46,11 @@ enum HTTPResumableUploadProtocol {
     static func offsetRetrievingResponse(offset: Int64, complete: Bool, version: InteropVersion) -> HTTPResponse {
         var response = HTTPResponse(status: .noContent)
         response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
-        response.headerFields.uploadIncomplete = !complete
+        if version >= .v5 {
+            response.headerFields.uploadComplete = complete
+        } else {
+            response.headerFields.uploadIncomplete = !complete
+        }
         response.headerFields.uploadOffset = offset
         response.headerFields[.cacheControl] = "no-store"
         return response
@@ -64,7 +68,11 @@ enum HTTPResumableUploadProtocol {
         if forUploadCreation {
             response.headerFields[.location] = context.origin + resumePath
         }
-        response.headerFields.uploadIncomplete = true
+        if version >= .v5 {
+            response.headerFields.uploadComplete = false
+        } else {
+            response.headerFields.uploadIncomplete = true
+        }
         response.headerFields.uploadOffset = offset
         return response
     }
@@ -92,7 +100,11 @@ enum HTTPResumableUploadProtocol {
     static func conflictResponse(offset: Int64, complete: Bool, version: InteropVersion) -> HTTPResponse {
         var response = HTTPResponse(status: .conflict)
         response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
-        response.headerFields.uploadIncomplete = !complete
+        if version >= .v5 {
+            response.headerFields.uploadComplete = complete
+        } else {
+            response.headerFields.uploadIncomplete = !complete
+        }
         response.headerFields.uploadOffset = offset
         response.headerFields[.contentLength] = "0"
         return response
@@ -195,6 +207,7 @@ enum HTTPResumableUploadProtocol {
 
     static func stripRequest(_ request: HTTPRequest) -> HTTPRequest {
         var strippedRequest = request
+        strippedRequest.headerFields[.uploadComplete] = nil
         strippedRequest.headerFields[.uploadIncomplete] = nil
         strippedRequest.headerFields[.uploadOffset] = nil
         return strippedRequest
@@ -213,7 +226,11 @@ enum HTTPResumableUploadProtocol {
         if forUploadCreation {
             finalResponse.headerFields[.location] = context.origin + resumePath
         }
-        finalResponse.headerFields.uploadIncomplete = false
+        if version >= .v5 {
+            finalResponse.headerFields.uploadIncomplete = false
+        } else {
+            finalResponse.headerFields.uploadComplete = true
+        }
         finalResponse.headerFields.uploadOffset = offset
         return finalResponse
     }
