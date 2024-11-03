@@ -20,19 +20,18 @@ import NIOHTTPTypes
 import NIOHTTPTypesHTTP1
 import NIOPosix
 import NIOResumableUpload
-import System
 
-@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
 final class UploadServerHandler: ChannelDuplexHandler {
     typealias InboundIn = HTTPRequestPart
     typealias OutboundIn = Never
     typealias OutboundOut = HTTPResponsePart
 
-    let directory: FilePath
+    let directory: URL
     var fileHandle: FileHandle? = nil
 
-    init(directory: FilePath) {
-        self.directory = directory
+    init(directory: URL) {
+        self.directory = directory.standardized
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -41,11 +40,12 @@ final class UploadServerHandler: ChannelDuplexHandler {
             switch request.method {
             case .post, .put:
                 if let requestPath = request.path {
-                    let path = self.directory.appending(requestPath)
-                    if let url = URL(path) {
-                        FileManager.default.createFile(atPath: path.string, contents: nil)
+                    let url = self.directory.appending(path: requestPath, directoryHint: .notDirectory).standardized
+                    if url.path(percentEncoded: false).hasPrefix(self.directory.path(percentEncoded: false)) {
+                        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                        FileManager.default.createFile(atPath: url.path(percentEncoded: false), contents: nil)
                         self.fileHandle = try? FileHandle(forWritingTo: url)
-                        print("Writing to \(url)")
+                        print("Creating \(url)")
                     }
                 }
                 if self.fileHandle == nil {
@@ -85,8 +85,8 @@ guard let outputFile = CommandLine.arguments.dropFirst().first else {
     exit(1)
 }
 
-if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
-    let uploadContext = HTTPResumableUploadContext(origin: "http://localhost:8080")
+if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+    let uploadContext = HTTPResumableUploadContext(origin: "http://localhost:8081")
 
     let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     let server = try ServerBootstrap(group: group).childChannelInitializer { channel in
@@ -96,7 +96,7 @@ if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
             HTTPResumableUploadHandler(
                 context: uploadContext,
                 handlers: [
-                    UploadServerHandler(directory: FilePath(CommandLine.arguments[1]))
+                    UploadServerHandler(directory: URL(filePath: CommandLine.arguments[1], directoryHint: .isDirectory))
                 ]
             ),
         ]).flatMap { _ in
