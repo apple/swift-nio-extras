@@ -67,7 +67,33 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel.finish().isClean)
     }
 
-    func testResumableUploadUninterrupted() throws {
+    func testOptions() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .options, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "6"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.headerFields[.uploadLimit], "min-size=0")
+        guard let responsePart = try channel.readOutbound(as: HTTPResponsePart.self), case .end = responsePart else {
+            XCTFail("Part is not response end")
+            return
+        }
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadUninterruptedV3() throws {
         let channel = EmbeddedChannel()
         let recorder = InboundRecorder<HTTPRequestPart>()
 
@@ -99,7 +125,72 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel.finish().isClean)
     }
 
-    func testResumableUploadInterrupted() throws {
+    func testResumableUploadUninterruptedV5() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "5"
+        request.headerFields[.uploadComplete] = "?1"
+        request.headerFields[.contentLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "Hello")))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 3)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "Hello")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        XCTAssertNotNil(response.headerFields[.location])
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadUninterruptedV6() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "6"
+        request.headerFields[.uploadComplete] = "?1"
+        request.headerFields[.contentLength] = "5"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "Hello")))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 3)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "Hello")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        XCTAssertNotNil(response.headerFields[.location])
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadInterruptedV3() throws {
         let channel = EmbeddedChannel()
         let recorder = InboundRecorder<HTTPRequestPart>()
 
@@ -161,7 +252,136 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel.finish().isClean)
     }
 
-    func testResumableUploadChunked() throws {
+    func testResumableUploadInterruptedV5() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "5"
+        request.headerFields[.uploadComplete] = "?1"
+        request.headerFields[.contentLength] = "5"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "He")))
+        channel.pipeline.fireErrorCaught(POSIXError(.ENOTCONN))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        let location = try XCTUnwrap(response.headerFields[.location])
+        let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
+
+        let channel2 = EmbeddedChannel()
+        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
+        request2.headerFields[.uploadDraftInteropVersion] = "3"
+        try channel2.writeInbound(HTTPRequestPart.head(request2))
+        try channel2.writeInbound(HTTPRequestPart.end(nil))
+        let responsePart2 = try channel2.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response2) = responsePart2 else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response2.status.code, 204)
+        XCTAssertEqual(response2.headerFields[.uploadOffset], "2")
+        XCTAssertEqual(try channel2.readOutbound(as: HTTPResponsePart.self), .end(nil))
+        XCTAssertTrue(try channel2.finish().isClean)
+
+        let channel3 = EmbeddedChannel()
+        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
+        request3.headerFields[.uploadDraftInteropVersion] = "5"
+        request3.headerFields[.uploadComplete] = "?1"
+        request3.headerFields[.uploadOffset] = "2"
+        request3.headerFields[.contentLength] = "3"
+        request3.headerFields[.uploadLength] = "5"
+        try channel3.writeInbound(HTTPRequestPart.head(request3))
+        try channel3.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        try channel3.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 4)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        XCTAssertEqual(recorder.receivedFrames[3], HTTPRequestPart.end(nil))
+        XCTAssertTrue(try channel3.finish().isClean)
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadInterruptedV6() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "6"
+        request.headerFields[.uploadComplete] = "?1"
+        request.headerFields[.contentLength] = "5"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "He")))
+        channel.pipeline.fireErrorCaught(POSIXError(.ENOTCONN))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        let location = try XCTUnwrap(response.headerFields[.location])
+        let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
+
+        let channel2 = EmbeddedChannel()
+        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
+        request2.headerFields[.uploadDraftInteropVersion] = "3"
+        try channel2.writeInbound(HTTPRequestPart.head(request2))
+        try channel2.writeInbound(HTTPRequestPart.end(nil))
+        let responsePart2 = try channel2.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response2) = responsePart2 else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response2.status.code, 204)
+        XCTAssertEqual(response2.headerFields[.uploadOffset], "2")
+        XCTAssertEqual(try channel2.readOutbound(as: HTTPResponsePart.self), .end(nil))
+        XCTAssertTrue(try channel2.finish().isClean)
+
+        let channel3 = EmbeddedChannel()
+        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
+        request3.headerFields[.uploadDraftInteropVersion] = "6"
+        request3.headerFields[.uploadComplete] = "?1"
+        request3.headerFields[.uploadOffset] = "2"
+        request3.headerFields[.contentLength] = "3"
+        request3.headerFields[.uploadLength] = "5"
+        request3.headerFields[.contentType] = "application/partial-upload"
+        try channel3.writeInbound(HTTPRequestPart.head(request3))
+        try channel3.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        try channel3.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 4)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        XCTAssertEqual(recorder.receivedFrames[3], HTTPRequestPart.end(nil))
+        XCTAssertTrue(try channel3.finish().isClean)
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadChunkedV3() throws {
         let channel = EmbeddedChannel()
         let recorder = InboundRecorder<HTTPRequestPart>()
 
@@ -230,10 +450,158 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel3.finish().isClean)
         XCTAssertTrue(try channel.finish().isClean)
     }
+
+    func testResumableUploadChunkedV5() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "5"
+        request.headerFields[.uploadComplete] = "?0"
+        request.headerFields[.contentLength] = "2"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "He")))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        let location = try XCTUnwrap(response.headerFields[.location])
+        let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
+
+        let finalResponsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let finalResponse) = finalResponsePart else {
+            XCTFail("Part is not final response headers")
+            return
+        }
+        XCTAssertEqual(finalResponse.status.code, 201)
+        XCTAssertEqual(try channel.readOutbound(as: HTTPResponsePart.self), .end(nil))
+
+        let channel2 = EmbeddedChannel()
+        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
+        request2.headerFields[.uploadDraftInteropVersion] = "5"
+        try channel2.writeInbound(HTTPRequestPart.head(request2))
+        try channel2.writeInbound(HTTPRequestPart.end(nil))
+        let responsePart2 = try channel2.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response2) = responsePart2 else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response2.status.code, 204)
+        XCTAssertEqual(response2.headerFields[.uploadOffset], "2")
+        XCTAssertEqual(try channel2.readOutbound(as: HTTPResponsePart.self), .end(nil))
+        XCTAssertTrue(try channel2.finish().isClean)
+
+        let channel3 = EmbeddedChannel()
+        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
+        request3.headerFields[.uploadDraftInteropVersion] = "5"
+        request3.headerFields[.uploadComplete] = "?1"
+        request3.headerFields[.uploadOffset] = "2"
+        request3.headerFields[.contentLength] = "3"
+        request3.headerFields[.uploadLength] = "5"
+        try channel3.writeInbound(HTTPRequestPart.head(request3))
+        try channel3.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        try channel3.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 4)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        XCTAssertEqual(recorder.receivedFrames[3], HTTPRequestPart.end(nil))
+        XCTAssertTrue(try channel3.finish().isClean)
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadChunkedV6() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "6"
+        request.headerFields[.uploadComplete] = "?0"
+        request.headerFields[.contentLength] = "2"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "He")))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status.code, 104)
+        let location = try XCTUnwrap(response.headerFields[.location])
+        let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
+
+        let finalResponsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let finalResponse) = finalResponsePart else {
+            XCTFail("Part is not final response headers")
+            return
+        }
+        XCTAssertEqual(finalResponse.status.code, 201)
+        XCTAssertEqual(try channel.readOutbound(as: HTTPResponsePart.self), .end(nil))
+
+        let channel2 = EmbeddedChannel()
+        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
+        request2.headerFields[.uploadDraftInteropVersion] = "6"
+        try channel2.writeInbound(HTTPRequestPart.head(request2))
+        try channel2.writeInbound(HTTPRequestPart.end(nil))
+        let responsePart2 = try channel2.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response2) = responsePart2 else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response2.status.code, 204)
+        XCTAssertEqual(response2.headerFields[.uploadOffset], "2")
+        XCTAssertEqual(try channel2.readOutbound(as: HTTPResponsePart.self), .end(nil))
+        XCTAssertTrue(try channel2.finish().isClean)
+
+        let channel3 = EmbeddedChannel()
+        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
+        request3.headerFields[.uploadDraftInteropVersion] = "6"
+        request3.headerFields[.uploadComplete] = "?1"
+        request3.headerFields[.uploadOffset] = "2"
+        request3.headerFields[.contentLength] = "3"
+        request3.headerFields[.uploadLength] = "5"
+        request3.headerFields[.contentType] = "application/partial-upload"
+        try channel3.writeInbound(HTTPRequestPart.head(request3))
+        try channel3.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        try channel3.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 4)
+        var expectedRequest = request
+        expectedRequest.headerFields[.uploadIncomplete] = nil
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(expectedRequest))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.body(ByteBuffer(string: "He")))
+        XCTAssertEqual(recorder.receivedFrames[2], HTTPRequestPart.body(ByteBuffer(string: "llo")))
+        XCTAssertEqual(recorder.receivedFrames[3], HTTPRequestPart.end(nil))
+        XCTAssertTrue(try channel3.finish().isClean)
+        XCTAssertTrue(try channel.finish().isClean)
+    }
 }
 
 extension HTTPField.Name {
     fileprivate static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
+    fileprivate static let uploadComplete = Self("Upload-Complete")!
     fileprivate static let uploadIncomplete = Self("Upload-Incomplete")!
     fileprivate static let uploadOffset = Self("Upload-Offset")!
+    fileprivate static let uploadLength = Self("Upload-Length")!
+    fileprivate static let uploadLimit = Self("Upload-Limit")!
 }

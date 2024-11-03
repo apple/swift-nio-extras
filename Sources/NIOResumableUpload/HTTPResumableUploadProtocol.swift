@@ -20,18 +20,32 @@ import StructuredFieldValues
 /// Draft document:
 /// https://datatracker.ietf.org/doc/draft-ietf-httpbis-resumable-upload/01/
 enum HTTPResumableUploadProtocol {
-    private static let currentInteropVersion = "3"
+    enum InteropVersion: Int, Comparable {
+        case v3 = 3
+        case v5 = 5
+        case v6 = 6
 
-    static func featureDetectionResponse(resumePath: String, in context: HTTPResumableUploadContext) -> HTTPResponse {
+        static let latest: Self = .v6
+
+        static func < (lhs: Self, rhs: Self) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
+    }
+
+    static func featureDetectionResponse(
+        resumePath: String,
+        in context: HTTPResumableUploadContext,
+        version: InteropVersion
+    ) -> HTTPResponse {
         var response = HTTPResponse(status: .init(code: 104, reasonPhrase: "Upload Resumption Supported"))
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         response.headerFields[.location] = context.origin + resumePath
         return response
     }
 
-    static func offsetRetrievingResponse(offset: Int64, complete: Bool) -> HTTPResponse {
+    static func offsetRetrievingResponse(offset: Int64, complete: Bool, version: InteropVersion) -> HTTPResponse {
         var response = HTTPResponse(status: .noContent)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         response.headerFields.uploadIncomplete = !complete
         response.headerFields.uploadOffset = offset
         response.headerFields[.cacheControl] = "no-store"
@@ -42,10 +56,11 @@ enum HTTPResumableUploadProtocol {
         offset: Int64,
         resumePath: String,
         forUploadCreation: Bool,
-        in context: HTTPResumableUploadContext
+        in context: HTTPResumableUploadContext,
+        version: InteropVersion
     ) -> HTTPResponse {
         var response = HTTPResponse(status: .created)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         if forUploadCreation {
             response.headerFields[.location] = context.origin + resumePath
         }
@@ -54,22 +69,29 @@ enum HTTPResumableUploadProtocol {
         return response
     }
 
-    static func cancelledResponse() -> HTTPResponse {
-        var response = HTTPResponse(status: .noContent)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+    static func optionsResponse(version: InteropVersion) -> HTTPResponse {
+        var response = HTTPResponse(status: .ok)
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
+        response.headerFields.uploadLimit = .init(minSize: 0)
         return response
     }
 
-    static func notFoundResponse() -> HTTPResponse {
+    static func cancelledResponse(version: InteropVersion) -> HTTPResponse {
+        var response = HTTPResponse(status: .noContent)
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
+        return response
+    }
+
+    static func notFoundResponse(version: InteropVersion) -> HTTPResponse {
         var response = HTTPResponse(status: .notFound)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         response.headerFields[.contentLength] = "0"
         return response
     }
 
-    static func conflictResponse(offset: Int64, complete: Bool) -> HTTPResponse {
+    static func conflictResponse(offset: Int64, complete: Bool, version: InteropVersion) -> HTTPResponse {
         var response = HTTPResponse(status: .conflict)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         response.headerFields.uploadIncomplete = !complete
         response.headerFields.uploadOffset = offset
         response.headerFields[.contentLength] = "0"
@@ -78,55 +100,95 @@ enum HTTPResumableUploadProtocol {
 
     static func badRequestResponse() -> HTTPResponse {
         var response = HTTPResponse(status: .badRequest)
-        response.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        response.headerFields[.uploadDraftInteropVersion] = "\(InteropVersion.latest.rawValue)"
         response.headerFields[.contentLength] = "0"
         return response
     }
 
     enum RequestType {
-        case notSupported
-        case uploadCreation(complete: Bool, contentLength: Int64?)
+        case uploadCreation(complete: Bool, contentLength: Int64?, uploadLength: Int64?)
         case offsetRetrieving
-        case uploadAppending(offset: Int64, complete: Bool, contentLength: Int64?)
+        case uploadAppending(offset: Int64, complete: Bool, contentLength: Int64?, uploadLength: Int64?)
         case uploadCancellation
-        case invalid
+        case options
     }
 
-    static func identifyRequest(_ request: HTTPRequest, in context: HTTPResumableUploadContext) -> RequestType {
-        if request.headerFields[.uploadDraftInteropVersion] != self.currentInteropVersion {
-            return .notSupported
+    enum InvalidRequestError: Error {
+        case unsupportedInteropVersion
+        case unknownMethod
+        case invalidPath
+        case missingHeaderField
+        case extraHeaderField
+    }
+
+    static func identifyRequest(
+        _ request: HTTPRequest,
+        in context: HTTPResumableUploadContext
+    ) throws -> (RequestType, InteropVersion)? {
+        guard let versionValue = request.headerFields[.uploadDraftInteropVersion] else {
+            return nil
         }
-        let complete = request.headerFields.uploadIncomplete.map { !$0 }
+        guard let versionNumber = Int(versionValue),
+            let version = InteropVersion(rawValue: versionNumber)
+        else {
+            throw InvalidRequestError.unsupportedInteropVersion
+        }
+        let complete: Bool?
+        if version >= .v5 {
+            complete = request.headerFields.uploadComplete
+        } else {
+            complete = request.headerFields.uploadIncomplete.map { !$0 }
+        }
         let offset = request.headerFields.uploadOffset
         let contentLength = request.headerFields[.contentLength].flatMap(Int64.init)
+        let uploadLength = request.headerFields.uploadLength
+        if request.method == .options {
+            guard complete == nil && offset == nil && uploadLength == nil else {
+                throw InvalidRequestError.extraHeaderField
+            }
+            return (.options, version)
+        }
         if let path = request.path, context.isResumption(path: path) {
             switch request.method {
             case .head:
-                guard complete == nil && offset == nil else {
-                    return .invalid
+                guard complete == nil && offset == nil && uploadLength == nil else {
+                    throw InvalidRequestError.extraHeaderField
                 }
-                return .offsetRetrieving
+                return (.offsetRetrieving, version)
             case .patch:
                 guard let offset else {
-                    return .invalid
+                    throw InvalidRequestError.missingHeaderField
                 }
-                return .uploadAppending(offset: offset, complete: complete ?? true, contentLength: contentLength)
+                if version >= .v6 && request.headerFields[.contentType] != "application/partial-upload" {
+                    throw InvalidRequestError.missingHeaderField
+                }
+                return (
+                    .uploadAppending(
+                        offset: offset,
+                        complete: complete ?? true,
+                        contentLength: contentLength,
+                        uploadLength: uploadLength
+                    ), version
+                )
             case .delete:
-                guard complete == nil && offset == nil else {
-                    return .invalid
+                guard complete == nil && offset == nil && uploadLength == nil else {
+                    throw InvalidRequestError.extraHeaderField
                 }
-                return .uploadCancellation
+                return (.uploadCancellation, version)
             default:
-                return .invalid
+                throw InvalidRequestError.unknownMethod
             }
         } else {
             if let complete {
                 if let offset, offset != 0 {
-                    return .invalid
+                    throw InvalidRequestError.invalidPath
                 }
-                return .uploadCreation(complete: complete, contentLength: contentLength)
+                return (
+                    .uploadCreation(complete: complete, contentLength: contentLength, uploadLength: uploadLength),
+                    version
+                )
             } else {
-                return .notSupported
+                return nil
             }
         }
     }
@@ -143,10 +205,11 @@ enum HTTPResumableUploadProtocol {
         offset: Int64,
         resumePath: String,
         forUploadCreation: Bool,
-        in context: HTTPResumableUploadContext
+        in context: HTTPResumableUploadContext,
+        version: InteropVersion
     ) -> HTTPResponse {
         var finalResponse = response
-        finalResponse.headerFields[.uploadDraftInteropVersion] = self.currentInteropVersion
+        finalResponse.headerFields[.uploadDraftInteropVersion] = "\(version.rawValue)"
         if forUploadCreation {
             finalResponse.headerFields[.location] = context.origin + resumePath
         }
@@ -158,24 +221,27 @@ enum HTTPResumableUploadProtocol {
 
 extension HTTPField.Name {
     fileprivate static let uploadDraftInteropVersion = Self("Upload-Draft-Interop-Version")!
+    fileprivate static let uploadComplete = Self("Upload-Complete")!
     fileprivate static let uploadIncomplete = Self("Upload-Incomplete")!
     fileprivate static let uploadOffset = Self("Upload-Offset")!
+    fileprivate static let uploadLength = Self("Upload-Length")!
+    fileprivate static let uploadLimit = Self("Upload-Limit")!
 }
 
 extension HTTPFields {
-    private struct UploadIncompleteFieldValue: StructuredFieldValue {
+    private struct BoolFieldValue: StructuredFieldValue {
         static var structuredFieldType: StructuredFieldValues.StructuredFieldType { .item }
         var item: Bool
     }
 
-    fileprivate var uploadIncomplete: Bool? {
+    fileprivate var uploadComplete: Bool? {
         get {
-            guard let headerValue = self[.uploadIncomplete] else {
+            guard let headerValue = self[.uploadComplete] else {
                 return nil
             }
             do {
                 let value = try StructuredFieldValueDecoder().decode(
-                    UploadIncompleteFieldValue.self,
+                    BoolFieldValue.self,
                     from: Array(headerValue.utf8)
                 )
                 return value.item
@@ -187,7 +253,36 @@ extension HTTPFields {
         set {
             if let newValue {
                 let value = String(
-                    decoding: try! StructuredFieldValueEncoder().encode(UploadIncompleteFieldValue(item: newValue)),
+                    decoding: try! StructuredFieldValueEncoder().encode(BoolFieldValue(item: newValue)),
+                    as: UTF8.self
+                )
+                self[.uploadComplete] = value
+            } else {
+                self[.uploadComplete] = nil
+            }
+        }
+    }
+
+    fileprivate var uploadIncomplete: Bool? {
+        get {
+            guard let headerValue = self[.uploadIncomplete] else {
+                return nil
+            }
+            do {
+                let value = try StructuredFieldValueDecoder().decode(
+                    BoolFieldValue.self,
+                    from: Array(headerValue.utf8)
+                )
+                return value.item
+            } catch {
+                return nil
+            }
+        }
+
+        set {
+            if let newValue {
+                let value = String(
+                    decoding: try! StructuredFieldValueEncoder().encode(BoolFieldValue(item: newValue)),
                     as: UTF8.self
                 )
                 self[.uploadIncomplete] = value
@@ -197,7 +292,7 @@ extension HTTPFields {
         }
     }
 
-    private struct UploadOffsetFieldValue: StructuredFieldValue {
+    private struct Int64FieldValue: StructuredFieldValue {
         static var structuredFieldType: StructuredFieldValues.StructuredFieldType { .item }
         var item: Int64
     }
@@ -209,7 +304,7 @@ extension HTTPFields {
             }
             do {
                 let value = try StructuredFieldValueDecoder().decode(
-                    UploadOffsetFieldValue.self,
+                    Int64FieldValue.self,
                     from: Array(headerValue.utf8)
                 )
                 return value.item
@@ -221,12 +316,87 @@ extension HTTPFields {
         set {
             if let newValue {
                 let value = String(
-                    decoding: try! StructuredFieldValueEncoder().encode(UploadOffsetFieldValue(item: newValue)),
+                    decoding: try! StructuredFieldValueEncoder().encode(Int64FieldValue(item: newValue)),
                     as: UTF8.self
                 )
                 self[.uploadOffset] = value
             } else {
                 self[.uploadOffset] = nil
+            }
+        }
+    }
+
+    fileprivate var uploadLength: Int64? {
+        get {
+            guard let headerValue = self[.uploadLength] else {
+                return nil
+            }
+            do {
+                let value = try StructuredFieldValueDecoder().decode(
+                    Int64FieldValue.self,
+                    from: Array(headerValue.utf8)
+                )
+                return value.item
+            } catch {
+                return nil
+            }
+        }
+
+        set {
+            if let newValue {
+                let value = String(
+                    decoding: try! StructuredFieldValueEncoder().encode(Int64FieldValue(item: newValue)),
+                    as: UTF8.self
+                )
+                self[.uploadLength] = value
+            } else {
+                self[.uploadLength] = nil
+            }
+        }
+    }
+
+    fileprivate struct UploadLimitFieldValue: StructuredFieldValue {
+        static var structuredFieldType: StructuredFieldValues.StructuredFieldType { .dictionary }
+        var maxSize: Int64?
+        var minSize: Int64?
+        var maxAppendSize: Int64?
+        var minAppendSize: Int64?
+        var expires: Int64?
+
+        enum CodingKeys: String, CodingKey {
+            case maxSize = "max-size"
+            case minSize = "min-size"
+            case maxAppendSize = "max-append-size"
+            case minAppendSize = "min-append-size"
+            case expires = "expires"
+        }
+    }
+
+    fileprivate var uploadLimit: UploadLimitFieldValue? {
+        get {
+            guard let headerValue = self[.uploadLimit] else {
+                return nil
+            }
+            do {
+                let value = try StructuredFieldValueDecoder().decode(
+                    UploadLimitFieldValue.self,
+                    from: Array(headerValue.utf8)
+                )
+                return value
+            } catch {
+                return nil
+            }
+        }
+
+        set {
+            if let newValue {
+                let value = String(
+                    decoding: try! StructuredFieldValueEncoder().encode(newValue),
+                    as: UTF8.self
+                )
+                self[.uploadLimit] = value
+            } else {
+                self[.uploadLimit] = nil
             }
         }
     }
