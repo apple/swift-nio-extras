@@ -39,17 +39,20 @@ final class UploadServerHandler: ChannelDuplexHandler {
         case .head(let request):
             switch request.method {
             case .post, .put:
-                if let requestPath = request.path {
-                    let url = self.directory.appending(path: requestPath, directoryHint: .notDirectory).standardized
-                    if url.path(percentEncoded: false).hasPrefix(self.directory.path(percentEncoded: false)) {
-                        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-                        FileManager.default.createFile(atPath: url.path(percentEncoded: false), contents: nil)
+                if let path = request.path {
+                    let url = self.directory.appendingPathComponent(path, isDirectory: false).standardized
+                    if url.path.hasPrefix(self.directory.path) {
+                        try? FileManager.default.createDirectory(
+                            at: url.deletingLastPathComponent(),
+                            withIntermediateDirectories: true
+                        )
+                        _ = FileManager.default.createFile(atPath: url.path, contents: nil)
                         self.fileHandle = try? FileHandle(forWritingTo: url)
                         print("Creating \(url)")
                     }
                 }
                 if self.fileHandle == nil {
-                    let response = HTTPResponse(status: .internalServerError)
+                    let response = HTTPResponse(status: .badRequest)
                     self.write(context: context, data: self.wrapOutboundOut(.head(response)), promise: nil)
                     self.write(context: context, data: self.wrapOutboundOut(.end(nil)), promise: nil)
                     self.flush(context: context)
@@ -70,11 +73,19 @@ final class UploadServerHandler: ChannelDuplexHandler {
                 exit(1)
             }
         case .end:
-            if fileHandle != nil {
-                let response = HTTPResponse(status: .created)
-                self.write(context: context, data: self.wrapOutboundOut(.head(response)), promise: nil)
-                self.write(context: context, data: self.wrapOutboundOut(.end(nil)), promise: nil)
-                self.flush(context: context)
+            if let fileHandle = self.fileHandle {
+                do {
+                    try fileHandle.close()
+                    let response = HTTPResponse(status: .created)
+                    self.write(context: context, data: self.wrapOutboundOut(.head(response)), promise: nil)
+                    self.write(context: context, data: self.wrapOutboundOut(.end(nil)), promise: nil)
+                    self.flush(context: context)
+                } catch {
+                    let response = HTTPResponse(status: .internalServerError)
+                    self.write(context: context, data: self.wrapOutboundOut(.head(response)), promise: nil)
+                    self.write(context: context, data: self.wrapOutboundOut(.end(nil)), promise: nil)
+                    self.flush(context: context)
+                }
             }
         }
     }
@@ -96,7 +107,7 @@ if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
             HTTPResumableUploadHandler(
                 context: uploadContext,
                 handlers: [
-                    UploadServerHandler(directory: URL(filePath: CommandLine.arguments[1], directoryHint: .isDirectory))
+                    UploadServerHandler(directory: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true))
                 ]
             ),
         ]).flatMap { _ in
