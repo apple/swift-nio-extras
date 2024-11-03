@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2023 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2023-2024 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -25,11 +25,11 @@ private final class InboundRecorder<FrameIn, FrameOut>: ChannelDuplexHandler {
     typealias OutboundIn = Never
     typealias OutboundOut = FrameOut
 
-    private var context: ChannelHandlerContext? = nil
+    private var context: ChannelHandlerContext! = nil
 
     var receivedFrames: [FrameIn] = []
 
-    func channelActive(context: ChannelHandlerContext) {
+    func handlerAdded(context: ChannelHandlerContext) {
         self.context = context
     }
 
@@ -38,8 +38,8 @@ private final class InboundRecorder<FrameIn, FrameOut>: ChannelDuplexHandler {
     }
 
     func write(_ frame: FrameOut) {
-        self.write(context: self.context!, data: self.wrapOutboundOut(frame), promise: nil)
-        self.flush(context: self.context!)
+        self.write(context: self.context, data: self.wrapOutboundOut(frame), promise: nil)
+        self.flush(context: self.context)
     }
 }
 

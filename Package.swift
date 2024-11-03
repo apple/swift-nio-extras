@@ -3,7 +3,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2022 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2024 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -178,6 +178,16 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
             .product(name: "Atomics", package: "swift-atomics"),
+        ]
+    ),
+    .executableTarget(
+        name: "NIOResumableUploadDemo",
+        dependencies: [
+            "NIOResumableUpload",
+            "NIOHTTPTypesHTTP1",
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
         ]
     ),
     .testTarget(

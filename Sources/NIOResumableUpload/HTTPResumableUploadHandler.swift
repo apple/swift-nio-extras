@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2023 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2023-2024 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -24,7 +24,9 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
     public typealias OutboundIn = Never
     public typealias OutboundOut = HTTPResponsePart
 
-    var upload: HTTPResumableUpload
+    var upload: HTTPResumableUpload? = nil
+    let createUpload: () -> HTTPResumableUpload
+    var shouldReset: Bool = false
 
     private var context: ChannelHandlerContext!
     private var eventLoop: EventLoop!
@@ -38,10 +40,12 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         context: HTTPResumableUploadContext,
         channelConfigurator: @escaping (Channel) -> Void
     ) {
-        self.upload = HTTPResumableUpload(
-            context: context,
-            channelConfigurator: channelConfigurator
-        )
+        self.createUpload = {
+            HTTPResumableUpload(
+                context: context,
+                channelConfigurator: channelConfigurator
+            )
+        }
     }
 
     /// Create an `HTTPResumableUploadHandler` within a given `HTTPResumableUploadContext`.
@@ -53,19 +57,31 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         context: HTTPResumableUploadContext,
         handlers: [ChannelHandler] = []
     ) {
-        self.upload = HTTPResumableUpload(context: context) { channel in
-            if !handlers.isEmpty {
-                _ = channel.pipeline.addHandlers(handlers)
+        self.createUpload = {
+            HTTPResumableUpload(context: context) { channel in
+                if !handlers.isEmpty {
+                    _ = channel.pipeline.addHandlers(handlers)
+                }
             }
         }
+    }
+
+    private func resetUpload() {
+        if let existingUpload = self.upload {
+            existingUpload.end(handler: self, error: nil)
+        }
+        let upload = self.createUpload()
+        upload.scheduleOnEventLoop(self.eventLoop)
+        upload.attachUploadHandler(self, channel: self.context.channel)
+        self.upload = upload
+        self.shouldReset = false
     }
 
     public func handlerAdded(context: ChannelHandlerContext) {
         self.context = context
         self.eventLoop = context.eventLoop
 
-        self.upload.scheduleOnEventLoop(context.eventLoop)
-        self.upload.attachUploadHandler(self, channel: context.channel)
+        self.resetUpload()
     }
 
     public func channelActive(context: ChannelHandlerContext) {
@@ -73,29 +89,38 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
-        self.upload.end(handler: self, error: nil)
+        self.upload?.end(handler: self, error: nil)
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        self.upload.receive(handler: self, channel: self.context.channel, part: unwrapInboundIn(data))
+        if self.shouldReset {
+            self.resetUpload()
+        }
+        let part = self.unwrapInboundIn(data)
+        if case .end = part {
+            self.shouldReset = true
+        }
+        self.upload?.receive(handler: self, channel: self.context.channel, part: part)
     }
 
     public func channelReadComplete(context: ChannelHandlerContext) {
-        self.upload.receiveComplete(handler: self)
+        self.upload?.receiveComplete(handler: self)
     }
 
     public func channelWritabilityChanged(context: ChannelHandlerContext) {
-        self.upload.writabilityChanged(handler: self)
+        self.upload?.writabilityChanged(handler: self)
     }
 
     public func userInboundEventTriggered(context: ChannelHandlerContext, event: Any) {}
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        self.upload.end(handler: self, error: error)
+        self.upload?.end(handler: self, error: error)
     }
 
     public func read(context: ChannelHandlerContext) {
-        // Do nothing.
+        if self.shouldReset {
+            context.read()
+        }
     }
 }
 
