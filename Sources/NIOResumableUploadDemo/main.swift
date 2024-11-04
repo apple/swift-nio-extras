@@ -107,7 +107,9 @@ if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
                 HTTPResumableUploadHandler(
                     context: uploadContext,
                     handlers: [
-                        UploadServerHandler(directory: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true))
+                        UploadServerHandler(
+                            directory: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+                        )
                     ]
                 ),
             ])
