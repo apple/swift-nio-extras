@@ -142,6 +142,7 @@ extension HTTPResumableUpload {
             if close {
                 uploadHandler.close(mode: .all, promise: nil)
             }
+            uploadHandler.detach()
 
             if self.uploadChannel != nil {
                 self.idleTimer?.cancel()
@@ -469,6 +470,10 @@ extension HTTPResumableUpload {
         precondition(mode != .input)
         self.destroyChannel(error: nil)
         self.uploadHandler?.close(mode: mode, promise: promise)
+        self.uploadHandler?.detach()
+        self.uploadHandler = nil
+        self.idleTimer?.cancel()
+        self.idleTimer = nil
     }
 }
 

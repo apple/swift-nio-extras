@@ -66,13 +66,13 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         }
     }
 
-    private func resetUpload() {
+    private func resetUpload(context: ChannelHandlerContext) {
         if let existingUpload = self.upload {
             existingUpload.end(handler: self, error: nil)
         }
         let upload = self.createUpload()
         upload.scheduleOnEventLoop(self.eventLoop)
-        upload.attachUploadHandler(self, channel: self.context.channel)
+        upload.attachUploadHandler(self, channel: context.channel)
         self.upload = upload
         self.shouldReset = false
     }
@@ -81,7 +81,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         self.context = context
         self.eventLoop = context.eventLoop
 
-        self.resetUpload()
+        self.resetUpload(context: context)
     }
 
     public func channelActive(context: ChannelHandlerContext) {
@@ -94,13 +94,13 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         if self.shouldReset {
-            self.resetUpload()
+            self.resetUpload(context: context)
         }
         let part = self.unwrapInboundIn(data)
         if case .end = part {
             self.shouldReset = true
         }
-        self.upload?.receive(handler: self, channel: self.context.channel, part: part)
+        self.upload?.receive(handler: self, channel: context.channel, part: part)
     }
 
     public func channelReadComplete(context: ChannelHandlerContext) {
@@ -161,6 +161,12 @@ extension HTTPResumableUploadHandler {
     func close(mode: CloseMode, promise: EventLoopPromise<Void>?) {
         self.runInEventLoop {
             self.context.close(mode: mode, promise: promise)
+        }
+    }
+
+    func detach() {
+        self.runInEventLoop {
+            self.context = nil
         }
     }
 }
