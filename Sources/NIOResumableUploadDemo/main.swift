@@ -101,17 +101,16 @@ if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
 
     let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     let server = try ServerBootstrap(group: group).childChannelInitializer { channel in
-        let handler = HTTP1ToHTTPServerCodec(secure: false)
-        return channel.pipeline.addHandlers([
-            handler,
-            HTTPResumableUploadHandler(
-                context: uploadContext,
-                handlers: [
-                    UploadServerHandler(directory: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true))
-                ]
-            ),
-        ]).flatMap { _ in
-            channel.pipeline.configureHTTPServerPipeline(position: .before(handler))
+        channel.pipeline.configureHTTPServerPipeline().flatMap {
+            channel.pipeline.addHandlers([
+                HTTP1ToHTTPServerCodec(secure: false),
+                HTTPResumableUploadHandler(
+                    context: uploadContext,
+                    handlers: [
+                        UploadServerHandler(directory: URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true))
+                    ]
+                ),
+            ])
         }
     }
     .bind(host: "0.0.0.0", port: 8080)
