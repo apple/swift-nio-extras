@@ -21,7 +21,7 @@ import NIOHTTPTypesHTTP1
 import NIOPosix
 import NIOResumableUpload
 
-@available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
+@available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *)
 final class UploadServerHandler: ChannelDuplexHandler {
     typealias InboundIn = HTTPRequestPart
     typealias OutboundIn = Never
@@ -96,7 +96,7 @@ guard let outputFile = CommandLine.arguments.dropFirst().first else {
     exit(1)
 }
 
-if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+if #available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *) {
     let uploadContext = HTTPResumableUploadContext(origin: "http://localhost:8081")
 
     let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
