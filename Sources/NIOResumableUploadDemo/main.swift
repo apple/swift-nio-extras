@@ -97,7 +97,7 @@ guard let outputFile = CommandLine.arguments.dropFirst().first else {
 }
 
 if #available(macOS 10.15.4, iOS 13.4, watchOS 6.2, tvOS 13.4, *) {
-    let uploadContext = HTTPResumableUploadContext(origin: "http://localhost:8081")
+    let uploadContext = HTTPResumableUploadContext(origin: "http://localhost:8080")
 
     let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     let server = try ServerBootstrap(group: group).childChannelInitializer { channel in

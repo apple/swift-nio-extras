@@ -28,7 +28,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
     let createUpload: () -> HTTPResumableUpload
     var shouldReset: Bool = false
 
-    private var context: ChannelHandlerContext!
+    private var context: ChannelHandlerContext?
     private var eventLoop: EventLoop!
 
     /// Create an `HTTPResumableUploadHandler` within a given `HTTPResumableUploadContext`.
@@ -136,31 +136,31 @@ extension HTTPResumableUploadHandler {
 
     func write(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
         self.runInEventLoop {
-            self.context.write(self.wrapOutboundOut(part), promise: promise)
+            self.context?.write(self.wrapOutboundOut(part), promise: promise)
         }
     }
 
     func flush() {
         self.runInEventLoop {
-            self.context.flush()
+            self.context?.flush()
         }
     }
 
     func writeAndFlush(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
         self.runInEventLoop {
-            self.context.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
+            self.context?.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
         }
     }
 
     func read() {
         self.runInEventLoop {
-            self.context.read()
+            self.context?.read()
         }
     }
 
     func close(mode: CloseMode, promise: EventLoopPromise<Void>?) {
         self.runInEventLoop {
-            self.context.close(mode: mode, promise: promise)
+            self.context?.close(mode: mode, promise: promise)
         }
     }
 
