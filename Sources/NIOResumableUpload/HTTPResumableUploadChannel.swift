@@ -74,6 +74,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
         self.allocator = parent.allocator
         self.closePromise = parent.eventLoop.makePromise()
         self.eventLoop = parent.eventLoop
+        // Only support Channels that implement sync options
         self.autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
         self._pipeline = ChannelPipeline(channel: self)
         channelConfigurator(self)
@@ -111,6 +112,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
             self.autoRead = value as! Bool
         default:
             if let parent = self.parent {
+                // Only support Channels that implement sync options
                 try parent.syncOptions!.setOption(option, value: value)
             } else {
                 throw HTTPResumableUploadError.parentNotPresent
@@ -126,6 +128,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
             return self.autoRead as! Option.Value
         default:
             if let parent = self.parent {
+                // Only support Channels that implement sync options
                 return try parent.syncOptions!.getOption(option)
             } else {
                 throw HTTPResumableUploadError.parentNotPresent
