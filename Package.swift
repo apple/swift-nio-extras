@@ -3,7 +3,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2022 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2024 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -170,6 +170,33 @@ var targets: [PackageDescription.Target] = [
             "NIOHTTPTypesHTTP2"
         ]
     ),
+    .target(
+        name: "NIOResumableUpload",
+        dependencies: [
+            "NIOHTTPTypes",
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
+            .product(name: "Atomics", package: "swift-atomics"),
+        ]
+    ),
+    .executableTarget(
+        name: "NIOResumableUploadDemo",
+        dependencies: [
+            "NIOResumableUpload",
+            "NIOHTTPTypesHTTP1",
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
+        ]
+    ),
+    .testTarget(
+        name: "NIOResumableUploadTests",
+        dependencies: [
+            "NIOResumableUpload",
+            .product(name: "NIOEmbedded", package: "swift-nio"),
+        ]
+    ),
 ]
 
 let package = Package(
@@ -181,11 +208,14 @@ let package = Package(
         .library(name: "NIOHTTPTypes", targets: ["NIOHTTPTypes"]),
         .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
         .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
+        .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.67.0"),
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
-        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
+        .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.1.0"),
+        .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
     ],
     targets: targets
 )
