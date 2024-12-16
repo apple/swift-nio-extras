@@ -152,6 +152,14 @@ public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler, Rem
             context.fireErrorCaught(error)
         }
     }
+
+    public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
+        if let ev = event as? HTTP2FramePayloadToHTTPEvent, case .reset(let code) = ev.kind {
+                context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
+                return
+        }
+        context.triggerUserOutboundEvent(event, promise: promise)
+    }
 }
 
 // MARK: - Server
@@ -261,5 +269,27 @@ public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler, Rem
         let responsePart = self.unwrapOutboundIn(data)
         let transformedPayload = self.baseCodec.processOutboundData(responsePart, allocator: context.channel.allocator)
         context.write(self.wrapOutboundOut(transformedPayload), promise: promise)
+    }
+
+    public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
+        if let ev = event as? HTTP2FramePayloadToHTTPEvent, case .reset(let code) = ev.kind {
+                context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
+                return
+        }
+        context.triggerUserOutboundEvent(event, promise: promise)
+    }
+}
+
+/// Events that can be sent by the application to be handled by the `HTTP2StreamChannel`
+public struct HTTP2FramePayloadToHTTPEvent {
+    fileprivate enum Kind {
+        case reset(HTTP2ErrorCode)
+    }
+
+    fileprivate var kind: Kind
+
+    /// Send a `RST_STREAM` with the specified code
+    public static func reset(code: HTTP2ErrorCode) -> Self {
+        .init(kind: .reset(code))
     }
 }

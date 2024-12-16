@@ -116,9 +116,16 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
 
         try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
         try self.channel.writeOutbound(HTTPRequestPart.end(Self.trailers))
+        try self.channel.triggerUserOutboundEvent(HTTP2FramePayloadToHTTPEvent.reset(code: .enhanceYourCalm)).wait()
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldRequest)
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldTrailers)
+        switch try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self) {
+            case .rstStream(.enhanceYourCalm):
+                break
+            default:
+                XCTFail("expected reset")
+        }
 
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: Self.oldResponse))
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: Self.oldTrailers))
@@ -142,9 +149,16 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
 
         try self.channel.writeOutbound(HTTPResponsePart.head(Self.response))
         try self.channel.writeOutbound(HTTPResponsePart.end(Self.trailers))
+        try self.channel.triggerUserOutboundEvent(HTTP2FramePayloadToHTTPEvent.reset(code: .enhanceYourCalm)).wait()
 
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldResponse)
         XCTAssertEqual(try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self)?.headers, Self.oldTrailers)
+        switch try self.channel.readOutbound(as: HTTP2Frame.FramePayload.self) {
+            case .rstStream(.enhanceYourCalm):
+                break
+            default:
+                XCTFail("expected reset")
+        }
 
         XCTAssertTrue(try self.channel.finish().isClean)
     }
