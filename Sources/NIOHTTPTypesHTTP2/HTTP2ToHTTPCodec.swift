@@ -292,4 +292,12 @@ public struct HTTP2FramePayloadToHTTPEvent {
     public static func reset(code: HTTP2ErrorCode) -> Self {
         .init(kind: .reset(code))
     }
+
+    /// Returns reset code if the event is a reset
+    public func reset() -> HTTP2ErrorCode? {
+        if case let .reset(code) = self.kind {
+            return code
+        }
+        return nil
+    }
 }
