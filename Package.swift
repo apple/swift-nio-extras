@@ -197,6 +197,44 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
         ]
     ),
+    .target(
+        name: "NIOHTTPResponsiveness",
+        dependencies: [
+            "NIOHTTPTypes",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+        ],
+        swiftSettings: [
+            .enableExperimentalFeature("StrictConcurrency")
+        ]
+    ),
+    .testTarget(
+        name: "NIOHTTPResponsivenessTests",
+        dependencies: [
+            "NIOHTTPResponsiveness",
+            "NIOHTTPTypes",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOEmbedded", package: "swift-nio"),
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+        ],
+        swiftSettings: [
+            .enableExperimentalFeature("StrictConcurrency")
+        ]
+    ),
+    .executableTarget(
+        name: "NIOHTTPResponsivenessServer",
+        dependencies: [
+            "NIOHTTPResponsiveness",
+            "NIOHTTPTypesHTTP1",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+            .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        ],
+        swiftSettings: [
+            .enableExperimentalFeature("StrictConcurrency")
+        ]
+    ),
 ]
 
 let package = Package(
@@ -209,6 +247,7 @@ let package = Package(
         .library(name: "NIOHTTPTypesHTTP1", targets: ["NIOHTTPTypesHTTP1"]),
         .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
         .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
+        .library(name: "NIOHTTPResponsiveness", targets: ["NIOHTTPResponsiveness"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.67.0"),
@@ -216,6 +255,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.1.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
+
     ],
     targets: targets
 )
