@@ -154,9 +154,9 @@ public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler, Rem
     }
 
     public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
-        if let ev = event as? HTTP2FramePayloadToHTTPEvent, case .reset(let code) = ev.kind {
-                context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
-                return
+        if let ev = event as? NIOHTTP2FramePayloadToHTTPEvent, let code = ev.reset {
+            context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
+            return
         }
         context.triggerUserOutboundEvent(event, promise: promise)
     }
@@ -272,21 +272,21 @@ public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler, Rem
     }
 
     public func triggerUserOutboundEvent(context: ChannelHandlerContext, event: Any, promise: EventLoopPromise<Void>?) {
-        if let ev = event as? HTTP2FramePayloadToHTTPEvent, case .reset(let code) = ev.kind {
-                context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
-                return
+        if let ev = event as? NIOHTTP2FramePayloadToHTTPEvent, let code = ev.reset {
+            context.writeAndFlush(self.wrapOutboundOut(.rstStream(code)), promise: promise)
+            return
         }
         context.triggerUserOutboundEvent(event, promise: promise)
     }
 }
 
 /// Events that can be sent by the application to be handled by the `HTTP2StreamChannel`
-public struct HTTP2FramePayloadToHTTPEvent {
-    fileprivate enum Kind {
+public struct NIOHTTP2FramePayloadToHTTPEvent: Hashable, Sendable {
+    private enum Kind: Hashable, Sendable {
         case reset(HTTP2ErrorCode)
     }
 
-    fileprivate var kind: Kind
+    private var kind: Kind
 
     /// Send a `RST_STREAM` with the specified code
     public static func reset(code: HTTP2ErrorCode) -> Self {
@@ -294,10 +294,10 @@ public struct HTTP2FramePayloadToHTTPEvent {
     }
 
     /// Returns reset code if the event is a reset
-    public func reset() -> HTTP2ErrorCode? {
-        if case let .reset(code) = self.kind {
+    public var reset: HTTP2ErrorCode? {
+        switch self.kind {
+        case .reset(let code):
             return code
         }
-        return nil
     }
 }
