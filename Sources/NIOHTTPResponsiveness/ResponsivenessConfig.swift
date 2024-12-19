@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public struct ResponsivenessConfig: Encodable {
+public struct ResponsivenessConfig: Codable, Hashable, Sendable {
     public var version: Int
     public var urls: ResponsivenessConfigURLs
 
@@ -22,7 +22,7 @@ public struct ResponsivenessConfig: Encodable {
     }
 }
 
-public struct ResponsivenessConfigURLs: Encodable {
+public struct ResponsivenessConfigURLs: Codable, Hashable, Sendable {
     public var largeDownloadURL: String
     public var smallDownloadURL: String
     public var uploadURL: String

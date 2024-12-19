@@ -15,9 +15,10 @@
 import ArgumentParser
 import NIOHTTPResponsiveness
 import NIOCore
+import NIOHTTP1
 import NIOHTTPTypesHTTP1
 import NIOPosix
-import FoundationEssentials
+import Foundation
 
 func responsivenessConfigBuffer(scheme: String, host: String, port: Int) throws -> ByteBuffer {
     let cfg = ResponsivenessConfig(

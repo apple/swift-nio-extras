@@ -16,7 +16,7 @@ import HTTPTypes
 import NIOCore
 import NIOHTTPTypes
 
-/// HTTP request handler sending a configurable stream of zeroes
+/// HTTP request handler sending a configurable stream of zeroes. Uses HTTPTypes request/response parts.
 public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
     public typealias InboundIn = HTTPRequestPart
     public typealias OutboundOut = HTTPResponsePart
