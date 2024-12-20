@@ -199,14 +199,14 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
             drippingState.currentChunkBytesLeft -= toSend
             dataWritten = true
         }
-        if dataWritten {
-            context.flush()
-        }
 
         // If we weren't able to send the full chunk, it's because the channel isn't writable. We yield until it is
         if drippingState.currentChunkBytesLeft > 0 {
             self.pendingWrite = true
             self.phase = .dripping(drippingState)
+            if dataWritten {
+                context.flush()
+            }
             return
         }
 
@@ -216,6 +216,10 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
             self.phase = .done
             context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             return
+        }
+
+        if dataWritten {
+            context.flush()
         }
 
         // More chunks to write.. Kick off timer
