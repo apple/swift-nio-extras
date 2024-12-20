@@ -50,6 +50,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
 
     private var phase = Phase.waitingOnHead
     private var scheduled: Scheduled<Void>?
+    private var scheduledCallbackHandler: HTTPDrippingDownloadHandlerScheduledCallbackHandler?
     private var pendingRead = false
     private var pendingWrite = false
     private var activelyWritingChunk = false
@@ -156,6 +157,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
     public func channelInactive(context: ChannelHandlerContext) {
         self.phase = .done
         self.scheduled?.cancel()
+        context.fireChannelInactive()
     }
 
     public func channelWritabilityChanged(context: ChannelHandlerContext) {
@@ -219,10 +221,22 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         // More chunks to write.. Kick off timer
         drippingState.currentChunkBytesLeft = self.size
         self.phase = .dripping(drippingState)
-        let this = NIOLoopBound(self, eventLoop: context.eventLoop)
-        let loopBoundContext = NIOLoopBound(context, eventLoop: context.eventLoop)
-        self.scheduled = context.eventLoop.scheduleTask(in: self.frequency) {
-            this.value.writeChunk(context: loopBoundContext.value)
+        if self.scheduledCallbackHandler == nil {
+            let this = NIOLoopBound(self, eventLoop: context.eventLoop)
+            let loopBoundContext = NIOLoopBound(context, eventLoop: context.eventLoop)
+            self.scheduledCallbackHandler = HTTPDrippingDownloadHandlerScheduledCallbackHandler(handler: this, context: loopBoundContext)
+        }
+        // SAFTEY: scheduling the callback only potentially throws when invoked off eventloop
+        try! context.eventLoop.scheduleCallback(in: self.frequency, handler: self.scheduledCallbackHandler!)
+    }
+
+    private struct HTTPDrippingDownloadHandlerScheduledCallbackHandler: NIOScheduledCallbackHandler & Sendable {
+        var handler: NIOLoopBound<HTTPDrippingDownloadHandler>
+        var context: NIOLoopBound<ChannelHandlerContext>
+
+        func handleScheduledCallback(eventLoop: some EventLoop) {
+            self.handler.value.writeChunk(context: self.context.value)
         }
     }
 }
+

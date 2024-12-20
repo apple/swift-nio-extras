@@ -70,8 +70,8 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
                     status: .ok,
                     body: self.responsivenessConfigBuffer
                 )
-            case (.get, .some(""), .some("responsiveness"), .some("download"), .some(let count)):
-                self.addHandlerOrInternalError(context: context, handler: HTTPDrippingDownloadHandler(count: 1, size: count))
+            case (.get, .some(""), .some("responsiveness"), .some("download"), .some(let size)):
+                self.addHandlerOrInternalError(context: context, handler: HTTPDrippingDownloadHandler(count: 1, size: size))
             case (.post, .some(""), .some("responsiveness"), .some("upload"), .none):
                 // Check if we should expect a certain count
                 var expectation: Int?

@@ -70,7 +70,7 @@ public final class HTTPReceiveDiscardHandler: ChannelInboundHandler {
             string:
                 "Received in excess of expectation; expected(\(expectation)) received(\(self.received))"
         )
-        self.writeSimpleResponse(context: context, status: .ok, body: body)
+        self.writeSimpleResponse(context: context, status: .badRequest, body: body)
     }
 
     private func writeSimpleResponse(
