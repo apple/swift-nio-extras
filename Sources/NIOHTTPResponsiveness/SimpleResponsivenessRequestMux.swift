@@ -71,7 +71,10 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
                     body: self.responsivenessConfigBuffer
                 )
             case (.get, .some(""), .some("responsiveness"), .some("download"), .some(let size)):
-                self.addHandlerOrInternalError(context: context, handler: HTTPDrippingDownloadHandler(count: 1, size: size))
+                self.addHandlerOrInternalError(
+                    context: context,
+                    handler: HTTPDrippingDownloadHandler(count: 1, size: size)
+                )
             case (.post, .some(""), .some("responsiveness"), .some("upload"), .none):
                 // Check if we should expect a certain count
                 var expectation: Int?
@@ -80,7 +83,10 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
                         expectation = expectedLength
                     }
                 }
-                self.addHandlerOrInternalError(context: context, handler: HTTPReceiveDiscardHandler(expectation: expectation))
+                self.addHandlerOrInternalError(
+                    context: context,
+                    handler: HTTPReceiveDiscardHandler(expectation: expectation)
+                )
             case (_, .some(""), .some("drip"), .none, .none):
                 if let queryArgsString = queryArgsString {
                     guard let handler = HTTPDrippingDownloadHandler(queryArgsString: queryArgsString) else {

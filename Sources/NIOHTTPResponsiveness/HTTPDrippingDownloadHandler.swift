@@ -190,7 +190,10 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
 
         var dataWritten = false
         while drippingState.currentChunkBytesLeft > 0, context.channel.isWritable {
-            let toSend = min(drippingState.currentChunkBytesLeft, HTTPDrippingDownloadHandler.downloadBodyChunk.readableBytes)
+            let toSend = min(
+                drippingState.currentChunkBytesLeft,
+                HTTPDrippingDownloadHandler.downloadBodyChunk.readableBytes
+            )
             let buffer = HTTPDrippingDownloadHandler.downloadBodyChunk.getSlice(
                 at: HTTPDrippingDownloadHandler.downloadBodyChunk.readerIndex,
                 length: toSend
@@ -228,10 +231,17 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         if self.scheduledCallbackHandler == nil {
             let this = NIOLoopBound(self, eventLoop: context.eventLoop)
             let loopBoundContext = NIOLoopBound(context, eventLoop: context.eventLoop)
-            self.scheduledCallbackHandler = HTTPDrippingDownloadHandlerScheduledCallbackHandler(handler: this, context: loopBoundContext)
+            self.scheduledCallbackHandler = HTTPDrippingDownloadHandlerScheduledCallbackHandler(
+                handler: this,
+                context: loopBoundContext
+            )
         }
         // SAFTEY: scheduling the callback only potentially throws when invoked off eventloop
-        try! context.eventLoop.scheduleCallback(in: self.frequency, handler: self.scheduledCallbackHandler!)
+        do {
+            try context.eventLoop.scheduleCallback(in: self.frequency, handler: self.scheduledCallbackHandler!)
+        } catch {
+            context.fireErrorCaught(error)
+        }
     }
 
     private struct HTTPDrippingDownloadHandlerScheduledCallbackHandler: NIOScheduledCallbackHandler & Sendable {
@@ -243,4 +253,3 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         }
     }
 }
-
