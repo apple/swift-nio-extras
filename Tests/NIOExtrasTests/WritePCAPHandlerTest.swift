@@ -16,6 +16,9 @@ import Foundation
 import NIOCore
 import NIOEmbedded
 import XCTest
+#if canImport(Android)
+import Android
+#endif
 
 @testable import NIOExtras
 

@@ -102,6 +102,8 @@ private func withTemporaryFile<T>(
 private var temporaryDirectory: String {
     #if os(Linux)
     return "/tmp"
+    #elseif os(Android)
+    return "/data/local/tmp"
     #else
     if #available(macOS 10.12, iOS 10, tvOS 10, watchOS 3, *) {
         return FileManager.default.temporaryDirectory.path
