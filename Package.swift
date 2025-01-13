@@ -203,6 +203,7 @@ var targets: [PackageDescription.Target] = [
             "NIOHTTPTypes",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "Algorithms", package: "swift-algorithms"),
         ],
         swiftSettings: [
             .enableExperimentalFeature("StrictConcurrency")
@@ -216,20 +217,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "HTTPTypes", package: "swift-http-types"),
-        ],
-        swiftSettings: [
-            .enableExperimentalFeature("StrictConcurrency")
-        ]
-    ),
-    .executableTarget(
-        name: "NIOHTTPResponsivenessServer",
-        dependencies: [
-            "NIOHTTPResponsiveness",
-            "NIOHTTPTypesHTTP1",
-            .product(name: "NIOCore", package: "swift-nio"),
-            .product(name: "NIOPosix", package: "swift-nio"),
-            .product(name: "NIOHTTP1", package: "swift-nio"),
-            .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ],
         swiftSettings: [
             .enableExperimentalFeature("StrictConcurrency")
@@ -255,8 +242,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.1.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
 
     ],
     targets: targets

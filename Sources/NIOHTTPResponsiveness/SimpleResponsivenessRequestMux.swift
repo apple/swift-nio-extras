@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Algorithms
 import HTTPTypes
 import NIOCore
 import NIOHTTPTypes
@@ -48,7 +49,7 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
                 return
             }
 
-            var pathComponents = path.utf8.split(separator: "?".utf8, maxSplits: 1).makeIterator()
+            var pathComponents = path.utf8.lazy.split(separator: UInt8(ascii: "?"), maxSplits: 1).makeIterator()
             let firstPathComponent = pathComponents.next()!
             let queryArgsString = pathComponents.next()
 
