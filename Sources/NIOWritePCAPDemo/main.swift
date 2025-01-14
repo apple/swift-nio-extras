@@ -77,10 +77,11 @@ defer {
 let allDonePromise = group.next().makePromise(of: ByteBuffer.self)
 let connection = try ClientBootstrap(group: group.next())
     .channelInitializer { channel in
-        channel.pipeline.addHandler(NIOWritePCAPHandler(mode: .client, fileSink: fileSink.write)).flatMap {
-            channel.pipeline.addHTTPClientHandlers()
-        }.flatMap {
-            channel.pipeline.addHandler(SendSimpleRequestHandler(allDonePromise: allDonePromise))
+        channel.eventLoop.makeCompletedFuture {
+            let sync = channel.pipeline.syncOperations
+            try sync.addHandler(NIOWritePCAPHandler(mode: .client, fileSink: fileSink.write))
+            try sync.addHTTPClientHandlers()
+            try sync.addHandlers(SendSimpleRequestHandler(allDonePromise: allDonePromise))
         }
     }
     .connect(host: "httpbin.org", port: 80)
