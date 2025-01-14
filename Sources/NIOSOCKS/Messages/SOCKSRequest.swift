@@ -19,6 +19,8 @@ import NIOCore
 import Darwin
 #elseif canImport(Musl)
 import Musl
+#elseif canImport(Android)
+import Android
 #else
 import Glibc
 #endif

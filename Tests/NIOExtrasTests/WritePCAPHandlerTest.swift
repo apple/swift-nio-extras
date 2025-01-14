@@ -19,6 +19,10 @@ import XCTest
 
 @testable import NIOExtras
 
+#if canImport(Android)
+import Android
+#endif
+
 class WritePCAPHandlerTest: XCTestCase {
     private var accumulatedPackets: [ByteBuffer]!
     private var channel: EmbeddedChannel!
