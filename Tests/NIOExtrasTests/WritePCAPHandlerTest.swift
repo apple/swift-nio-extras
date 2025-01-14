@@ -16,11 +16,12 @@ import Foundation
 import NIOCore
 import NIOEmbedded
 import XCTest
+
+@testable import NIOExtras
+
 #if canImport(Android)
 import Android
 #endif
-
-@testable import NIOExtras
 
 class WritePCAPHandlerTest: XCTestCase {
     private var accumulatedPackets: [ByteBuffer]!
