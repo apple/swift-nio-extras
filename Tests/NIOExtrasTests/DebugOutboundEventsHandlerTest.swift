@@ -29,7 +29,7 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
         handlerUnderTest = DebugOutboundEventsHandler { event, _ in
             self.lastEvent = event
         }
-        try? channel.pipeline.addHandler(handlerUnderTest).wait()
+        try? channel.pipeline.syncOperations.addHandler(handlerUnderTest)
     }
 
     override func tearDown() {
@@ -57,9 +57,9 @@ class DebugOutboundEventsHandlerTest: XCTestCase {
     }
 
     func testWrite() {
-        let data = NIOAny(" 1 2 3 ")
-        channel.write(data, promise: nil)
-        XCTAssertEqual(lastEvent, .write(data: data))
+        let data = " 1 2 3 "
+        channel.write(" 1 2 3 ", promise: nil)
+        XCTAssertEqual(lastEvent, .write(data: NIOAny(data)))
     }
 
     func testFlush() {

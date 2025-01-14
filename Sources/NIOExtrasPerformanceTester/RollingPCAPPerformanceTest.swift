@@ -45,7 +45,7 @@ final class RollingPCAPPerformanceTest: Benchmark {
             mode: .client,
             fileSink: pcapRingBuffer.addFragment
         )
-        try channel.pipeline.addHandler(pcapHandler, position: .first).wait()
+        try channel.pipeline.syncOperations.addHandler(pcapHandler, position: .first)
 
         for _ in 0..<self.numberOfRepeats {
             channel.writeAndFlush(self.byteBuffer, promise: nil)

@@ -52,7 +52,7 @@ class WritePCAPHandlerTest: XCTestCase {
         self.accumulatedPackets = []
         self.channel = EmbeddedChannel()
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIOWritePCAPHandler(
                     mode: .client,
                     fakeLocalAddress: nil,
@@ -62,7 +62,7 @@ class WritePCAPHandlerTest: XCTestCase {
                     }
                 ),
                 name: "NIOWritePCAPHandler"
-            ).wait()
+            )
         )
         self.scratchBuffer = self.channel.allocator.buffer(capacity: 128)
     }
@@ -734,7 +734,7 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertNoThrow(try self.channel.pipeline.removeHandler(name: "NIOWritePCAPHandler").wait())
         let settings = NIOWritePCAPHandler.Settings(emitPCAPWrites: .whenIssued)
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIOWritePCAPHandler(
                     mode: .client,
                     fakeLocalAddress: nil,
@@ -744,7 +744,7 @@ class WritePCAPHandlerTest: XCTestCase {
                         self.accumulatedPackets.append($0)
                     }
                 )
-            ).wait()
+            )
         )
         self.channel.localAddress = try! SocketAddress(ipAddress: "1.2.3.4", port: 1111)
         self.channel.remoteAddress = try! SocketAddress(ipAddress: "9.8.7.6", port: 2222)
@@ -782,7 +782,7 @@ class WritePCAPHandlerTest: XCTestCase {
         // Let's drop all writes/flushes so EmbeddedChannel won't accumulate them.
         XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllWritesAndFlushes()).wait())
         XCTAssertNoThrow(
-            try channel.pipeline.addHandler(
+            try channel.pipeline.syncOperations.addHandler(
                 NIOWritePCAPHandler(
                     mode: .client,
                     fakeLocalAddress: .init(ipAddress: "::1", port: 1),
@@ -791,7 +791,7 @@ class WritePCAPHandlerTest: XCTestCase {
                         numberOfBytesLogged += Int64($0.readableBytes)
                     }
                 )
-            ).wait()
+            )
         )
         // Let's also drop all channelReads to prevent accumulation of all the data.
         XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllChannelReads()).wait())

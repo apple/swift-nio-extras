@@ -740,7 +740,7 @@ extension NIOWritePCAPHandler {
                 }
             }
             return SynchronizedFileSink(
-                fileHandle: NIOFileHandle(descriptor: fd),
+                fileHandle: NIOFileHandle(_deprecatedTakingOwnershipOfDescriptor: fd),
                 errorHandler: errorHandler
             )
         }

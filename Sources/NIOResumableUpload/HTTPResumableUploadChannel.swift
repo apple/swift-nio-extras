@@ -221,7 +221,7 @@ extension HTTPResumableUploadChannel {
 
     func receive(_ part: HTTPRequestPart) {
         self.eventLoop.preconditionInEventLoop()
-        self.pipeline.fireChannelRead(NIOAny(part))
+        self.pipeline.fireChannelRead(part)
     }
 
     func receiveComplete() {

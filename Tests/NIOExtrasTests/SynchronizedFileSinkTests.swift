@@ -72,7 +72,7 @@ private func withTemporaryFile<T>(
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }
 
-    let fileHandle = try NIOFileHandle(path: temporaryFilePath, mode: [.read, .write])
+    let fileHandle = try NIOFileHandle(_deprecatedPath: temporaryFilePath, mode: [.read, .write])
     defer {
         XCTAssertNoThrow(try fileHandle.close())
     }
@@ -91,7 +91,13 @@ private func withTemporaryFile<T>(
         XCTAssertNoThrow(try FileManager.default.removeItem(atPath: temporaryFilePath))
     }
 
-    let fileHandle = try NIOFileHandle(path: temporaryFilePath, mode: [.read, .write])
+    // NIOFileHandle(_deprecatedPath:mode:) is 'noasync' but we don't have a viable alternative;
+    // this wrapper suppresses the 'noasync'.
+    func makeFileHandle() throws -> NIOFileHandle {
+        try NIOFileHandle(_deprecatedPath: temporaryFilePath, mode: [.read, .write])
+    }
+
+    let fileHandle = try makeFileHandle()
     defer {
         XCTAssertNoThrow(try fileHandle.close())
     }

@@ -243,7 +243,7 @@ class SOCKSServerHandlerTests: XCTestCase {
     func testFlushOnHandlerRemoved() {
         self.writeInbound([0x05, 0x01])
         self.assertInbound([])
-        XCTAssertNoThrow(try self.channel.pipeline.removeHandler(self.handler).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.removeHandler(self.handler).wait())
         self.assertInbound([0x05, 0x01])
     }
 
