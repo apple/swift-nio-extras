@@ -193,8 +193,8 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
 
             var writeFutures: [EventLoopFuture<Void>] = []
             for clientChannel in clientChannels {
-                clientChannel.write(NIOAny(HTTPClientRequestPart.head(self.head)), promise: nil)
-                writeFutures.append(clientChannel.writeAndFlush(NIOAny(HTTPClientRequestPart.end(nil))))
+                clientChannel.write(HTTPClientRequestPart.head(self.head), promise: nil)
+                writeFutures.append(clientChannel.writeAndFlush(HTTPClientRequestPart.end(nil)))
             }
             let allWrites = EventLoopFuture<Void>.andAllComplete(writeFutures, on: writeFutures.first!.eventLoop)
             try! allWrites.wait()

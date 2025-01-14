@@ -126,14 +126,14 @@ class PCAPRingBufferTest: XCTestCase {
         let channel = EmbeddedChannel()
         let ringBuffer = NIOPCAPRingBuffer(maximumFragments: .init(fragmentsToRecord), maximumBytes: 1_000_000)
         XCTAssertNoThrow(
-            try channel.pipeline.addHandler(
+            try channel.pipeline.syncOperations.addHandler(
                 NIOWritePCAPHandler(
                     mode: .client,
                     fakeLocalAddress: nil,
                     fakeRemoteAddress: nil,
                     fileSink: { ringBuffer.addFragment($0) }
                 )
-            ).wait()
+            )
         )
         channel.localAddress = try! SocketAddress(ipAddress: "255.255.255.254", port: Int(UInt16.max) - 1)
         XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5678)).wait())

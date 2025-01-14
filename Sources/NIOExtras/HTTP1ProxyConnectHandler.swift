@@ -241,7 +241,7 @@ public final class NIOHTTP1ProxyConnectHandler: ChannelDuplexHandler, RemovableC
         }
 
         // Ok, we've set up the proxy connection. We can now remove ourselves, which should happen synchronously.
-        context.pipeline.removeHandler(context: context, promise: nil)
+        context.pipeline.syncOperations.removeHandler(context: context, promise: nil)
 
         self.promise?.succeed(())
     }

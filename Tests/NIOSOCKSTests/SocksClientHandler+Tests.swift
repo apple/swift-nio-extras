@@ -235,7 +235,7 @@ class SocksClientHandlerTests: XCTestCase {
         self.assertOutputBuffer([])
 
         // add the handler, there should be outbound data immediately
-        XCTAssertNoThrow(self.channel.pipeline.addHandler(handler))
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(handler))
         self.assertOutputBuffer([0x05, 0x01, 0x00])
     }
 
@@ -263,7 +263,7 @@ class SocksClientHandlerTests: XCTestCase {
         let establishPromise = self.channel.eventLoop.makePromise(of: Void.self)
         let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
         establishPromise.futureResult.whenSuccess { _ in
-            self.channel.pipeline.removeHandler(self.handler).cascade(to: removalPromise)
+            self.channel.pipeline.syncOperations.removeHandler(self.handler).cascade(to: removalPromise)
         }
 
         XCTAssertNoThrow(
@@ -309,7 +309,7 @@ class SocksClientHandlerTests: XCTestCase {
 
         // we try to remove the handler before the connection is established.
         let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        self.channel.pipeline.removeHandler(self.handler, promise: removalPromise)
+        self.channel.pipeline.syncOperations.removeHandler(self.handler, promise: removalPromise)
 
         // establishes the connection
         self.writeInbound([0x05, 0x00, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
