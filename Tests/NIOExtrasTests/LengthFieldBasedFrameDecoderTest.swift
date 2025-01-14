@@ -62,15 +62,15 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
             XCTAssertEqual(buffer.read24UInt(endianness: .little), input)
         }
     }
-    func testDecodeWithUInt8HeaderWithData() throws {
 
+    func testDecodeWithUInt8HeaderWithData() throws {
         self.decoderUnderTest = .init(
             LengthFieldBasedFrameDecoder(
                 lengthFieldLength: .one,
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataBytes: [UInt8] = [10, 20, 30, 40]
         let dataBytesLengthHeader = UInt8(dataBytes.count)
@@ -100,7 +100,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: UInt16 = 5
 
@@ -129,7 +129,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .big
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: 8)  // 3 byte header + 5 character string
         buffer.writeBytes([0, 0, 5])
@@ -156,7 +156,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: UInt32 = 5
 
@@ -185,7 +185,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: UInt64 = 5
 
@@ -214,7 +214,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: Int64 = 5
 
@@ -244,7 +244,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .big
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: Int64 = 5
 
@@ -269,7 +269,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     func testDecodeWithInt64HeaderStringDefaultingToBigEndian() throws {
 
         self.decoderUnderTest = .init(LengthFieldBasedFrameDecoder(lengthFieldLength: .eight))
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: Int64 = 5
 
@@ -298,7 +298,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let firstFrameDataLength: UInt8 = 5
         let secondFrameDataLength: UInt8 = 3
@@ -341,7 +341,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let frameDataLength: UInt16 = 5
 
@@ -400,7 +400,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let buffer = self.channel.allocator.buffer(capacity: 1)
         XCTAssertTrue(try self.channel.writeInbound(buffer).isEmpty)
@@ -415,7 +415,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: UInt8 = 5  // 8 byte is only half the length required
 
@@ -440,7 +440,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: UInt16 = 7
 
@@ -469,7 +469,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        try? self.channel.pipeline.addHandler(self.decoderUnderTest).wait()
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength: Int64 = 5
 
@@ -479,7 +479,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
 
         XCTAssertTrue(try self.channel.writeInbound(buffer).isFull)
 
-        let removeFuture = self.channel.pipeline.removeHandler(self.decoderUnderTest)
+        let removeFuture = self.channel.pipeline.syncOperations.removeHandler(self.decoderUnderTest)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
 
@@ -503,7 +503,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        try? self.channel.pipeline.addHandler(self.decoderUnderTest).wait()
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let extraUnusedDataString = "fghi"
         let dataLength: Int64 = 5
@@ -514,7 +514,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
 
         XCTAssertTrue(try channel.writeInbound(buffer).isFull)
 
-        let removeFuture = self.channel.pipeline.removeHandler(self.decoderUnderTest)
+        let removeFuture = self.channel.pipeline.syncOperations.removeHandler(self.decoderUnderTest)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
 
@@ -664,7 +664,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength = UInt32(Int32.max)
 
@@ -682,7 +682,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength = UInt32(Int32.max) + 1
 
@@ -700,7 +700,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength = UInt64(Int32.max)
 
@@ -718,7 +718,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 lengthFieldEndianness: .little
             )
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.decoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.decoderUnderTest))
 
         let dataLength = UInt64(Int32.max) + 1
 

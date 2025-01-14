@@ -32,10 +32,11 @@ let targetAddress = SOCKSAddress.address(try SocketAddress(ipAddress: targetIPAd
 let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
 let bootstrap = ClientBootstrap(group: elg)
     .channelInitializer { channel in
-        channel.pipeline.addHandlers([
-            SOCKSClientHandler(targetAddress: targetAddress),
-            EchoHandler(),
-        ])
+        channel.eventLoop.makeCompletedFuture {
+            let sync = channel.pipeline.syncOperations
+            try sync.addHandler(SOCKSClientHandler(targetAddress: targetAddress))
+            try sync.addHandler(EchoHandler())
+        }
     }
 let channel = try bootstrap.connect(host: "127.0.0.1", port: 1080).wait()
 

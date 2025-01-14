@@ -221,16 +221,16 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         )
         var promises: [EventLoopPromise<Void>] = []
         promises.append(embedded.eventLoop.makePromise())
-        embedded.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promises.last)
+        embedded.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promises.last)
 
         promises.append(embedded.eventLoop.makePromise())
         embedded.pipeline.write(
-            NIOAny(HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(string: "Test")))),
+            HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(string: "Test"))),
             promise: promises.last
         )
 
         promises.append(embedded.eventLoop.makePromise())
-        embedded.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promises.last)
+        embedded.pipeline.write(HTTPClientRequestPart.end(nil), promise: promises.last)
         embedded.pipeline.flush()
 
         // read the connect header back
@@ -291,16 +291,16 @@ class HTTP1ProxyConnectHandlerTests: XCTestCase {
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "apple.com")
         var promises: [EventLoopPromise<Void>] = []
         promises.append(embedded.eventLoop.makePromise())
-        embedded.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promises.last)
+        embedded.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promises.last)
 
         promises.append(embedded.eventLoop.makePromise())
         embedded.pipeline.write(
-            NIOAny(HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(string: "Test")))),
+            HTTPClientRequestPart.body(.byteBuffer(ByteBuffer(string: "Test"))),
             promise: promises.last
         )
 
         promises.append(embedded.eventLoop.makePromise())
-        embedded.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promises.last)
+        embedded.pipeline.write(HTTPClientRequestPart.end(nil), promise: promises.last)
         embedded.pipeline.flush()
 
         // read the connect header back

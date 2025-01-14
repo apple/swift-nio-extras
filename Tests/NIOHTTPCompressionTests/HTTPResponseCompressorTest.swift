@@ -151,17 +151,17 @@ class HTTPResponseCompressorTest: XCTestCase {
 
     private func writeOneChunk(head: HTTPResponseHead, body: [ByteBuffer], channel: EmbeddedChannel) throws {
         let promiseOrderer = PromiseOrderer(eventLoop: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPServerResponsePart.head(head)), promise: promiseOrderer.makePromise())
+        channel.pipeline.write(HTTPServerResponsePart.head(head), promise: promiseOrderer.makePromise())
 
         for bodyChunk in body {
             channel.pipeline.write(
-                NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyChunk))),
+                HTTPServerResponsePart.body(.byteBuffer(bodyChunk)),
                 promise: promiseOrderer.makePromise()
             )
 
         }
         channel.pipeline.write(
-            NIOAny(HTTPServerResponsePart.end(nil)),
+            HTTPServerResponsePart.end(nil),
             promise: promiseOrderer.makePromise()
         )
         channel.pipeline.flush()
@@ -173,9 +173,9 @@ class HTTPResponseCompressorTest: XCTestCase {
     private func writeIntermittentFlushes(head: HTTPResponseHead, body: [ByteBuffer], channel: EmbeddedChannel) throws {
         let promiseOrderer = PromiseOrderer(eventLoop: channel.eventLoop)
         var writeCount = 0
-        channel.pipeline.write(NIOAny(HTTPServerResponsePart.head(head)), promise: promiseOrderer.makePromise())
+        channel.pipeline.write(HTTPServerResponsePart.head(head), promise: promiseOrderer.makePromise())
         for bodyChunk in body {
-            channel.pipeline.write(
+            channel.pipeline.syncOperations.write(
                 NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyChunk))),
                 promise: promiseOrderer.makePromise()
             )
@@ -185,7 +185,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             }
         }
         channel.pipeline.write(
-            NIOAny(HTTPServerResponsePart.end(nil)),
+            HTTPServerResponsePart.end(nil),
             promise: promiseOrderer.makePromise()
         )
         channel.pipeline.flush()
@@ -215,8 +215,8 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
         var requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         requestHead.headers.add(name: "host", value: "apple.com")
-        clientChannel.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: nil)
-        clientChannel.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: nil)
+        clientChannel.write(HTTPClientRequestPart.head(requestHead), promise: nil)
+        clientChannel.write(HTTPClientRequestPart.end(nil), promise: nil)
 
         while let b = try channel.readOutbound(as: ByteBuffer.self) {
             try clientChannel.writeInbound(b)
@@ -406,8 +406,8 @@ class HTTPResponseCompressorTest: XCTestCase {
         compressor: HTTPResponseCompressor = HTTPResponseCompressor()
     ) throws -> EmbeddedChannel {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseEncoder(), name: "encoder").wait())
-        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor, name: "compressor").wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(HTTPResponseEncoder(), name: "encoder"))
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(compressor, name: "compressor"))
         return channel
     }
 
@@ -593,7 +593,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         try sendRequest(acceptEncoding: "gzip", channel: channel)
         let head = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1), status: .ok)
         let writePromise = channel.eventLoop.makePromise(of: Void.self)
-        channel.write(NIOAny(HTTPServerResponsePart.head(head)), promise: writePromise)
+        channel.write(HTTPServerResponsePart.head(head), promise: writePromise)
         writePromise.futureResult.map {
             XCTFail("Write succeeded")
         }.whenFailure { err in
@@ -621,7 +621,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         try sendRequest(acceptEncoding: nil, channel: channel)
         let head = HTTPResponseHead(version: HTTPVersion(major: 1, minor: 1), status: .ok)
         let writePromise = channel.eventLoop.makePromise(of: Void.self)
-        channel.writeAndFlush(NIOAny(HTTPServerResponsePart.head(head)), promise: writePromise)
+        channel.writeAndFlush(HTTPServerResponsePart.head(head), promise: writePromise)
 
         XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "encoder").wait())
         XCTAssertNoThrow(try channel.pipeline.removeHandler(name: "compressor").wait())
@@ -636,9 +636,9 @@ class HTTPResponseCompressorTest: XCTestCase {
         var bodyBuffer = channel.allocator.buffer(capacity: 20)
         bodyBuffer.writeBytes([UInt8](repeating: 60, count: 20))
 
-        channel.write(NIOAny(HTTPServerResponsePart.head(head)), promise: nil)
-        channel.writeAndFlush(NIOAny(HTTPServerResponsePart.body(.byteBuffer(bodyBuffer))), promise: nil)
-        channel.writeAndFlush(NIOAny(HTTPServerResponsePart.end(nil)), promise: finalPromise)
+        channel.write(HTTPServerResponsePart.head(head), promise: nil)
+        channel.writeAndFlush(HTTPServerResponsePart.body(.byteBuffer(bodyBuffer)), promise: nil)
+        channel.writeAndFlush(HTTPServerResponsePart.end(nil), promise: finalPromise)
 
         try finalPromise.futureResult.wait()
 
@@ -708,11 +708,8 @@ class HTTPResponseCompressorTest: XCTestCase {
         try sendRequest(acceptEncoding: "deflate", channel: channel)
         try assertDeflatedResponse(channel: channel)
 
-        XCTAssertNoThrow(
-            try channel.pipeline.context(handlerType: HTTPResponseCompressor.self).flatMap { context in
-                channel.pipeline.removeHandler(context: context)
-            }.wait()
-        )
+        let context = try channel.pipeline.syncOperations.context(handlerType: HTTPResponseCompressor.self)
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.removeHandler(context: context).wait())
 
         try sendRequest(acceptEncoding: "deflate", channel: channel)
         try assertUncompressedResponse(channel: channel)
@@ -720,7 +717,7 @@ class HTTPResponseCompressorTest: XCTestCase {
 
     func testBypassCompressionWhenNoContent() throws {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor()).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(HTTPResponseCompressor()))
         defer {
             XCTAssertNoThrow(try channel.finish())
         }
@@ -748,7 +745,7 @@ class HTTPResponseCompressorTest: XCTestCase {
 
     func testBypassCompressionWhenNotModified() throws {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPResponseCompressor()).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(HTTPResponseCompressor()))
         defer {
             XCTAssertNoThrow(try channel.finish())
         }
@@ -840,7 +837,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
 
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(compressor))
         defer {
             XCTAssertNoThrow(try channel.finish())
         }
@@ -933,7 +930,7 @@ class HTTPResponseCompressorTest: XCTestCase {
         }
 
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(compressor).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(compressor))
         defer {
             XCTAssertNoThrow(try channel.finish())
         }

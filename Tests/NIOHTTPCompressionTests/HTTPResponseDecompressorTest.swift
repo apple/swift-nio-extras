@@ -23,7 +23,7 @@ import XCTest
 class HTTPResponseDecompressorTest: XCTestCase {
     func testDecompressionNoLimit() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
         try channel.writeInbound(
@@ -36,7 +36,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSizeWithContentLenghtHeaderSucceeds() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
 
@@ -53,7 +53,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSizeWithContentLenghtHeaderFails() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(271))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .size(271))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
 
@@ -72,7 +72,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSizeWithoutContentLenghtHeaderSucceeds() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate")])
 
@@ -89,7 +89,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitSizeWithoutContentLenghtHeaderFails() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(271))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .size(271))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate")])
 
@@ -108,7 +108,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatioWithContentLenghtHeaderSucceeds() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(21))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(21))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
 
@@ -125,7 +125,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatioWithContentLenghtHeaderFails() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(20))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(20))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "13")])
 
@@ -144,7 +144,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatioWithoutContentLenghtHeaderSucceeds() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(21))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(21))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate")])
 
@@ -161,7 +161,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatioWithoutContentLenghtHeaderFails() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(20))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .ratio(20))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate")])
 
@@ -180,7 +180,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionMultipleWriteWithLimit() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .size(272))))
 
         let headers = HTTPHeaders([("Content-Encoding", "deflate")])
         // this compressed payload is 272 bytes long uncompressed
@@ -202,7 +202,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompression() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none)))
 
         var body = ""
         for _ in 1...1000 {
@@ -266,7 +266,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
     func testDecompressionWithoutContentLength() {
         let channel = EmbeddedChannel()
-        XCTAssertNoThrow(try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none)))
 
         var body = ""
         for _ in 1...1000 {
@@ -336,7 +336,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0, 0, 0, 1, 0, 1] + [1, 2, 3])
 
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(
             HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))
@@ -350,7 +350,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0])
 
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPResponseDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(
             HTTPClientResponsePart.head(.init(version: .init(major: 1, minor: 1), status: .ok, headers: headers))

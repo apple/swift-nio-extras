@@ -18,15 +18,17 @@ import NIOExtras
 class HTTP1ThreadedRollingPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     init() {
         func addRollingPCap(channel: Channel) -> EventLoopFuture<Void> {
-            let pcapRingBuffer = NIOPCAPRingBuffer(
-                maximumFragments: 25,
-                maximumBytes: 1_000_000
-            )
-            let pcapHandler = NIOWritePCAPHandler(
-                mode: .client,
-                fileSink: pcapRingBuffer.addFragment
-            )
-            return channel.pipeline.addHandler(pcapHandler, position: .first)
+            channel.eventLoop.submit {
+                let pcapRingBuffer = NIOPCAPRingBuffer(
+                    maximumFragments: 25,
+                    maximumBytes: 1_000_000
+                )
+                let pcapHandler = NIOWritePCAPHandler(
+                    mode: .client,
+                    fileSink: pcapRingBuffer.addFragment
+                )
+                try channel.pipeline.syncOperations.addHandler(pcapHandler, position: .first)
+            }
         }
 
         super.init(

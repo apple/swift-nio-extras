@@ -45,7 +45,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: .little
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         let dataBytes: [UInt8] = [10, 20, 30, 40]
 
@@ -85,7 +85,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -129,7 +129,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -173,7 +173,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -217,7 +217,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -258,7 +258,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -302,7 +302,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -341,7 +341,7 @@ class LengthFieldPrependerTest: XCTestCase {
 
         self.encoderUnderTest = LengthFieldPrepender(lengthFieldLength: .eight)
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         var buffer = self.channel.allocator.buffer(capacity: standardDataStringCount)
         buffer.writeString(standardDataString)
@@ -385,7 +385,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         let buffer = self.channel.allocator.buffer(capacity: 0)
 
@@ -421,7 +421,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         let contents = [UInt8](repeating: 200, count: 514)
 
@@ -465,7 +465,7 @@ class LengthFieldPrependerTest: XCTestCase {
             lengthFieldEndianness: endianness
         )
 
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.encoderUnderTest).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.encoderUnderTest))
 
         let contents = [UInt8](repeating: 200, count: 300)
 

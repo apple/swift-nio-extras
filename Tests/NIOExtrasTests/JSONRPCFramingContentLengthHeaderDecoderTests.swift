@@ -25,9 +25,9 @@ final class JSONRPCFramingContentLengthHeaderDecoderTests: XCTestCase {
 
         // let's add the framing handler to the pipeline as that's what we're testing here.
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 ByteToMessageHandler(NIOJSONRPCFraming.ContentLengthHeaderFrameDecoder())
-            ).wait()
+            )
         )
         // this pretends to connect the channel to this IP address.
         XCTAssertNoThrow(self.channel.connect(to: try .init(ipAddress: "1.2.3.4", port: 5678)))

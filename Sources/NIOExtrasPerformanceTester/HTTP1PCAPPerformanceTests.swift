@@ -37,11 +37,13 @@ class HTTP1ThreadedPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     init() {
         let sinkHolder = SinkHolder()
         func addPCap(channel: Channel) -> EventLoopFuture<Void> {
-            let pcapHandler = NIOWritePCAPHandler(
-                mode: .client,
-                fileSink: sinkHolder.fileSink.write
-            )
-            return channel.pipeline.addHandler(pcapHandler, position: .first)
+            channel.eventLoop.submit {
+                let pcapHandler = NIOWritePCAPHandler(
+                    mode: .client,
+                    fileSink: sinkHolder.fileSink.write
+                )
+                return try channel.pipeline.syncOperations.addHandler(pcapHandler, position: .first)
+            }
         }
 
         self.sinkHolder = sinkHolder
