@@ -117,10 +117,7 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
     /// Adding handlers is fallible. If we fail to do it, we should return 500 to the user
     private func addHandlerOrInternalError(context: ChannelHandlerContext, handler: ChannelHandler) {
         do {
-            try context.pipeline.syncOperations.addHandler(
-                handler,
-                position: ChannelPipeline.Position.after(self)
-            )
+            try context.pipeline.syncOperations.addHandler(handler)
             self.handlerAdded = true
         } catch {
             self.writeSimpleResponse(
