@@ -70,7 +70,7 @@ public class QuiescingHelperTest: XCTestCase {
             XCTAssertNoThrow(try channel.connect(to: .init(ipAddress: "1.2.3.4", port: pretendPort)).wait())
             waitForFutures.append(waitForPromise.futureResult)
             childChannels.append(channel)
-            serverChannel.pipeline.fireChannelRead(NIOAny(channel))
+            serverChannel.pipeline.fireChannelRead(channel)
         }
         // check that the server channel and all child channels are active before initiating the shutdown
         XCTAssertTrue(serverChannel.isActive)
@@ -201,7 +201,7 @@ public class QuiescingHelperTest: XCTestCase {
         let childChannel1 = EmbeddedChannel(handler: eventCounterHandler, loop: el)
         // activate the child channel
         XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
-        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+        serverChannel.pipeline.fireChannelRead(childChannel1)
 
         // check that the server channel and channel are active before initiating the shutdown
         XCTAssertTrue(serverChannel.isActive)
@@ -244,7 +244,7 @@ public class QuiescingHelperTest: XCTestCase {
         let childChannel1 = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise1), loop: el)
         // activate the child channel
         XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
-        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+        serverChannel.pipeline.fireChannelRead(childChannel1)
 
         el.run()
 
@@ -260,7 +260,7 @@ public class QuiescingHelperTest: XCTestCase {
         let childChannel2 = EmbeddedChannel(handler: WaitForQuiesceUserEvent(promise: waitForPromise2), loop: el)
         // activate the child channel
         XCTAssertNoThrow(try childChannel2.connect(to: .init(ipAddress: "1.2.3.4", port: 2)).wait())
-        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel2))
+        serverChannel.pipeline.fireChannelRead(childChannel2)
         el.run()
 
         // Check that we got all quiescing events
@@ -308,7 +308,7 @@ public class QuiescingHelperTest: XCTestCase {
         let childChannel1 = EmbeddedChannel(loop: el)
         // activate the child channel
         XCTAssertNoThrow(try childChannel1.connect(to: .init(ipAddress: "1.2.3.4", port: 1)).wait())
-        serverChannel.pipeline.fireChannelRead(NIOAny(childChannel1))
+        serverChannel.pipeline.fireChannelRead(childChannel1)
 
         el.run()
     }

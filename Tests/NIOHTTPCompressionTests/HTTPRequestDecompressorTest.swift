@@ -44,8 +44,8 @@ private final class DecompressedAssert: ChannelInboundHandler {
 class HTTPRequestDecompressorTest: XCTestCase {
     func testDecompressionNoLimit() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
-        try channel.pipeline.addHandler(DecompressedAssert()).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
+        try channel.pipeline.syncOperations.addHandler(DecompressedAssert())
 
         let buffer = ByteBuffer.of(string: testString)
         let compressed = compress(buffer, "gzip")
@@ -67,7 +67,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
     func testDecompressionLimitRatio() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .ratio(10))).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .ratio(10)))
         let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 500))
         let compressed = compress(decompressed, "gzip")
         let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "\(compressed.readableBytes)")])
@@ -100,7 +100,9 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let channel = EmbeddedChannel()
         let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 200))
         let compressed = compress(decompressed, "gzip")
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .size(decompressed.readableBytes - 1))).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .size(decompressed.readableBytes - 1))
+        )
         let headers = HTTPHeaders([("Content-Encoding", "gzip"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(
             HTTPServerRequestPart.head(
@@ -129,7 +131,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
     func testDecompression() throws {
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
 
         let body = Array(repeating: testString, count: 1000).joined()
         let algorithms: [(actual: String, announced: String)?] = [
@@ -174,7 +176,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0, 0, 0, 1, 0, 1] + [1, 2, 3])
 
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(
             HTTPServerRequestPart.head(
@@ -195,7 +197,7 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0])
 
         let channel = EmbeddedChannel()
-        try channel.pipeline.addHandler(NIOHTTPRequestDecompressor(limit: .none)).wait()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
         let headers = HTTPHeaders([("Content-Encoding", "deflate"), ("Content-Length", "\(compressed.readableBytes)")])
         try channel.writeInbound(
             HTTPServerRequestPart.head(

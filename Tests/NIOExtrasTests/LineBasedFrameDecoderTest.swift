@@ -28,7 +28,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         self.channel = EmbeddedChannel()
         self.decoder = LineBasedFrameDecoder()
         self.handler = ByteToMessageHandler(self.decoder)
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(self.handler).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(self.handler))
     }
 
     override func tearDown() {
@@ -69,7 +69,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         XCTAssertEqual(3, outputBuffer?.readableBytes)
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
 
-        let removeFuture = self.channel.pipeline.removeHandler(self.handler)
+        let removeFuture = self.channel.pipeline.syncOperations.removeHandler(self.handler)
         (self.channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertThrowsError(try self.channel.throwIfErrorCaught()) { error in
@@ -93,7 +93,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         var outputBuffer: ByteBuffer? = try self.channel.readInbound()
         XCTAssertEqual("foo", outputBuffer?.readString(length: 3))
 
-        let removeFuture = self.channel.pipeline.removeHandler(self.handler)
+        let removeFuture = self.channel.pipeline.syncOperations.removeHandler(self.handler)
         (self.channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertNoThrow(try self.channel.throwIfErrorCaught())

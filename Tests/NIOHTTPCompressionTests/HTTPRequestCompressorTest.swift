@@ -26,7 +26,10 @@ class HTTPRequestCompressorTest: XCTestCase {
         let channel = EmbeddedChannel()
         //XCTAssertNoThrow(try channel.pipeline.addHandler(HTTPRequestEncoder(), name: "encoder").wait())
         XCTAssertNoThrow(
-            try channel.pipeline.addHandler(NIOHTTPRequestCompressor(encoding: compression), name: "compressor").wait()
+            try channel.pipeline.syncOperations.addHandler(
+                NIOHTTPRequestCompressor(encoding: compression),
+                name: "compressor"
+            )
         )
         return channel
     }
@@ -38,15 +41,15 @@ class HTTPRequestCompressorTest: XCTestCase {
 
     func write(head: HTTPRequestHead, body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         var promiseArray = PromiseArray(on: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(head)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(head), promise: promiseArray.makePromise())
 
         for bodyChunk in body {
             channel.pipeline.write(
-                NIOAny(HTTPClientRequestPart.body(.byteBuffer(bodyChunk))),
+                HTTPClientRequestPart.body(.byteBuffer(bodyChunk)),
                 promise: promiseArray.makePromise()
             )
         }
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
 
         try promiseArray.waitUntilComplete()
@@ -60,11 +63,11 @@ class HTTPRequestCompressorTest: XCTestCase {
     func writeWithIntermittantFlush(head: HTTPRequestHead, body: [ByteBuffer], to channel: EmbeddedChannel) throws {
         var promiseArray = PromiseArray(on: channel.eventLoop)
         var count = 3
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(head)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(head), promise: promiseArray.makePromise())
 
         for bodyChunk in body {
             channel.pipeline.write(
-                NIOAny(HTTPClientRequestPart.body(.byteBuffer(bodyChunk))),
+                HTTPClientRequestPart.body(.byteBuffer(bodyChunk)),
                 promise: promiseArray.makePromise()
             )
             count -= 1
@@ -73,7 +76,7 @@ class HTTPRequestCompressorTest: XCTestCase {
                 count = 3
             }
         }
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
 
         try promiseArray.waitUntilComplete()
@@ -225,13 +228,13 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         channel.pipeline.write(
-            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            HTTPClientRequestPart.body(.byteBuffer(buffer)),
             promise: promiseArray.makePromise()
         )
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         try promiseArray.waitUntilComplete()
 
@@ -252,13 +255,13 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promiseArray.makePromise())
         channel.pipeline.write(
-            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            HTTPClientRequestPart.body(.byteBuffer(buffer)),
             promise: promiseArray.makePromise()
         )
         channel.pipeline.flush()
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         try promiseArray.waitUntilComplete()
 
@@ -283,14 +286,14 @@ class HTTPRequestCompressorTest: XCTestCase {
         }
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promiseArray.makePromise())
         channel.pipeline.write(
-            NIOAny(HTTPClientRequestPart.body(.byteBuffer(buffer))),
+            HTTPClientRequestPart.body(.byteBuffer(buffer)),
             promise: promiseArray.makePromise()
         )
         channel.pipeline.flush()
         channel.pipeline.flush()
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         try promiseArray.waitUntilComplete()
 
@@ -307,8 +310,8 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         let requestHead = HTTPRequestHead(version: HTTPVersion(major: 1, minor: 1), method: .GET, uri: "/")
         var promiseArray = PromiseArray(on: channel.eventLoop)
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.head(requestHead)), promise: promiseArray.makePromise())
-        channel.pipeline.write(NIOAny(HTTPClientRequestPart.end(nil)), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.head(requestHead), promise: promiseArray.makePromise())
+        channel.pipeline.write(HTTPClientRequestPart.end(nil), promise: promiseArray.makePromise())
         channel.pipeline.flush()
         try promiseArray.waitUntilComplete()
 

@@ -23,7 +23,9 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        try channel.pipeline.addHandler(ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
+        )
 
         var buffer = channel.allocator.buffer(capacity: frameLength)
         buffer.writeString("xxxx")
@@ -43,7 +45,9 @@ class FixedLengthFrameDecoderTest: XCTestCase {
         let channel = EmbeddedChannel()
 
         let frameLength = 8
-        try channel.pipeline.addHandler(ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
+        )
 
         var buffer = channel.allocator.buffer(capacity: 19)
         buffer.writeString("xxxxxxxxaaaaaaaabbb")
@@ -78,7 +82,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         let frameLength = 8
         let handler = ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
-        try channel.pipeline.addHandler(handler).wait()
+        try channel.pipeline.syncOperations.addHandler(handler)
 
         var buffer = channel.allocator.buffer(capacity: 15)
         buffer.writeString("xxxxxxxxxxxxxxx")
@@ -91,7 +95,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
             }
         )
 
-        let removeFuture = channel.pipeline.removeHandler(handler)
+        let removeFuture = channel.pipeline.syncOperations.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertThrowsError(try channel.throwIfErrorCaught()) { error in
@@ -112,7 +116,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
 
         let frameLength = 8
         let handler = ByteToMessageHandler(FixedLengthFrameDecoder(frameLength: frameLength))
-        try channel.pipeline.addHandler(handler).wait()
+        try channel.pipeline.syncOperations.addHandler(handler)
 
         var buffer = channel.allocator.buffer(capacity: 6)
         buffer.writeString("xxxxxxxx")
@@ -125,7 +129,7 @@ class FixedLengthFrameDecoderTest: XCTestCase {
             }
         )
 
-        let removeFuture = channel.pipeline.removeHandler(handler)
+        let removeFuture = channel.pipeline.syncOperations.removeHandler(handler)
         (channel.eventLoop as! EmbeddedEventLoop).run()
         XCTAssertNoThrow(try removeFuture.wait())
         XCTAssertNoThrow(try channel.throwIfErrorCaught())
