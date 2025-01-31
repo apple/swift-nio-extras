@@ -33,7 +33,11 @@ public struct ResponsivenessConfigURLs: Codable, Hashable, Sendable {
         case uploadURL = "upload_url"
     }
 
-    static var largeDownloadSize: Int { 8 * 1_000_000_000 }  // 8 * 10^9
+    #if _pointerBitWidth(_32)
+    static var largeDownloadSize: Int { 1_000_000_000 }  // 1 * 10^9
+    #else
+    static var largeDownloadSize: Int { 8_000_000_000 }  // 8 * 10^9
+    #endif
     static var smallDownloadSize: Int { 1 }
 
     public init(scheme: String, authority: String) {
