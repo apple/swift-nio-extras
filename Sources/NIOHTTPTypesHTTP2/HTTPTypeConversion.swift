@@ -115,7 +115,7 @@ extension HTTPRequest {
         var i = hpack.startIndex
         while i != hpack.endIndex {
             let (name, value, indexable) = hpack[i]
-            if !name.hasPrefix(":") {
+            if name.utf8.first != UInt8(ascii: ":") {
                 break
             }
             switch name {
@@ -180,7 +180,7 @@ extension HTTPRequest {
         self.headerFields.reserveCapacity(hpack.count)
         while i != hpack.endIndex {
             let (name, value, indexable) = hpack[i]
-            if name.hasPrefix(":") {
+            if name.utf8.first == UInt8(ascii: ":") {
                 throw HTTP2TypeConversionError.pseudoFieldNotFirst
             }
             if let fieldName = HTTPField.Name(name) {
@@ -201,7 +201,7 @@ extension HTTPResponse {
         var i = hpack.startIndex
         while i != hpack.endIndex {
             let (name, value, indexable) = hpack[i]
-            if !name.hasPrefix(":") {
+            if name.utf8.first != UInt8(ascii: ":") {
                 break
             }
             switch name {
@@ -232,7 +232,7 @@ extension HTTPResponse {
         self.headerFields.reserveCapacity(hpack.count)
         while i != hpack.endIndex {
             let (name, value, indexable) = hpack[i]
-            if name.hasPrefix(":") {
+            if name.utf8.first == UInt8(ascii: ":") {
                 throw HTTP2TypeConversionError.pseudoFieldNotFirst
             }
             if let fieldName = HTTPField.Name(name) {
@@ -251,7 +251,7 @@ extension HTTPFields {
         self.reserveCapacity(trailers.count)
 
         for (name, value, indexable) in trailers {
-            if name.hasPrefix(":") {
+            if name.utf8.first == UInt8(ascii: ":") {
                 throw HTTP2TypeConversionError.pseudoFieldInTrailers
             }
             if let fieldName = HTTPField.Name(name) {
