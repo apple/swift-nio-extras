@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CNIOLinux
 import Foundation
 import NIOCore
 import NIOEmbedded
