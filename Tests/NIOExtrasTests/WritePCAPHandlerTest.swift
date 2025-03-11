@@ -16,6 +16,7 @@ import Foundation
 import NIOCore
 import NIOEmbedded
 import XCTest
+import CNIOLinux
 
 @testable import NIOExtras
 
