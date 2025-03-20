@@ -15,6 +15,7 @@
 import CNIOLinux
 import Dispatch
 import NIOCore
+import NIOConcurrencyHelpers
 
 #if canImport(Darwin)
 import Darwin
@@ -808,12 +809,11 @@ extension NIOWritePCAPHandler {
             }
         }
     }
-
     public final class AsynchronizedFileSink {
         private let fileHandle: NIOFileHandle
         private let eventLoop: EventLoop
-        private let errorHandler: (Swift.Error) -> Void
-        private var state: State = .running
+        private let errorHandler: @Sendable (Swift.Error) -> Void
+        private let state: NIOLockedValueBox<State> = NIOLockedValueBox(.running)
         
         public enum FileWritingMode {
             case appendToExistingPCAPFile
@@ -839,33 +839,27 @@ extension NIOWritePCAPHandler {
         public static func fileSinkWritingToFile(
             path: String,
             fileWritingMode: FileWritingMode = .createNewPCAPFile,
-            errorHandler: @escaping (Swift.Error) -> Void,
+            errorHandler: @escaping @Sendable (Swift.Error) -> Void,
             on eventLoop: EventLoop
         ) async throws -> AsynchronizedFileSink {
             let oflag: CInt = fileWritingMode == .createNewPCAPFile ? (O_TRUNC | O_CREAT) : O_APPEND
-            let fd: CInt = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CInt, Swift.Error>) in
-                path.withCString { pathPtr in
-                    let fd: Int32 = open(pathPtr, O_WRONLY | oflag, 0o600)
-                    if fd < 0 {
-                        continuation.resume(throwing: Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue))
-                    } else {
-                        continuation.resume(returning: fd)
-                    }
-                }
+            let fd: CInt = path.withCString { pathPtr in
+                open(pathPtr, O_WRONLY | oflag, 0o600)
+            }
+            if fd < 0 {
+                throw Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue)
             }
             
+            /// Write PCAP file header
             if fileWritingMode == .createNewPCAPFile {
-                _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CInt, Swift.Error>) in
-                    NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
-                        let writeOk: Bool = sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
-                        if writeOk {
-                            continuation.resume(returning: 0)  // Dummy value
-                        } else {
-                            continuation.resume(throwing: Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue))
-                        }
-                    }
+                let writeOk: Bool = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
+                    sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
+                }
+                if !writeOk {
+                    throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                 }
             }
+
             let fileHandle: NIOFileHandle = NIOFileHandle(_deprecatedTakingOwnershipOfDescriptor: fd)
             return AsynchronizedFileSink(fileHandle: fileHandle, eventLoop: eventLoop, errorHandler: errorHandler)
         }
@@ -873,7 +867,7 @@ extension NIOWritePCAPHandler {
         private init(
             fileHandle: NIOFileHandle,
             eventLoop: EventLoop,
-            errorHandler: @escaping (Swift.Error) -> Void
+            errorHandler: @escaping @Sendable (Swift.Error) -> Void
         ) {
             self.fileHandle = fileHandle
             self.eventLoop = eventLoop
@@ -881,58 +875,37 @@ extension NIOWritePCAPHandler {
         }
         
         public func write(buffer: ByteBuffer) async throws {
-            try await self.eventLoop.submit {
-                try self.fileHandle.withUnsafeFileDescriptor { fd in
-                    var buffer = buffer
-                    while buffer.readableBytes > 0 {
-                        try buffer.readWithUnsafeReadableBytes { dataPtr in
-                            let written = sysWrite(fd, dataPtr.baseAddress, dataPtr.count)
-                            guard written > 0 else {
-                                throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
-                            }
-                            return written
+            try self.fileHandle.withUnsafeFileDescriptor { fd in
+                var buffer = buffer
+                while buffer.readableBytes > 0 {
+                    try buffer.readWithUnsafeReadableBytes { dataPtr in
+                        let written = sysWrite(fd, dataPtr.baseAddress, dataPtr.count)
+                        guard written > 0 else {
+                            throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                         }
+                        return written
                     }
                 }
-            }.get()
+            }
         }
         
-        /// Asynchronously syncs the file to disk using fsync.
+        /// Syncs the file to disk using fsync.
         public func asyncSync() async throws {
-            try await withCheckedThrowingContinuation { continuation in
-                _ = self.eventLoop.submit {
-                    do {
-                        try self.fileHandle.withUnsafeFileDescriptor { fd in
-                            let result: CInt = fsync(fd)
-                            if result != 0 {
-                                throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
-                            }
-                        }
-                        continuation.resume(returning: ())
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
+            try self.fileHandle.withUnsafeFileDescriptor { fd in
+                let result: CInt = fsync(fd)
+                if result != 0 {
+                    throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                 }
             }
         }
 
-        /// Asynchronously closes the file sink.
+        /// Closes the file sink.
         public func close() async throws {
-            try await withCheckedThrowingContinuation { continuation in
-                _ = self.eventLoop.submit {
-                    do {
-                        try self.fileHandle.close()
-                        continuation.resume(returning: ())
-                        print("File successfully closed.")
-                    } catch {
-                        continuation.resume(throwing: error)
-                        print("Error closing file: \(error)")
-                    }
-                }
-            }
+            try self.fileHandle.close()
+            print("File successfully closed.")
         }
     }
 }
 
 extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {}
-extension NIOWritePCAPHandler.AsynchronizedFileSink: @unchecked Sendable {}
+extension NIOWritePCAPHandler.AsynchronizedFileSink: Sendable {}

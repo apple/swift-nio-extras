@@ -818,13 +818,11 @@ class WritePCAPHandlerTest: XCTestCase {
     }
 
     func testAsynchronizedFileSinkWritesDataToFile() async throws {
-        // Create a unique temporary file path.
         let testHostname: String = "testhost"
         let filePath: String = "/tmp/packets-\(testHostname)-\(UUID())-\(getpid())-\(Int(Date().timeIntervalSince1970)).pcap"
 
         let eventLoop: EmbeddedEventLoop = EmbeddedEventLoop()
         
-        // Create the asynchronous file sink using our new API.
         let fileSink: NIOWritePCAPHandler.AsynchronizedFileSink = try await NIOWritePCAPHandler.AsynchronizedFileSink.fileSinkWritingToFile(
             path: filePath,
             fileWritingMode: .createNewPCAPFile,
@@ -832,7 +830,6 @@ class WritePCAPHandlerTest: XCTestCase {
             on: eventLoop
         )
         
-        // Create an EmbeddedChannel that uses a NIOWritePCAPHandler with our async file sink.
         let channel: EmbeddedChannel = EmbeddedChannel(handler: NIOWritePCAPHandler(
             mode: .client,
             fakeLocalAddress: nil,
@@ -851,8 +848,6 @@ class WritePCAPHandlerTest: XCTestCase {
         var buffer: ByteBuffer = channel.allocator.buffer(capacity: 64)
         buffer.writeString("Test PCAP data")
         try await fileSink.write(buffer: buffer)
-        
-        // Close the channel
         try await channel.closeFuture.get()
         
         // Flush any buffered data to disk and close the file.
