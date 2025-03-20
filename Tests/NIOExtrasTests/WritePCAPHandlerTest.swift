@@ -17,6 +17,7 @@ import Foundation
 import NIOCore
 import NIOEmbedded
 import XCTest
+import NIOPosix
 
 @testable import NIOExtras
 
@@ -816,6 +817,66 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertTrue(try channel.finish().isClean))
     }
 
+    func testAsynchronizedFileSinkWritesDataToFile() async throws {
+        // Create a unique temporary file path.
+        let testHostname: String = "testhost"
+        let filePath: String = "/tmp/packets-\(testHostname)-\(UUID())-\(getpid())-\(Int(Date().timeIntervalSince1970)).pcap"
+
+        let eventLoop: EmbeddedEventLoop = EmbeddedEventLoop()
+        
+        // Create the asynchronous file sink using our new API.
+        let fileSink: NIOWritePCAPHandler.AsynchronizedFileSink = try await NIOWritePCAPHandler.AsynchronizedFileSink.fileSinkWritingToFile(
+            path: filePath,
+            fileWritingMode: .createNewPCAPFile,
+            errorHandler: { error in XCTFail("PCAP logging error: \(error)") },
+            on: eventLoop
+        )
+        
+        // Create an EmbeddedChannel that uses a NIOWritePCAPHandler with our async file sink.
+        let channel: EmbeddedChannel = EmbeddedChannel(handler: NIOWritePCAPHandler(
+            mode: .client,
+            fakeLocalAddress: nil,
+            fakeRemoteAddress: nil,
+            fileSink: { buffer in
+                Task.detached {
+                    do {
+                        try await fileSink.write(buffer: buffer)
+                    } catch {
+                        XCTFail("Failed to write to file sink: \(error)")
+                    }
+                }
+            }
+        ))
+
+        var buffer: ByteBuffer = channel.allocator.buffer(capacity: 64)
+        buffer.writeString("Test PCAP data")
+        try await fileSink.write(buffer: buffer)
+        
+        // Close the channel
+        try await channel.closeFuture.get()
+        
+        // Flush any buffered data to disk and close the file.
+        try await fileSink.asyncSync()
+        // try await fileSink.close()
+        let expectation: XCTestExpectation = XCTestExpectation(description: "File sink should close")
+        Task {
+            do {
+                try await fileSink.close()
+                expectation.fulfill()
+            } catch {
+                XCTFail("Failed to close file sink: \(error)")
+            }
+        }
+        await fulfillment(of: [expectation], timeout: 5)
+        
+        // Verify that the file exists and contains data.
+        let fileManager: FileManager = FileManager.default
+        let fileData: Data = try Data(contentsOf: URL(fileURLWithPath: filePath))
+        XCTAssertGreaterThan(fileData.count, 0, "PCAP file should contain data")
+        
+        // Clean up the temporary file.
+        try fileManager.removeItem(atPath: filePath)
+    }
 }
 
 struct PCAPRecord {
