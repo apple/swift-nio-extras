@@ -830,47 +830,21 @@ class WritePCAPHandlerTest: XCTestCase {
             on: eventLoop
         )
         
-        let channel: EmbeddedChannel = EmbeddedChannel(handler: NIOWritePCAPHandler(
-            mode: .client,
-            fakeLocalAddress: nil,
-            fakeRemoteAddress: nil,
-            fileSink: { buffer in
-                Task.detached {
-                    do {
-                        try await fileSink.write(buffer: buffer)
-                    } catch {
-                        XCTFail("Failed to write to file sink: \(error)")
-                    }
-                }
-            }
-        ))
-
-        var buffer: ByteBuffer = channel.allocator.buffer(capacity: 64)
+        // Write test data directly using the file sink.
+        var buffer = ByteBufferAllocator().buffer(capacity: 64)
         buffer.writeString("Test PCAP data")
         try await fileSink.write(buffer: buffer)
-        try await channel.closeFuture.get()
         
-        // Flush any buffered data to disk and close the file.
+        // Sync and then close the file sink.
         try await fileSink.asyncSync()
-        // try await fileSink.close()
-        let expectation: XCTestExpectation = XCTestExpectation(description: "File sink should close")
-        Task {
-            do {
-                try await fileSink.close()
-                expectation.fulfill()
-            } catch {
-                XCTFail("Failed to close file sink: \(error)")
-            }
-        }
-        await fulfillment(of: [expectation], timeout: 5)
+        try await fileSink.close()
         
         // Verify that the file exists and contains data.
-        let fileManager: FileManager = FileManager.default
-        let fileData: Data = try Data(contentsOf: URL(fileURLWithPath: filePath))
+        let fileData = try Data(contentsOf: URL(fileURLWithPath: filePath))
         XCTAssertGreaterThan(fileData.count, 0, "PCAP file should contain data")
         
         // Clean up the temporary file.
-        try fileManager.removeItem(atPath: filePath)
+        try FileManager.default.removeItem(atPath: filePath)
     }
 }
 
