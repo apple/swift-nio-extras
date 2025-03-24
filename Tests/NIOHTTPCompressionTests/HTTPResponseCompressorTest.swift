@@ -40,7 +40,7 @@ private class PromiseOrderer {
         let thisPromiseIndex = promiseArray.count
         promiseArray.append(promise)
 
-        promise.futureResult.whenComplete { (_: Result<Void, Error>) in
+        promise.futureResult.hop(to: self.eventLoop).assumeIsolated().whenComplete { (_: Result<Void, Error>) in
             let priorFutures = self.promiseArray[0..<thisPromiseIndex]
             let subsequentFutures = self.promiseArray[(thisPromiseIndex + 1)...]
             let allPriorFuturesFired = priorFutures.map { $0.futureResult.isFulfilled }.allSatisfy { $0 }
@@ -128,6 +128,7 @@ extension z_stream {
     }
 }
 
+@MainActor  // required to use waitForExpectations
 class HTTPResponseCompressorTest: XCTestCase {
     private enum WriteStrategy {
         case once
@@ -1009,25 +1010,22 @@ extension EventLoopFuture {
             // Easy, we're on the EventLoop. Let's just use our knowledge that we run completed future callbacks
             // immediately.
             var fulfilled = false
-            self.whenComplete { _ in
+            self.assumeIsolated().whenComplete { _ in
                 fulfilled = true
             }
             return fulfilled
         } else {
-            let lock = NIOLock()
             let group = DispatchGroup()
-            var fulfilled = false  // protected by lock
+            let fulfilled = NIOLockedValueBox(false)
 
             group.enter()
             self.eventLoop.execute {
                 let isFulfilled = self.isFulfilled  // This will now enter the above branch.
-                lock.withLock {
-                    fulfilled = isFulfilled
-                }
+                fulfilled.withLockedValue { $0 = isFulfilled }
                 group.leave()
             }
             group.wait()  // this is very nasty but this is for tests only, so...
-            return lock.withLock { fulfilled }
+            return fulfilled.withLockedValue { $0 }
         }
     }
 }

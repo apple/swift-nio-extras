@@ -16,7 +16,7 @@ import CNIOExtrasZlib
 import NIOCore
 
 /// Namespace for decompression code.
-public enum NIOHTTPDecompression {
+public enum NIOHTTPDecompression: Sendable {
     /// Specifies how to limit decompression inflation.
     public struct DecompressionLimit: Sendable {
         private enum Limit {
