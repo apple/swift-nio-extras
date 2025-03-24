@@ -214,7 +214,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
             .product(name: "Atomics", package: "swift-atomics"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "NIOResumableUploadDemo",
@@ -224,14 +225,16 @@ var targets: [PackageDescription.Target] = [
             .product(name: "HTTPTypes", package: "swift-http-types"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOResumableUploadTests",
         dependencies: [
             "NIOResumableUpload",
             .product(name: "NIOEmbedded", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPResponsiveness",
