@@ -112,7 +112,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
     func testClientHTTP2ToHTTP() throws {
         let recorder = InboundRecorder<HTTPResponsePart>()
 
-        try self.channel.pipeline.addHandlers(HTTP2FramePayloadToHTTPClientCodec(), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP2FramePayloadToHTTPClientCodec(), recorder)
 
         try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
         try self.channel.writeOutbound(HTTPRequestPart.end(Self.trailers))
@@ -139,7 +139,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
     func testServerHTTP2ToHTTP() throws {
         let recorder = InboundRecorder<HTTPRequestPart>()
 
-        try self.channel.pipeline.addHandlers(HTTP2FramePayloadToHTTPServerCodec(), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP2FramePayloadToHTTPServerCodec(), recorder)
 
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: Self.oldRequest))
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: Self.oldTrailers))

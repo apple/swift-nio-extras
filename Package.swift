@@ -166,33 +166,38 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "HTTPTypes", package: "swift-http-types"),
             .product(name: "NIOCore", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPTypesHTTP1",
         dependencies: [
             "NIOHTTPTypes",
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPTypesHTTP2",
         dependencies: [
             "NIOHTTPTypes",
             .product(name: "NIOHTTP2", package: "swift-nio-http2"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPTypesHTTP1Tests",
         dependencies: [
             "NIOHTTPTypesHTTP1"
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPTypesHTTP2Tests",
         dependencies: [
             "NIOHTTPTypesHTTP2"
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOResumableUpload",

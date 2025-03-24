@@ -19,7 +19,7 @@ import NIOHTTPTypes
 
 /// A simple channel handler that translates HTTP/1 messages into shared HTTP types,
 /// and vice versa, for use on the client side.
-public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler, RemovableChannelHandler {
+public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler, RemovableChannelHandler, Sendable {
     public typealias InboundIn = HTTPClientResponsePart
     public typealias InboundOut = HTTPResponsePart
 
@@ -66,7 +66,7 @@ public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler, RemovableChanne
 
 /// A simple channel handler that translates HTTP/1 messages into shared HTTP types,
 /// and vice versa, for use on the server side.
-public final class HTTP1ToHTTPServerCodec: ChannelDuplexHandler, RemovableChannelHandler {
+public final class HTTP1ToHTTPServerCodec: ChannelDuplexHandler, RemovableChannelHandler, Sendable {
     public typealias InboundIn = HTTPServerRequestPart
     public typealias InboundOut = HTTPRequestPart
 
