@@ -90,7 +90,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOSOCKS",
