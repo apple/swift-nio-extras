@@ -206,8 +206,8 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
         do {
             try self.channelCollector.channelAdded(channel)
             let closeFuture = channel.closeFuture
-            closeFuture.whenComplete { (_: Result<Void, Error>) in
-                self.channelCollector.channelRemoved(channel)
+            closeFuture.whenComplete { [ channelCollector = self.channelCollector] _ in
+                channelCollector.channelRemoved(channel)
             }
             context.fireChannelRead(data)
         } catch ShutdownError.alreadyShutdown {

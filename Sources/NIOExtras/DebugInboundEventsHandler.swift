@@ -181,3 +181,6 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
 
 @available(*, unavailable)
 extension DebugInboundEventsHandler: Sendable {}
+
+@available(*, unavailable)
+extension DebugInboundEventsHandler.Event: Sendable {}

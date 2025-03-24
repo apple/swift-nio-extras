@@ -15,6 +15,24 @@
 
 import PackageDescription
 
+let strictConcurrencyDevelopment = false
+
+let strictConcurrencySettings: [SwiftSetting] = {
+    var initialSettings: [SwiftSetting] = []
+    initialSettings.append(contentsOf: [
+        .enableUpcomingFeature("StrictConcurrency"),
+        .enableUpcomingFeature("InferSendableFromCaptures"),
+    ])
+
+    if strictConcurrencyDevelopment {
+        // -warnings-as-errors here is a workaround so that IDE-based development can
+        // get tripped up on -require-explicit-sendable.
+        initialSettings.append(.unsafeFlags(["-require-explicit-sendable", "-warnings-as-errors"]))
+    }
+
+    return initialSettings
+}()
+
 var targets: [PackageDescription.Target] = [
     .target(
         name: "NIOExtras",
@@ -22,7 +40,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPCompression",
@@ -101,7 +120,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
             .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPCompressionTests",
@@ -237,10 +257,10 @@ let package = Package(
         .library(name: "NIOHTTPResponsiveness", targets: ["NIOHTTPResponsiveness"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.77.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
-        .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.1.0"),
+        .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
 

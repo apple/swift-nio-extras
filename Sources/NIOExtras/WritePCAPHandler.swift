@@ -127,15 +127,15 @@ struct PCAPRecordHeader {
 /// ``NIOWritePCAPHandler`` will also work with Unix Domain Sockets in which case it will still synthesize a TCP packet
 /// capture with local address `111.111.111.111` (port `1111`) and remote address `222.222.222.222` (port `2222`).
 public class NIOWritePCAPHandler: RemovableChannelHandler {
-    public enum Mode {
+    public enum Mode: Sendable {
         case client
         case server
     }
 
     /// Settings for ``NIOWritePCAPHandler``.
-    public struct Settings {
+    public struct Settings: Sendable {
         /// When to issue data into the `.pcap` file.
-        public enum EmitPCAP {
+        public enum EmitPCAP: Sendable {
             /// Write the data immediately when ``NIOWritePCAPHandler`` saw the event on the `ChannelPipeline`.
             ///
             /// For writes this means when the `write` event is triggered. Please note that this will write potentially
@@ -521,7 +521,9 @@ extension NIOWritePCAPHandler: ChannelDuplexHandler {
         switch self.settings.emitPCAPWrites {
         case .whenCompleted:
             let promise = promise ?? context.eventLoop.makePromise()
-            promise.futureResult.whenSuccess {
+            // A user-provided promise might be on a different event-loop, hop back to the context's
+            // event loop.
+            promise.futureResult.hop(to: context.eventLoop).assumeIsolatedUnsafeUnchecked().whenSuccess {
                 emitWrites()
             }
             context.write(data, promise: promise)
@@ -673,7 +675,7 @@ extension NIOWritePCAPHandler {
         private let errorHandler: (Swift.Error) -> Void
         private var state: State = .running  // protected by `workQueue`
 
-        public enum FileWritingMode {
+        public enum FileWritingMode: Sendable {
             case appendToExistingPCAPFile
             case createNewPCAPFile
         }

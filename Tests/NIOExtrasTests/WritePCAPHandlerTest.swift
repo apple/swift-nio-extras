@@ -782,7 +782,7 @@ class WritePCAPHandlerTest: XCTestCase {
         }
 
         // Let's drop all writes/flushes so EmbeddedChannel won't accumulate them.
-        XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllWritesAndFlushes()).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(DropAllWritesAndFlushes()))
         XCTAssertNoThrow(
             try channel.pipeline.syncOperations.addHandler(
                 NIOWritePCAPHandler(
@@ -796,7 +796,7 @@ class WritePCAPHandlerTest: XCTestCase {
             )
         )
         // Let's also drop all channelReads to prevent accumulation of all the data.
-        XCTAssertNoThrow(try channel.pipeline.addHandler(DropAllChannelReads()).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(DropAllChannelReads()))
 
         let chunkSize = Int(UInt16.max - 40)  // needs to fit into the IPv4 header which adds 40
         self.scratchBuffer = channel.allocator.buffer(capacity: chunkSize)

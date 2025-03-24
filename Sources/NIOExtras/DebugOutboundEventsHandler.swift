@@ -177,3 +177,6 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
 
 @available(*, unavailable)
 extension DebugOutboundEventsHandler: Sendable {}
+
+@available(*, unavailable)
+extension DebugOutboundEventsHandler.Event: Sendable {}
