@@ -60,10 +60,9 @@ private final class HTTPHandler: ChannelInboundHandler {
             context.writeAndFlush(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
             buffer.clear()
             buffer.writeStaticString("done with the request now\n")
-            let loopBoundContext = NIOLoopBound.init(context, eventLoop: context.eventLoop)
-            _ = context.eventLoop.scheduleTask(in: .seconds(30)) { [buffer] in
-                loopBoundContext.value.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
-                loopBoundContext.value.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
+            _ = context.eventLoop.assumeIsolated().scheduleTask(in: .seconds(30)) { [buffer] in
+                context.write(self.wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+                context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             }
         }
     }
@@ -98,17 +97,21 @@ private func runServer() throws {
                 .serverChannelOption(ChannelOptions.backlog, value: 256)
                 .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
                 .serverChannelInitializer { channel in
-                    channel.pipeline.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+                    channel.eventLoop.makeCompletedFuture {
+                        try channel.pipeline.syncOperations.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+                    }
                 }
                 .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
                 .childChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
                 .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 1)
                 .childChannelInitializer { channel in
-                    channel.pipeline.configureHTTPServerPipeline(
-                        withPipeliningAssistance: true,
-                        withErrorHandling: true
-                    ).flatMap {
-                        channel.pipeline.addHandler(HTTPHandler())
+                    channel.eventLoop.makeCompletedFuture {
+                        let sync = channel.pipeline.syncOperations
+                        try sync.configureHTTPServerPipeline(
+                            withPipeliningAssistance: true,
+                            withErrorHandling: true
+                        )
+                        try sync.addHandler(HTTPHandler())
                     }
                 }
                 .bind(host: "localhost", port: 0)
