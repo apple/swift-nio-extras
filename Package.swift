@@ -94,7 +94,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "NIOSOCKSClient",
@@ -140,7 +141,8 @@ var targets: [PackageDescription.Target] = [
             "NIOSOCKS",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIONFS3",

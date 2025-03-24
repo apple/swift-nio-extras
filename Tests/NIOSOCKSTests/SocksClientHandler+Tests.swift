@@ -173,7 +173,7 @@ class SocksClientHandlerTests: XCTestCase {
 
         // server requests an auth method we don't support
         let promise = self.channel.eventLoop.makePromise(of: Void.self)
-        try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
+        try! self.channel.pipeline.syncOperations.addHandler(ErrorHandler(promise: promise), position: .last)
         self.writeInbound([0x05, 0x01])
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertTrue(e is SOCKSError.InvalidAuthenticationSelection)
@@ -204,7 +204,7 @@ class SocksClientHandlerTests: XCTestCase {
 
         // server replies with an error
         let promise = self.channel.eventLoop.makePromise(of: Void.self)
-        try! self.channel.pipeline.addHandler(ErrorHandler(promise: promise), position: .last).wait()
+        try! self.channel.pipeline.syncOperations.addHandler(ErrorHandler(promise: promise), position: .last)
         self.writeInbound([0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x00, 0x50])
         XCTAssertThrowsError(try promise.futureResult.wait()) { e in
             XCTAssertEqual(e as? SOCKSError.ConnectionFailed, .init(reply: .serverFailure))
@@ -262,12 +262,12 @@ class SocksClientHandlerTests: XCTestCase {
 
         let establishPromise = self.channel.eventLoop.makePromise(of: Void.self)
         let removalPromise = self.channel.eventLoop.makePromise(of: Void.self)
-        establishPromise.futureResult.whenSuccess { _ in
+        establishPromise.futureResult.assumeIsolated().whenSuccess { _ in
             self.channel.pipeline.syncOperations.removeHandler(self.handler).cascade(to: removalPromise)
         }
 
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(SOCKSEventHandler(establishedPromise: establishPromise)).wait()
+            try self.channel.pipeline.syncOperations.addHandler(SOCKSEventHandler(establishedPromise: establishPromise))
         )
 
         self.connect()
