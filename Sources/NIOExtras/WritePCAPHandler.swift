@@ -14,8 +14,8 @@
 
 import CNIOLinux
 import Dispatch
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 
 #if canImport(Darwin)
 import Darwin
@@ -814,12 +814,12 @@ extension NIOWritePCAPHandler {
         private let eventLoop: EventLoop
         private let errorHandler: @Sendable (Swift.Error) -> Void
         private let state: NIOLockedValueBox<State> = NIOLockedValueBox(.running)
-        
+
         public enum FileWritingMode {
             case appendToExistingPCAPFile
             case createNewPCAPFile
         }
-        
+
         public struct Error: Swift.Error {
             public var errorCode: Int
 
@@ -828,12 +828,12 @@ extension NIOWritePCAPHandler {
                 case cannotWriteToFileError
             }
         }
-        
+
         private enum State {
             case running
             case error(Swift.Error)
         }
-        
+
         /// Creates an AsynchronizedFileSink for writing to a .pcap file at the given path.
         /// If fileWritingMode is `.createNewPCAPFile`, a file header is written.
         public static func fileSinkWritingToFile(
@@ -849,7 +849,7 @@ extension NIOWritePCAPHandler {
             if fd < 0 {
                 throw Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue)
             }
-            
+
             /// Write PCAP file header
             if fileWritingMode == .createNewPCAPFile {
                 let writeOk: Bool = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
@@ -863,7 +863,7 @@ extension NIOWritePCAPHandler {
             let fileHandle: NIOFileHandle = NIOFileHandle(_deprecatedTakingOwnershipOfDescriptor: fd)
             return AsynchronizedFileSink(fileHandle: fileHandle, eventLoop: eventLoop, errorHandler: errorHandler)
         }
-        
+
         private init(
             fileHandle: NIOFileHandle,
             eventLoop: EventLoop,
@@ -873,7 +873,7 @@ extension NIOWritePCAPHandler {
             self.eventLoop = eventLoop
             self.errorHandler = errorHandler
         }
-        
+
         public func write(buffer: ByteBuffer) async throws {
             try self.fileHandle.withUnsafeFileDescriptor { fd in
                 var buffer = buffer
@@ -888,7 +888,7 @@ extension NIOWritePCAPHandler {
                 }
             }
         }
-        
+
         /// Syncs the file to disk using fsync.
         public func asyncSync() async throws {
             try self.fileHandle.withUnsafeFileDescriptor { fd in
