@@ -206,7 +206,7 @@ private final class CollectAcceptedChannelsHandler: ChannelInboundHandler {
         do {
             try self.channelCollector.channelAdded(channel)
             let closeFuture = channel.closeFuture
-            closeFuture.whenComplete { [ channelCollector = self.channelCollector] _ in
+            closeFuture.whenComplete { [channelCollector = self.channelCollector] _ in
                 channelCollector.channelRemoved(channel)
             }
             context.fireChannelRead(data)
