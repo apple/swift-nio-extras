@@ -128,7 +128,6 @@ extension z_stream {
     }
 }
 
-@MainActor  // required to use waitForExpectations
 class HTTPResponseCompressorTest: XCTestCase {
     private enum WriteStrategy {
         case once
@@ -773,9 +772,11 @@ class HTTPResponseCompressorTest: XCTestCase {
     }
 
     func testConditionalCompressionEnabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, true)
             return .compressIfPossible
@@ -797,13 +798,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             ]
         )
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testUnsupportedRequestConditionalCompressionEnabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, false)
             return .compressIfPossible
@@ -824,13 +827,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             ]
         )
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testUnsupportedStatusConditionalCompressionEnabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, false)
@@ -863,13 +868,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             }
         }
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testConditionalCompressionDisabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, true)
             return .doNotCompress
@@ -890,13 +897,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             ]
         )
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testUnsupportedRequestConditionalCompressionDisabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, false)
             return .doNotCompress
@@ -917,13 +926,15 @@ class HTTPResponseCompressorTest: XCTestCase {
             ]
         )
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testUnsupportedStatusConditionalCompressionDisabled() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
+        let loop = EmbeddedEventLoop()
+        defer { try! loop.syncShutdownGracefully() }
+        let predicateWasCalled = loop.makePromise(of: Void.self)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { predicateWasCalled.succeed() }
             XCTAssertEqual(responseHeaders.status, .notModified)
             XCTAssertEqual(responseHeaders.headers, ["Content-Type": "json"])
             XCTAssertEqual(isCompressionSupported, false)
@@ -956,14 +967,13 @@ class HTTPResponseCompressorTest: XCTestCase {
             }
         }
 
-        waitForExpectations(timeout: 0)
+        try predicateWasCalled.futureResult.wait()
     }
 
     func testConditionalCompressionModifiedHeaders() throws {
-        let predicateWasCalled = expectation(description: "Predicate was called")
-        predicateWasCalled.expectedFulfillmentCount = 2
+        let counter = NIOLockedValueBox(0)
         let compressor = HTTPResponseCompressor { responseHeaders, isCompressionSupported in
-            defer { predicateWasCalled.fulfill() }
+            defer { counter.withLockedValue { $0 += 1 } }
             let isEnabled = responseHeaders.headers[canonicalForm: "x-compression"].first == "enable"
             XCTAssertEqual(
                 responseHeaders.headers,
@@ -1000,7 +1010,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             ]
         )
 
-        waitForExpectations(timeout: 0)
+        XCTAssertEqual(counter.withLockedValue { $0 }, 2)
     }
 }
 
