@@ -96,7 +96,18 @@ where Request.RequestID == Response.RequestID {
 
         let response = self.unwrapInboundIn(data)
         if let promise = self.promiseBuffer.removeValue(forKey: response.requestID) {
-            promise.succeed(response)
+            // If the event loop of the promise is the same as the context then there's no
+            // change in isolation. Otherwise transfer the response onto the correct event-loop
+            // before succeeding the promise.
+            if promise.futureResult.eventLoop === context.eventLoop {
+                promise.assumeIsolatedUnsafeUnchecked().succeed(response)
+            } else {
+                let unsafeTransfer = UnsafeTransfer(response)
+                promise.futureResult.eventLoop.execute {
+                    let response = unsafeTransfer.wrappedValue
+                    promise.assumeIsolatedUnsafeUnchecked().succeed(response)
+                }
+            }
         } else {
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
         }
@@ -133,6 +144,9 @@ where Request.RequestID == Response.RequestID {
         }
     }
 }
+
+@available(*, unavailable)
+extension NIORequestResponseWithIDHandler: Sendable {}
 
 extension NIOExtrasErrors {
     public struct ResponseForInvalidRequest<Response: NIORequestIdentifiable>: NIOExtrasError, Equatable {

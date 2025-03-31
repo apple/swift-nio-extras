@@ -54,7 +54,7 @@ public enum LengthFieldPrependerError: Error {
 ///
 public final class LengthFieldPrepender: ChannelOutboundHandler {
     /// An enumeration to describe the length of a piece of data in bytes.
-    public enum ByteLength {
+    public enum ByteLength: Sendable {
         /// One byte
         case one
         /// Two bytes

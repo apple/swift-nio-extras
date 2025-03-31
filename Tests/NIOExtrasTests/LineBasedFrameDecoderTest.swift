@@ -165,7 +165,7 @@ class LineBasedFrameDecoderTest: XCTestCase {
         }
         let receivedLeftOversPromise: EventLoopPromise<ByteBuffer> = self.channel.eventLoop.makePromise()
         let handler = CloseWhenMyFavouriteMessageArrives(receivedLeftOversPromise: receivedLeftOversPromise)
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(handler).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(handler))
         var buffer = self.channel.allocator.buffer(capacity: 16)
         buffer.writeString("a\nbb\nccc\ndddd\neeeee\nffffff\nXXX")
         XCTAssertNoThrow(try self.channel.writeInbound(buffer))

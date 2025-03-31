@@ -80,7 +80,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     public static let maxSupportedLengthFieldSize: Int = Int(Int32.max)
 
     /// An enumeration to describe the length of a piece of data in bytes.
-    public enum ByteLength {
+    public enum ByteLength: Sendable {
         /// One byte
         case one
         /// Two bytes

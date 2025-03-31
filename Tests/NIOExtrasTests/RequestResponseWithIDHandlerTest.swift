@@ -42,9 +42,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testSimpleRequestWorks() {
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>()
-            ).wait()
+            )
         )
         self.buffer.writeString("hello")
 
@@ -77,9 +77,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     func testEnqueingMultipleRequestsWorks() throws {
         struct DummyError: Error {}
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Int>>()
-            ).wait()
+            )
         )
 
         var futures: [EventLoopFuture<ValueWithRequestID<Int>>] = []
@@ -151,9 +151,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
     func testRequestsEnqueuedAfterErrorAreFailed() {
         struct DummyError: Error {}
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()
-            ).wait()
+            )
         )
 
         self.channel.pipeline.fireErrorCaught(DummyError())
@@ -181,9 +181,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         struct DummyError2: Error {}
 
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<Void>>()
-            ).wait()
+            )
         )
 
         let p: EventLoopPromise<ValueWithRequestID<Void>> = self.eventLoop.makePromise()
@@ -213,9 +213,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testClosedConnectionFailsOutstandingPromises() {
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<Void>>()
-            ).wait()
+            )
         )
 
         let promise = self.eventLoop.makePromise(of: ValueWithRequestID<Void>.self)
@@ -229,9 +229,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testOutOfOrderResponsesWork() {
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()
-            ).wait()
+            )
         )
         self.buffer.writeString("hello")
 
@@ -259,9 +259,9 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
 
     func testErrorOnResponseForNonExistantRequest() {
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandler(
+            try self.channel.pipeline.syncOperations.addHandler(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<String>, ValueWithRequestID<String>>()
-            ).wait()
+            )
         )
         self.buffer.writeString("hello")
 
@@ -315,7 +315,7 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
                 defer {
                     XCTAssertTrue(responsePromiseCompleted)
                 }
-                writePromise.futureResult.whenComplete { result in
+                writePromise.futureResult.assumeIsolated().whenComplete { result in
                     writePromiseCompleted = true
                     switch result {
                     case .success:
@@ -324,7 +324,7 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
                         XCTAssertEqual(.ioOnClosedChannel, error as? ChannelError)
                     }
                 }
-                responsePromise.futureResult.whenComplete { result in
+                responsePromise.futureResult.assumeIsolated().whenComplete { result in
                     responsePromiseCompleted = true
                     switch result {
                     case .success:
@@ -337,10 +337,10 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         }
 
         XCTAssertNoThrow(
-            try self.channel.pipeline.addHandlers(
+            try self.channel.pipeline.syncOperations.addHandlers(
                 NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>(),
                 EmitRequestOnInactiveHandler()
-            ).wait()
+            )
         )
         self.buffer.writeString("hello")
 
@@ -378,5 +378,5 @@ struct ValueWithRequestID<T>: NIORequestIdentifiable {
     var value: T
 }
 
-extension ValueWithRequestID: Equatable where T: Equatable {
-}
+extension ValueWithRequestID: Equatable where T: Equatable {}
+extension ValueWithRequestID: Sendable where T: Sendable {}

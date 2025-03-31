@@ -35,7 +35,7 @@ private final class WaitForQuiesceUserEvent: ChannelInboundHandler {
     }
 }
 
-public class QuiescingHelperTest: XCTestCase {
+final class QuiescingHelperTest: XCTestCase {
     func testShutdownIsImmediateWhenNoChannelsCollected() throws {
         let el = EmbeddedEventLoop()
         let channel = EmbeddedChannel(handler: nil, loop: el)
@@ -58,7 +58,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
         let quiesce = ServerQuiescingHelper(group: el)
         let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
-        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+        XCTAssertNoThrow(try serverChannel.pipeline.syncOperations.addHandler(collectionHandler))
         var waitForFutures: [EventLoopFuture<Void>] = []
         var childChannels: [Channel] = []
 
@@ -123,8 +123,10 @@ public class QuiescingHelperTest: XCTestCase {
         }
 
         let channel = try! ServerBootstrap(group: group).serverChannelInitializer { channel in
-            channel.pipeline.addHandler(MakeFirstCloseFailAndDontActuallyCloseHandler(), position: .first).flatMap {
-                channel.pipeline.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+            channel.eventLoop.makeCompletedFuture {
+                let sync = channel.pipeline.syncOperations
+                try sync.addHandler(MakeFirstCloseFailAndDontActuallyCloseHandler(), position: .first)
+                try sync.addHandler(quiesce.makeServerChannelHandler(channel: channel))
             }
         }.bind(host: "localhost", port: 0).wait()
         defer {
@@ -194,7 +196,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
         let quiesce = ServerQuiescingHelper(group: el)
         let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
-        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+        XCTAssertNoThrow(try serverChannel.pipeline.syncOperations.addHandler(collectionHandler))
 
         // let's one channels
         let eventCounterHandler = EventCounterHandler()
@@ -237,7 +239,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
         let quiesce = ServerQuiescingHelper(group: el)
         let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
-        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+        XCTAssertNoThrow(try serverChannel.pipeline.syncOperations.addHandler(collectionHandler))
 
         // let's add one channel
         let waitForPromise1: EventLoopPromise<Void> = el.makePromise()
@@ -293,7 +295,7 @@ public class QuiescingHelperTest: XCTestCase {
         XCTAssertNoThrow(try serverChannel.connect(to: SocketAddress(ipAddress: "127.0.0.1", port: 1)).wait())
         let quiesce = ServerQuiescingHelper(group: el)
         let collectionHandler = quiesce.makeServerChannelHandler(channel: serverChannel)
-        XCTAssertNoThrow(try serverChannel.pipeline.addHandler(collectionHandler).wait())
+        XCTAssertNoThrow(try serverChannel.pipeline.syncOperations.addHandler(collectionHandler))
 
         // check that the server is running
         XCTAssertTrue(serverChannel.isActive)

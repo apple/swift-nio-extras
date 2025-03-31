@@ -559,7 +559,7 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
                 context.fireChannelRead(data)
             }
         }
-        XCTAssertNoThrow(try channel.pipeline.addHandler(CloseInReadHandler()).wait())
+        XCTAssertNoThrow(try channel.pipeline.syncOperations.addHandler(CloseInReadHandler()))
 
         var buf = channel.allocator.buffer(capacity: 1024)
         buf.writeBytes([UInt8(0), 0, 0, 1, 100])

@@ -16,11 +16,11 @@ import NIOCore
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Musl)
-import Musl
+@preconcurrency import Musl
 #elseif canImport(Android)
-import Android
+@preconcurrency import Android
 #else
-import Glibc
+@preconcurrency import Glibc
 #endif
 
 /// `ChannelInboundHandler` that prints all inbound events that pass through the pipeline by default,
@@ -181,3 +181,6 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
 
 @available(*, unavailable)
 extension DebugInboundEventsHandler: Sendable {}
+
+@available(*, unavailable)
+extension DebugInboundEventsHandler.Event: Sendable {}
