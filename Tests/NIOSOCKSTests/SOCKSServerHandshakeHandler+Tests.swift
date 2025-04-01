@@ -139,7 +139,7 @@ class SOCKSServerHandlerTests: XCTestCase {
             expectedRequest: expectedRequest,
             expectedData: expectedData
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(testHandler).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(testHandler))
 
         // wait for the greeting
         XCTAssertFalse(testHandler.hadGreeting)
@@ -184,7 +184,7 @@ class SOCKSServerHandlerTests: XCTestCase {
             expectedRequest: expectedRequest,
             expectedData: expectedData
         )
-        XCTAssertNoThrow(try self.channel.pipeline.addHandler(testHandler).wait())
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(testHandler))
 
         // wait for the greeting
         XCTAssertFalse(testHandler.hadGreeting)
