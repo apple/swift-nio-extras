@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCore
 import NIOConcurrencyHelpers
+import NIOCore
 import NIOHTTP1
 import NIOPosix
 
@@ -108,7 +108,9 @@ final class RepeatedRequests: ChannelInboundHandler {
         let reqPart = self.unwrapInboundIn(data)
         if case .end(nil) = reqPart {
             if self.remainingNumberOfRequests <= 0 {
-                context.channel.close().assumeIsolated().map { self.doneRequests }.nonisolated().cascade(to: self.isDonePromise)
+                context.channel.close().assumeIsolated().map { self.doneRequests }.nonisolated().cascade(
+                    to: self.isDonePromise
+                )
             } else {
                 self.doneRequests += 1
                 self.remainingNumberOfRequests -= 1
@@ -177,7 +179,7 @@ class HTTP1ThreadedPerformanceTest: Benchmark {
             clientChannels.reserveCapacity(self.numberOfClients)
             for _ in 0..<self.numberOfClients {
                 let clientChannel = try! ClientBootstrap(group: self.group)
-                    .channelInitializer { [head = self.head, requestsPerClient = self.requestsPerClient, extraInitialiser = self.extraInitialiser] channel in
+                    .channelInitializer { [head, requestsPerClient, extraInitialiser] channel in
                         channel.eventLoop.makeCompletedFuture {
                             let sync = channel.pipeline.syncOperations
                             try sync.addHTTPClientHandlers()
