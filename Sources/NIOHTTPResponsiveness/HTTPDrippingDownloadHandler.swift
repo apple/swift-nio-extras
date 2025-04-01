@@ -253,3 +253,6 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         }
     }
 }
+
+@available(*, unavailable)
+extension HTTPDrippingDownloadHandler: Sendable {}

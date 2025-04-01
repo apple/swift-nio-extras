@@ -143,3 +143,6 @@ public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 }
+
+@available(*, unavailable)
+extension SimpleResponsivenessRequestMux: Sendable {}
