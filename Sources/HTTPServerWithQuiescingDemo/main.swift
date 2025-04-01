@@ -98,7 +98,9 @@ private func runServer() throws {
                 .serverChannelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
                 .serverChannelInitializer { channel in
                     channel.eventLoop.makeCompletedFuture {
-                        try channel.pipeline.syncOperations.addHandler(quiesce.makeServerChannelHandler(channel: channel))
+                        try channel.pipeline.syncOperations.addHandler(
+                            quiesce.makeServerChannelHandler(channel: channel)
+                        )
                     }
                 }
                 .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
