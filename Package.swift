@@ -50,7 +50,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "HTTPServerWithQuiescingDemo",
@@ -68,7 +69,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "NIOWritePartialPCAPDemo",
@@ -77,7 +79,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "NIOExtrasPerformanceTester",
@@ -94,7 +97,8 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .executableTarget(
         name: "NIOSOCKSClient",
@@ -102,7 +106,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOPosix", package: "swift-nio"),
             "NIOSOCKS",
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "CNIOExtrasZlib",
@@ -132,7 +137,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
             .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOSOCKSTests",
@@ -140,7 +146,8 @@ var targets: [PackageDescription.Target] = [
             "NIOSOCKS",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIONFS3",
@@ -162,33 +169,38 @@ var targets: [PackageDescription.Target] = [
         dependencies: [
             .product(name: "HTTPTypes", package: "swift-http-types"),
             .product(name: "NIOCore", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPTypesHTTP1",
         dependencies: [
             "NIOHTTPTypes",
             .product(name: "NIOHTTP1", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPTypesHTTP2",
         dependencies: [
             "NIOHTTPTypes",
             .product(name: "NIOHTTP2", package: "swift-nio-http2"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPTypesHTTP1Tests",
         dependencies: [
             "NIOHTTPTypesHTTP1"
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPTypesHTTP2Tests",
         dependencies: [
             "NIOHTTPTypesHTTP2"
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOResumableUpload",
@@ -225,9 +237,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "HTTPTypes", package: "swift-http-types"),
             .product(name: "Algorithms", package: "swift-algorithms"),
         ],
-        swiftSettings: [
-            .enableExperimentalFeature("StrictConcurrency")
-        ]
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIOHTTPResponsivenessTests",
@@ -238,9 +248,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "HTTPTypes", package: "swift-http-types"),
         ],
-        swiftSettings: [
-            .enableExperimentalFeature("StrictConcurrency")
-        ]
+        swiftSettings: strictConcurrencySettings
     ),
 ]
 

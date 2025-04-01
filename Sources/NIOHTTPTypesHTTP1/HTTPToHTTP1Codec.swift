@@ -23,7 +23,7 @@ import NIOHTTPTypes
 /// This is intended for compatibility purposes where a channel handler working with
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
-public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler, RemovableChannelHandler {
+public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler, RemovableChannelHandler, Sendable {
     public typealias InboundIn = HTTPResponsePart
     public typealias InboundOut = HTTPClientResponsePart
 
@@ -86,7 +86,7 @@ public final class HTTPToHTTP1ClientCodec: ChannelDuplexHandler, RemovableChanne
 /// This is intended for compatibility purposes where a channel handler working with
 /// HTTP/1 messages needs to work on top of the new version-independent HTTP types
 /// abstraction.
-public final class HTTPToHTTP1ServerCodec: ChannelDuplexHandler, RemovableChannelHandler {
+public final class HTTPToHTTP1ServerCodec: ChannelDuplexHandler, RemovableChannelHandler, Sendable {
     public typealias InboundIn = HTTPRequestPart
     public typealias InboundOut = HTTPServerRequestPart
 

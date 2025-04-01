@@ -162,6 +162,9 @@ public final class HTTP2FramePayloadToHTTPClientCodec: ChannelDuplexHandler, Rem
     }
 }
 
+@available(*, unavailable)
+extension HTTP2FramePayloadToHTTPClientCodec: Sendable {}
+
 // MARK: - Server
 
 private struct BaseServerCodec {
@@ -279,6 +282,9 @@ public final class HTTP2FramePayloadToHTTPServerCodec: ChannelDuplexHandler, Rem
         context.triggerUserOutboundEvent(event, promise: promise)
     }
 }
+
+@available(*, unavailable)
+extension HTTP2FramePayloadToHTTPServerCodec: Sendable {}
 
 /// Events that can be sent by the application to be handled by the `HTTP2StreamChannel`
 public struct NIOHTTP2FramePayloadToHTTPEvent: Hashable, Sendable {
