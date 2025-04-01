@@ -88,3 +88,6 @@ public final class HTTPReceiveDiscardHandler: ChannelInboundHandler {
         context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
     }
 }
+
+@available(*, unavailable)
+extension HTTPReceiveDiscardHandler: Sendable {}
