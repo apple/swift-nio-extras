@@ -17,6 +17,7 @@ import NIOExtras
 
 class HTTP1ThreadedRollingPCapPerformanceTest: HTTP1ThreadedPerformanceTest {
     init() {
+        @Sendable
         func addRollingPCap(channel: Channel) -> EventLoopFuture<Void> {
             channel.eventLoop.submit {
                 let pcapRingBuffer = NIOPCAPRingBuffer(
