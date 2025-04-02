@@ -19,7 +19,7 @@ import XCTest
 
 final class NFS3FileSystemTests: XCTestCase {
     func testReadDirDefaultImplementation() throws {
-        class MyOnlyReadDirPlusFS: NFS3FileSystemNoAuth {
+        final class MyOnlyReadDirPlusFS: NFS3FileSystemNoAuth {
             func shutdown(promise: EventLoopPromise<Void>) {
                 promise.succeed(())
             }

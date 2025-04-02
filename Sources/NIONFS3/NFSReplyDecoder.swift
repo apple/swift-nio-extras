@@ -67,3 +67,6 @@ public struct NFS3ReplyDecoder: WriteObservingByteToMessageDecoder {
         self.procedures[data.rpcCall.xid] = data.rpcCall.programAndProcedure
     }
 }
+
+@available(*, unavailable)
+extension NFS3ReplyDecoder: Sendable {}
