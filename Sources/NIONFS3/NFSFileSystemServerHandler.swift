@@ -150,3 +150,6 @@ extension NFS3FileSystemServerHandler: NFS3FileSystemResponder {
         }
     }
 }
+
+@available(*, unavailable)
+extension NFS3FileSystemServerHandler: Sendable {}

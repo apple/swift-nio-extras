@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct NFS3CallEncoder: MessageToByteEncoder {
+public struct NFS3CallEncoder: MessageToByteEncoder, Sendable {
     public typealias OutboundIn = RPCNFS3Call
 
     public init() {}

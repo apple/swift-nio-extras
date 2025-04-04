@@ -22,7 +22,7 @@ import NIOCore
 /// `NFS3FileSystemNoAuthHandler` ignores any [SUN RPC](https://datatracker.ietf.org/doc/html/rfc5531) credentials /
 /// verifiers and always replies with `AUTH_NONE`. If you need to implement access control via UNIX user/group, this
 /// handler will not be enough. It assumes that every call is allowed. Please note that this is not a security risk
-/// because NFS3 tranditionally just trusts the UNIX uid/gid that the client provided. So there's no security value
+/// because NFS3 traditionally just trusts the UNIX uid/gid that the client provided. So there's no security value
 /// added by verifying them. However, the client may rely on the server to check the UNIX permissions (whilst trusting
 /// the uid/gid) which cannot be done with this handler.
 public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: ChannelDuplexHandler, NFS3FileSystemResponder
@@ -118,3 +118,6 @@ public final class NFS3FileSystemNoAuthHandler<FS: NFS3FileSystemNoAuth>: Channe
         context.fireErrorCaught(error)
     }
 }
+
+@available(*, unavailable)
+extension NFS3FileSystemNoAuthHandler: Sendable {}

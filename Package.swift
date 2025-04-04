@@ -155,7 +155,8 @@ var targets: [PackageDescription.Target] = [
         name: "NIONFS3",
         dependencies: [
             .product(name: "NIOCore", package: "swift-nio")
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
         name: "NIONFS3Tests",
@@ -164,7 +165,8 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
             .product(name: "NIOTestUtils", package: "swift-nio"),
-        ]
+        ],
+        swiftSettings: strictConcurrencySettings
     ),
     .target(
         name: "NIOHTTPTypes",

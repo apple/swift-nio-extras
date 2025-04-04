@@ -39,7 +39,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
         case .mountNull:
             self.sink.sendSuccessfulReply(.mountNull, call: callMessage)
         case .mount(let call):
-            self.fs.mount(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.mount(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.mount(reply), call: callMessage)
@@ -48,7 +48,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .unmount(let call):
-            self.fs.unmount(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.unmount(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.unmount(reply), call: callMessage)
@@ -59,7 +59,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
         case .null:
             self.sink.sendSuccessfulReply(.null, call: callMessage)
         case .getattr(let call):
-            self.fs.getattr(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.getattr(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.getattr(reply), call: callMessage)
@@ -68,7 +68,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .fsinfo(let call):
-            self.fs.fsinfo(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.fsinfo(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.fsinfo(reply), call: callMessage)
@@ -77,7 +77,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .pathconf(let call):
-            self.fs.pathconf(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.pathconf(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.pathconf(reply), call: callMessage)
@@ -86,7 +86,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .fsstat(let call):
-            self.fs.fsstat(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.fsstat(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.fsstat(reply), call: callMessage)
@@ -95,7 +95,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .access(let call):
-            self.fs.access(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.access(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.access(reply), call: callMessage)
@@ -104,7 +104,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .lookup(let call):
-            self.fs.lookup(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.lookup(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.lookup(reply), call: callMessage)
@@ -113,7 +113,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .readdirplus(let call):
-            self.fs.readdirplus(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.readdirplus(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.readdirplus(reply), call: callMessage)
@@ -122,7 +122,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .read(let call):
-            self.fs.read(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.read(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.read(reply), call: callMessage)
@@ -131,7 +131,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .readdir(let call):
-            self.fs.readdir(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.readdir(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.readdir(reply), call: callMessage)
@@ -140,7 +140,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .readlink(let call):
-            self.fs.readlink(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.readlink(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.readlink(reply), call: callMessage)
@@ -149,7 +149,7 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
                 }
             }
         case .setattr(let call):
-            self.fs.setattr(call, eventLoop: self.eventLoop).whenComplete { result in
+            self.fs.setattr(call, eventLoop: self.eventLoop).assumeIsolated().whenComplete { result in
                 switch result {
                 case .success(let reply):
                     self.sink.sendSuccessfulReply(.setattr(reply), call: callMessage)
@@ -163,3 +163,6 @@ internal struct NFS3FileSystemInvoker<FS: NFS3FileSystemNoAuth, Sink: NFS3FileSy
         }
     }
 }
+
+@available(*, unavailable)
+extension NFS3FileSystemInvoker: Sendable {}
