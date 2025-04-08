@@ -49,7 +49,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         let request = HTTPRequest(method: .get, scheme: "https", authority: "example.com", path: "/")
         try channel.writeInbound(HTTPRequestPart.head(request))
@@ -66,7 +68,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         let request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         try channel.writeInbound(HTTPRequestPart.head(request))
@@ -85,7 +89,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, HTTPResponsePart>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .options, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "6"
@@ -118,7 +124,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "3"
@@ -150,7 +158,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "5"
@@ -182,7 +192,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "6"
@@ -215,7 +227,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "3"
@@ -235,7 +249,7 @@ final class NIOResumableUploadTests: XCTestCase {
         let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "3"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -251,7 +265,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "3"
         request3.headerFields[.uploadIncomplete] = "?0"
@@ -277,7 +291,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "5"
@@ -298,7 +314,7 @@ final class NIOResumableUploadTests: XCTestCase {
         let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "3"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -314,7 +330,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "5"
         request3.headerFields[.uploadComplete] = "?1"
@@ -341,7 +357,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "6"
@@ -362,7 +380,7 @@ final class NIOResumableUploadTests: XCTestCase {
         let resumptionPath = try XCTUnwrap(URLComponents(string: location)?.path)
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "3"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -378,7 +396,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "6"
         request3.headerFields[.uploadComplete] = "?1"
@@ -406,7 +424,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "3"
@@ -434,7 +454,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertEqual(try channel.readOutbound(as: HTTPResponsePart.self), .end(nil))
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "3"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -450,7 +470,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "3"
         request3.headerFields[.uploadIncomplete] = "?0"
@@ -476,7 +496,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "5"
@@ -505,7 +527,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertEqual(try channel.readOutbound(as: HTTPResponsePart.self), .end(nil))
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "5"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -521,7 +543,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "5"
         request3.headerFields[.uploadComplete] = "?1"
@@ -548,7 +570,9 @@ final class NIOResumableUploadTests: XCTestCase {
         let recorder = InboundRecorder<HTTPRequestPart, Never>()
 
         let context = HTTPResumableUploadContext(origin: "https://example.com")
-        try channel.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [recorder])).wait()
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
 
         var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
         request.headerFields[.uploadDraftInteropVersion] = "6"
@@ -577,7 +601,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertEqual(try channel.readOutbound(as: HTTPResponsePart.self), .end(nil))
 
         let channel2 = EmbeddedChannel()
-        try channel2.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel2.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request2 = HTTPRequest(method: .head, scheme: "https", authority: "example.com", path: resumptionPath)
         request2.headerFields[.uploadDraftInteropVersion] = "6"
         try channel2.writeInbound(HTTPRequestPart.head(request2))
@@ -593,7 +617,7 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel2.finish().isClean)
 
         let channel3 = EmbeddedChannel()
-        try channel3.pipeline.addHandler(HTTPResumableUploadHandler(context: context, handlers: [])).wait()
+        try channel3.pipeline.syncOperations.addHandler(HTTPResumableUploadHandler(context: context, handlers: []))
         var request3 = HTTPRequest(method: .patch, scheme: "https", authority: "example.com", path: resumptionPath)
         request3.headerFields[.uploadDraftInteropVersion] = "6"
         request3.headerFields[.uploadComplete] = "?1"

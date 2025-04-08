@@ -63,7 +63,7 @@ final class HTTPResumableUpload {
 
     private func createChannel(handler: HTTPResumableUploadHandler, parent: Channel) -> HTTPResumableUploadChannel {
         let channel = HTTPResumableUploadChannel(
-            upload: self,
+            upload: self.sendableView,
             parent: parent,
             channelConfigurator: self.channelConfigurator
         )
@@ -89,6 +89,86 @@ final class HTTPResumableUpload {
     }
 }
 
+extension HTTPResumableUpload {
+    var sendableView: SendableView {
+        SendableView(handler: self)
+    }
+
+    struct SendableView: Sendable {
+        let eventLoop: any EventLoop
+        let loopBoundUpload: NIOLoopBound<HTTPResumableUpload>
+        let uploadHandlerChannel: NIOLockedValueBox<Channel?>
+
+        init(handler: HTTPResumableUpload) {
+            self.eventLoop = handler.eventLoop
+            self.loopBoundUpload = NIOLoopBound(handler, eventLoop: eventLoop)
+            self.uploadHandlerChannel = handler.uploadHandlerChannel
+        }
+
+        var parentChannel: Channel? {
+            self.uploadHandlerChannel.withLockedValue { $0 }
+        }
+
+        private func withHandlerOnEventLoop(
+            checkHandler: HTTPResumableUploadHandler,
+            _ work: @escaping @Sendable (HTTPResumableUpload) -> Void
+        ) {
+            let id = ObjectIdentifier(checkHandler)
+
+            if self.eventLoop.inEventLoop {
+                let upload = self.loopBoundUpload.value
+                if let handler = upload.uploadHandler, ObjectIdentifier(handler) == id {
+                    work(upload)
+                }
+            } else {
+                self.eventLoop.execute {
+                    let upload = self.loopBoundUpload.value
+                    if let handler = upload.uploadHandler, ObjectIdentifier(handler) == id {
+                        work(upload)
+                    }
+                }
+            }
+        }
+
+        func receive(handler: HTTPResumableUploadHandler, channel: Channel, part: HTTPRequestPart) {
+            self.withHandlerOnEventLoop(checkHandler: handler) { upload in
+                switch part {
+                case .head(let request):
+                    upload.receiveHead(handler: upload.uploadHandler!, channel: channel, request: request)
+                case .body(let body):
+                    upload.receiveBody(handler: upload.uploadHandler!, body: body)
+                case .end(let trailers):
+                    upload.receiveEnd(handler: upload.uploadHandler!, trailers: trailers)
+                }
+            }
+        }
+
+        func receiveComplete(handler: HTTPResumableUploadHandler) {
+            self.withHandlerOnEventLoop(checkHandler: handler) { upload in
+                upload.uploadChannel?.receiveComplete()
+            }
+        }
+
+        func writabilityChanged(handler: HTTPResumableUploadHandler) {
+            self.withHandlerOnEventLoop(checkHandler: handler) { upload in
+                upload.uploadChannel?.writabilityChanged()
+            }
+        }
+
+        func end(handler: HTTPResumableUploadHandler, error: Error?) {
+            self.withHandlerOnEventLoop(checkHandler: handler) { upload in
+                if !upload.uploadComplete && upload.resumePath != nil {
+                    upload.pendingError = error
+                    upload.detachUploadHandler(close: false)
+                } else {
+                    upload.destroyChannel(error: error)
+                    upload.detachUploadHandler(close: false)
+                }
+            }
+        }
+    }
+}
+
 // For `HTTPResumableUploadHandler`.
 extension HTTPResumableUpload {
     /// `HTTPResumableUpload` runs on the same event loop as the initial upload handler that started the upload.
@@ -97,22 +177,6 @@ extension HTTPResumableUpload {
         eventLoop.assertInEventLoop()
         assert(self.eventLoop == nil)
         self.eventLoop = eventLoop
-    }
-
-    private func runInEventLoop(_ work: @escaping () -> Void) {
-        if self.eventLoop.inEventLoop {
-            work()
-        } else {
-            self.eventLoop.execute(work)
-        }
-    }
-
-    private func runInEventLoop(checkHandler handler: HTTPResumableUploadHandler, _ work: @escaping () -> Void) {
-        self.runInEventLoop {
-            if self.uploadHandler === handler {
-                work()
-            }
-        }
     }
 
     func attachUploadHandler(_ handler: HTTPResumableUploadHandler, channel: Channel) {
@@ -146,7 +210,8 @@ extension HTTPResumableUpload {
 
             if self.uploadChannel != nil {
                 self.idleTimer?.cancel()
-                self.idleTimer = self.eventLoop.scheduleTask(in: self.context.timeout) {
+                // Unsafe unchecked is fine: there's a precondition on entering this function.
+                self.idleTimer = self.eventLoop.assumeIsolatedUnsafeUnchecked().scheduleTask(in: self.context.timeout) {
                     let error = self.pendingError ?? HTTPResumableUploadError.timeoutWaitingForResumption
                     self.uploadChannel?.end(error: error)
                     self.uploadChannel = nil
@@ -159,15 +224,13 @@ extension HTTPResumableUpload {
         otherHandler: HTTPResumableUploadHandler,
         version: HTTPResumableUploadProtocol.InteropVersion
     ) {
-        self.runInEventLoop {
-            self.detachUploadHandler(close: true)
-            let response = HTTPResumableUploadProtocol.offsetRetrievingResponse(
-                offset: self.offset,
-                complete: self.uploadComplete,
-                version: version
-            )
-            self.respondAndDetach(response, handler: otherHandler)
-        }
+        self.detachUploadHandler(close: true)
+        let response = HTTPResumableUploadProtocol.offsetRetrievingResponse(
+            offset: self.offset,
+            complete: self.uploadComplete,
+            version: version
+        )
+        self.respondAndDetach(response, handler: otherHandler)
     }
 
     private func saveUploadLength(complete: Bool, contentLength: Int64?, uploadLength: Int64?) -> Bool {
@@ -198,40 +261,36 @@ extension HTTPResumableUpload {
         uploadLength: Int64?,
         version: HTTPResumableUploadProtocol.InteropVersion
     ) {
-        self.runInEventLoop {
-            let conflict: Bool
-            if self.uploadHandler == nil && self.offset == offset && !self.responseStarted {
-                conflict = !self.saveUploadLength(
-                    complete: complete,
-                    contentLength: contentLength,
-                    uploadLength: uploadLength
-                )
-            } else {
-                conflict = true
-            }
-            guard !conflict else {
-                self.detachUploadHandler(close: true)
-                self.destroyChannel(error: HTTPResumableUploadError.badResumption)
-                let response = HTTPResumableUploadProtocol.conflictResponse(
-                    offset: self.offset,
-                    complete: self.uploadComplete,
-                    version: version
-                )
-                self.respondAndDetach(response, handler: otherHandler)
-                return
-            }
-            self.requestIsCreation = false
-            self.requestIsComplete = complete
-            self.interopVersion = version
-            self.attachUploadHandler(otherHandler, channel: channel)
+        let conflict: Bool
+        if self.uploadHandler == nil && self.offset == offset && !self.responseStarted {
+            conflict = !self.saveUploadLength(
+                complete: complete,
+                contentLength: contentLength,
+                uploadLength: uploadLength
+            )
+        } else {
+            conflict = true
         }
+        guard !conflict else {
+            self.detachUploadHandler(close: true)
+            self.destroyChannel(error: HTTPResumableUploadError.badResumption)
+            let response = HTTPResumableUploadProtocol.conflictResponse(
+                offset: self.offset,
+                complete: self.uploadComplete,
+                version: version
+            )
+            self.respondAndDetach(response, handler: otherHandler)
+            return
+        }
+        self.requestIsCreation = false
+        self.requestIsComplete = complete
+        self.interopVersion = version
+        self.attachUploadHandler(otherHandler, channel: channel)
     }
 
     private func uploadCancellation() {
-        self.runInEventLoop {
-            self.detachUploadHandler(close: true)
-            self.destroyChannel(error: HTTPResumableUploadError.uploadCancelled)
-        }
+        self.detachUploadHandler(close: true)
+        self.destroyChannel(error: HTTPResumableUploadError.uploadCancelled)
     }
 
     private func receiveHead(handler: HTTPResumableUploadHandler, channel: Channel, request: HTTPRequest) {
@@ -277,7 +336,7 @@ extension HTTPResumableUpload {
                 if let path = request.path, let upload = self.context.findUpload(path: path) {
                     self.uploadHandler = nil
                     self.uploadHandlerChannel.withLockedValue { $0 = nil }
-                    upload.offsetRetrieving(otherHandler: handler, version: version)
+                    upload.loopBoundUpload.value.offsetRetrieving(otherHandler: handler, version: version)
                 } else {
                     let response = HTTPResumableUploadProtocol.notFoundResponse(version: version)
                     self.respondAndDetach(response, handler: handler)
@@ -287,7 +346,7 @@ extension HTTPResumableUpload {
                     handler.upload = upload
                     self.uploadHandler = nil
                     self.uploadHandlerChannel.withLockedValue { $0 = nil }
-                    upload.uploadAppending(
+                    upload.loopBoundUpload.value.uploadAppending(
                         otherHandler: handler,
                         channel: channel,
                         offset: offset,
@@ -302,7 +361,7 @@ extension HTTPResumableUpload {
                 }
             case .uploadCancellation:
                 if let path = request.path, let upload = self.context.findUpload(path: path) {
-                    upload.uploadCancellation()
+                    upload.loopBoundUpload.value.uploadCancellation()
                     let response = HTTPResumableUploadProtocol.cancelledResponse(version: version)
                     self.respondAndDetach(response, handler: handler)
                 } else {
@@ -356,43 +415,6 @@ extension HTTPResumableUpload {
             }
         } else {
             self.uploadChannel?.receive(.end(trailers))
-        }
-    }
-
-    func receive(handler: HTTPResumableUploadHandler, channel: Channel, part: HTTPRequestPart) {
-        self.runInEventLoop(checkHandler: handler) {
-            switch part {
-            case .head(let request):
-                self.receiveHead(handler: handler, channel: channel, request: request)
-            case .body(let body):
-                self.receiveBody(handler: handler, body: body)
-            case .end(let trailers):
-                self.receiveEnd(handler: handler, trailers: trailers)
-            }
-        }
-    }
-
-    func receiveComplete(handler: HTTPResumableUploadHandler) {
-        self.runInEventLoop(checkHandler: handler) {
-            self.uploadChannel?.receiveComplete()
-        }
-    }
-
-    func writabilityChanged(handler: HTTPResumableUploadHandler) {
-        self.runInEventLoop(checkHandler: handler) {
-            self.uploadChannel?.writabilityChanged()
-        }
-    }
-
-    func end(handler: HTTPResumableUploadHandler, error: Error?) {
-        self.runInEventLoop(checkHandler: handler) {
-            if !self.uploadComplete && self.resumePath != nil {
-                self.pendingError = error
-                self.detachUploadHandler(close: false)
-            } else {
-                self.destroyChannel(error: error)
-                self.detachUploadHandler(close: false)
-            }
         }
     }
 }
@@ -476,6 +498,9 @@ extension HTTPResumableUpload {
         self.idleTimer = nil
     }
 }
+
+@available(*, unavailable)
+extension HTTPResumableUpload: Sendable {}
 
 /// Errors produced by resumable upload.
 enum HTTPResumableUploadError: Error {

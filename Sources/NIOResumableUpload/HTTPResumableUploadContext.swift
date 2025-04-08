@@ -16,11 +16,11 @@ import NIOConcurrencyHelpers
 import NIOCore
 
 /// `HTTPResumableUploadContext` manages ongoing uploads.
-public final class HTTPResumableUploadContext {
+public final class HTTPResumableUploadContext: Sendable {
     let origin: String
     let path: String
     let timeout: TimeAmount
-    private let uploads: NIOLockedValueBox<[String: HTTPResumableUpload]> = .init([:])
+    private let uploads: NIOLockedValueBox<[String: HTTPResumableUpload.SendableView]> = .init([:])
 
     /// Create an `HTTPResumableUploadContext` for use with `HTTPResumableUploadHandler`.
     /// - Parameters:
@@ -51,7 +51,7 @@ public final class HTTPResumableUploadContext {
         let token = "\(random.next())-\(random.next())"
         self.uploads.withLockedValue {
             assert($0[token] == nil)
-            $0[token] = upload
+            $0[token] = upload.sendableView
         }
         return self.path(fromToken: token)
     }
@@ -65,7 +65,7 @@ public final class HTTPResumableUploadContext {
         }
     }
 
-    func findUpload(path: String) -> HTTPResumableUpload? {
+    func findUpload(path: String) -> HTTPResumableUpload.SendableView? {
         let token = token(fromPath: path)
         return self.uploads.withLockedValue {
             $0[token]
