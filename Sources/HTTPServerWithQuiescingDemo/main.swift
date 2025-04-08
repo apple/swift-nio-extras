@@ -88,7 +88,8 @@ private func runServer() throws {
 
             quiesce.initiateShutdown(promise: fullyShutdownPromise)
         }
-        signal(SIGINT, SIG_IGN)
+        // assignment needed for Android due to non-nullable return type
+        _ = signal(SIGINT, SIG_IGN)
         signalSource.resume()
 
         do {
