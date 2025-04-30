@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import SwiftASN1
 import NIOConcurrencyHelpers
 import NIOSSL
 import ServiceLifecycle

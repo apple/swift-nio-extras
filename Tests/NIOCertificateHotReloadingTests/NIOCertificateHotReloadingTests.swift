@@ -278,7 +278,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
         CommonName("Swift Certificate Test")
     }
     static let sampleCert: Certificate = {
-        return try! Certificate(
+        try! Certificate(
             version: .v3,
             serialNumber: .init(),
             publicKey: .init(samplePrivateKey.publicKey),
