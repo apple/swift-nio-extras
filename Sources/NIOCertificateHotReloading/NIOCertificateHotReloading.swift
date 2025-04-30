@@ -16,6 +16,7 @@ import X509
 import NIOSSL
 import struct NIOCore.TimeAmount
 import NIOConcurrencyHelpers
+import ServiceLifecycle
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
@@ -271,3 +272,6 @@ extension TLSConfiguration {
         return self
     }
 }
+
+@available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
+extension TimedCertificateReloader: Service {}
