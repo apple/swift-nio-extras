@@ -12,11 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import X509
-import NIOSSL
-import struct NIOCore.TimeAmount
 import NIOConcurrencyHelpers
+import NIOSSL
 import ServiceLifecycle
+import X509
+
+import struct NIOCore.TimeAmount
+
 #if canImport(FoundationEssentials)
 import FoundationEssentials
 #else
@@ -130,7 +132,6 @@ public struct TimedCertificateReloader: CertificateReloader {
     private let privateKeyDescription: PrivateKeyDescription
     private let state: NIOLockedValueBox<CertificateKeyPair?>
 
-
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
     /// implementation provides.
@@ -165,7 +166,7 @@ public struct TimedCertificateReloader: CertificateReloader {
         // reload loop to run.
         self.reloadPair()
     }
-    
+
     /// A long-running method to run the ``TimedCertificateReloader`` and start observing updates for the certificate and
     /// private key pair.
     /// - Important: You *must* call this method to get certificate and key updates.
@@ -178,10 +179,11 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     private func reloadPair() {
         if let certificateBytes = self.loadCertificate(),
-           let keyBytes = self.loadPrivateKey(),
-           let certificate = self.parseCertificate(from: certificateBytes),
-           let key = self.parsePrivateKey(from: keyBytes),
-           key.publicKey.isValidSignature(certificate.signature, for: certificate) {
+            let keyBytes = self.loadPrivateKey(),
+            let certificate = self.parseCertificate(from: certificateBytes),
+            let key = self.parsePrivateKey(from: keyBytes),
+            key.publicKey.isValidSignature(certificate.signature, for: certificate)
+        {
             self.attemptToUpdatePair(certificate: certificate, key: key)
         }
     }
@@ -189,7 +191,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     private func loadCertificate() -> [UInt8]? {
         let certificateBytes: [UInt8]?
         switch self.certificateDescription.location._backing {
-        case .file(path: let path):
+        case .file(let path):
             let bytes = FileManager.default.contents(atPath: path)
             certificateBytes = bytes.map { Array($0) }
 
@@ -202,7 +204,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     private func loadPrivateKey() -> [UInt8]? {
         let keyBytes: [UInt8]?
         switch self.privateKeyDescription.location._backing {
-        case .file(path: let path):
+        case .file(let path):
             let bytes = FileManager.default.contents(atPath: path)
             keyBytes = bytes.map { Array($0) }
 

@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOCertificateHotReloading
-import XCTest
-import X509
-import NIOConcurrencyHelpers
 @preconcurrency import Crypto
+import NIOCertificateHotReloading
+import NIOConcurrencyHelpers
+import X509
+import XCTest
 
 final class TimedCertificateReloaderTests: XCTestCase {
     func testCertificatePathDoesNotExist() async throws {
