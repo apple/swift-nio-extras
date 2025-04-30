@@ -263,7 +263,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "X509", package: "swift-certificates"),
-            .product(name: "SwiftASN1", package: "swift-asn1")
         ],
         swiftSettings: strictConcurrencySettings
     ),
@@ -274,7 +273,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "X509", package: "swift-certificates"),
-            .product(name: "SwiftASN1", package: "swift-asn1")
         ],
         swiftSettings: strictConcurrencySettings
     ),
@@ -302,7 +300,6 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-certificates.git", branch: "1.10.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.29.3"),
-        .package(url: "https://github.com/apple/swift-asn1.git", from: "1.3.1"),
     ],
     targets: targets
 )

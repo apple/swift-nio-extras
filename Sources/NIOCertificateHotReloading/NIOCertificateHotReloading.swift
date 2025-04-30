@@ -13,8 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import X509
-import SwiftASN1
-
 import NIOSSL
 import struct NIOCore.TimeAmount
 import NIOConcurrencyHelpers

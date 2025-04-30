@@ -13,10 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import NIOCertificateHotReloading
-import Foundation
 import XCTest
 import X509
-import NIOSSL
 import NIOConcurrencyHelpers
 @preconcurrency import Crypto
 
