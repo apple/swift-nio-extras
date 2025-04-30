@@ -158,9 +158,11 @@ public struct TimedCertificateReloader: CertificateReloader {
         self.refreshInterval = refreshInterval
         self.certificateDescription = certificateDescription
         self.privateKeyDescription = privateKeyDescription
-
-        // TODO: try parsing key and cert here too
         self.state = NIOLockedValueBox(nil)
+
+        // Immediately try to load the configured cert and key to avoid having to wait for the first
+        // reload loop to run.
+        self.reloadPair()
     }
     
     /// A long-running method to run the ``TimedCertificateReloader`` and start observing updates for the certificate and
@@ -169,96 +171,91 @@ public struct TimedCertificateReloader: CertificateReloader {
     public func run() async throws {
         while !Task.isCancelled {
             try await Task.sleep(nanoseconds: UInt64(self.refreshInterval.nanoseconds))
-            let certificateBytes: [UInt8]?
-            switch self.certificateDescription.location._backing {
-            case .file(path: let path):
-                let bytes = FileManager.default.contents(atPath: path)
-                certificateBytes = bytes.map { Array($0) }
-                
-            case .memory(let bytesProvider):
-                certificateBytes = bytesProvider()
-            }
-            
-            let keyBytes: [UInt8]?
-            switch self.privateKeyDescription.location._backing {
-            case .file(path: let path):
-                let bytes = FileManager.default.contents(atPath: path)
-                keyBytes = bytes.map { Array($0) }
-                
-            case .memory(let bytesProvider):
-                keyBytes = bytesProvider()
-            }
-            
-            if let certificateBytes, let keyBytes {
-                let certificate: Certificate
-                switch self.certificateDescription.format._backing {
-                case .der:
-                    let parsedCertificate = try? Certificate(derEncoded: Array(certificateBytes))
-                    
-                    guard let parsedCertificate else {
-                        // could not parse certificate, ignore this update
-                        continue
-                    }
-                    
-                    certificate = parsedCertificate
-                    
-                case .pem:
-                    let parsedCertificate = String(bytes: certificateBytes, encoding: .utf8)
-                        .flatMap { try? Certificate(pemEncoded: $0) }
+            self.reloadPair()
+        }
+    }
 
-                    guard let parsedCertificate else {
-                        // could not parse certificate, ignore this update
-                        continue
-                    }
-                    
-                    certificate = parsedCertificate
-                }
-                
-                let key: Certificate.PrivateKey
-                switch self.privateKeyDescription.format._backing {
-                case .der:
-                    let parsedKey = try? Certificate.PrivateKey(derBytes: Array(keyBytes))
-                    
-                    guard let parsedKey else {
-                        // could not parse key, ignore the update
-                        continue
-                    }
-                    
-                    key = parsedKey
-                    
-                case .pem:
-                    let parsedKey = String(bytes: keyBytes, encoding: .utf8)
-                        .flatMap { try? Certificate.PrivateKey(pemEncoded: $0) }
+    private func reloadPair() {
+        if let certificateBytes = self.loadCertificate(),
+           let keyBytes = self.loadPrivateKey(),
+           let certificate = self.parseCertificate(from: certificateBytes),
+           let key = self.parsePrivateKey(from: keyBytes),
+           key.publicKey.isValidSignature(certificate.signature, for: certificate) {
+            self.attemptToUpdatePair(certificate: certificate, key: key)
+        }
+    }
 
-                    guard let parsedKey else {
-                        // could not parse key, ignore the update
-                        continue
-                    }
-                    
-                    key = parsedKey
-                }
-                
-                if key.publicKey.isValidSignature(certificate.signature, for: certificate) {
-                    let nioSSLCertificate = try? NIOSSLCertificate(
-                        bytes: certificate.serializeAsPEM().derBytes,
-                        format: .der
-                    )
-                    let nioSSLPrivateKey = try? NIOSSLPrivateKey(
-                        bytes: key.serializeAsPEM().derBytes,
-                        format: .der
-                    )
-                    guard let nioSSLCertificate, let nioSSLPrivateKey else {
-                        continue
-                    }
+    private func loadCertificate() -> [UInt8]? {
+        let certificateBytes: [UInt8]?
+        switch self.certificateDescription.location._backing {
+        case .file(path: let path):
+            let bytes = FileManager.default.contents(atPath: path)
+            certificateBytes = bytes.map { Array($0) }
 
-                    self.state.withLockedValue {
-                        $0 = CertificateKeyPair(
-                            certificate: .certificate(nioSSLCertificate),
-                            privateKey: .privateKey(nioSSLPrivateKey)
-                        )
-                    }
-                }
-            }
+        case .memory(let bytesProvider):
+            certificateBytes = bytesProvider()
+        }
+        return certificateBytes
+    }
+
+    private func loadPrivateKey() -> [UInt8]? {
+        let keyBytes: [UInt8]?
+        switch self.privateKeyDescription.location._backing {
+        case .file(path: let path):
+            let bytes = FileManager.default.contents(atPath: path)
+            keyBytes = bytes.map { Array($0) }
+
+        case .memory(let bytesProvider):
+            keyBytes = bytesProvider()
+        }
+        return keyBytes
+    }
+
+    private func parseCertificate(from certificateBytes: [UInt8]) -> Certificate? {
+        let certificate: Certificate?
+        switch self.certificateDescription.format._backing {
+        case .der:
+            certificate = try? Certificate(derEncoded: certificateBytes)
+
+        case .pem:
+            certificate = String(bytes: certificateBytes, encoding: .utf8)
+                .flatMap { try? Certificate(pemEncoded: $0) }
+        }
+        return certificate
+    }
+
+    private func parsePrivateKey(from keyBytes: [UInt8]) -> Certificate.PrivateKey? {
+        let key: Certificate.PrivateKey?
+        switch self.privateKeyDescription.format._backing {
+        case .der:
+            key = try? Certificate.PrivateKey(derBytes: keyBytes)
+
+        case .pem:
+            key = String(bytes: keyBytes, encoding: .utf8)
+                .flatMap { try? Certificate.PrivateKey(pemEncoded: $0) }
+        }
+        return key
+    }
+
+    private func attemptToUpdatePair(certificate: Certificate, key: Certificate.PrivateKey) {
+        let nioSSLCertificate = try? NIOSSLCertificate(
+            bytes: certificate.serializeAsPEM().derBytes,
+            format: .der
+        )
+        let nioSSLPrivateKey = try? NIOSSLPrivateKey(
+            bytes: key.serializeAsPEM().derBytes,
+            format: .der
+        )
+
+        guard let nioSSLCertificate, let nioSSLPrivateKey else {
+            return
+        }
+
+        self.state.withLockedValue {
+            $0 = CertificateKeyPair(
+                certificate: .certificate(nioSSLCertificate),
+                privateKey: .privateKey(nioSSLPrivateKey)
+            )
         }
     }
 }

@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2021 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2025 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,6 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
@@ -45,7 +44,6 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
@@ -63,7 +61,6 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
@@ -81,7 +78,6 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .pem
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
@@ -99,7 +95,6 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
@@ -107,7 +102,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     func testReloadSuccessfully() async throws {
-        let certificateBox = NIOLockedValueBox([UInt8]())
+        let certificateBox: NIOLockedValueBox<[UInt8]?> = NIOLockedValueBox(nil)
         try await runTimedCertificateReloaderTest(
             certificate: .init(
                 location: .memory(provider: { certificateBox.withLockedValue({ $0 }) }),
@@ -118,14 +113,19 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+            // On first attempt, we should have no certificate or private key overrides available,
+            // since the certificate box is empty.
             var override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
 
+            // Update the box to contain a valid certificate.
             certificateBox.withLockedValue({ $0 = try! Self.sampleCert.serializeAsPEM().derBytes })
 
+            // Give the reload loop some time to run and update the cert-key pair.
             try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+
+            // Now the overrides should be present.
             override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -152,7 +152,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+            // On first attempt, the overrides should be correctly present.
             var override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -163,9 +163,13 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 .privateKey(try .init(bytes: Array(Self.samplePrivateKey.derRepresentation), format: .der))
             )
 
+            // Update the box to not contain a certificate.
             certificateBox.withLockedValue({ $0 = nil })
 
+            // Give the reload loop some time to run and update the cert-key pair.
             try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+
+            // We should still be offering the previously valid cert-key pair.
             override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -192,7 +196,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+            // On first attempt, the overrides should be correctly present.
             var override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -203,9 +207,13 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 .privateKey(try .init(bytes: Array(Self.samplePrivateKey.derRepresentation), format: .der))
             )
 
+            // Update the box to not contain a key.
             keyBox.withLockedValue({ $0 = nil })
 
+            // Give the reload loop some time to run and update the cert-key pair.
             try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+
+            // We should still be offering the previously valid cert-key pair.
             override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -232,7 +240,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         ) { reloader in
-            try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+            // On first attempt, the overrides should be correctly present.
             var override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
@@ -243,9 +251,13 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 .privateKey(try .init(bytes: Array(Self.samplePrivateKey.derRepresentation), format: .der))
             )
 
+            // Update the box to contain a key that does not match the given certificate.
             keyBox.withLockedValue({ $0 = Array(P384.Signing.PrivateKey().derRepresentation) })
 
+            // Give the reload loop some time to run and update the cert-key pair.
             try await Task.sleep(for: .milliseconds(100), tolerance: .zero)
+
+            // We should still be offering the previously valid cert-key pair.
             override = reloader.sslContextConfigurationOverride
             XCTAssertEqual(
                 override.certificateChain,
