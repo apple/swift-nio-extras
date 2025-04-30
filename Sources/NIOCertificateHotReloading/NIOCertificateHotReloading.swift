@@ -94,29 +94,48 @@ public struct TimedCertificateReloader: CertificateReloader {
         public static func file(path: String) -> Self { Self(_Backing.file(path: path)) }
 
         /// This certificate/key is available in memory, and will be provided by the given closure.
-        /// - Parameter provider: A closure providing the bytes for the given certificate or key.
+        /// - Parameter provider: A closure providing the bytes for the given certificate or key. This closure should return
+        /// `nil` if a certificate/key isn't currently available for whatever reason.
         /// - Returns: A `Location`.
         public static func memory(provider: @Sendable @escaping () -> [UInt8]?) -> Self {
             Self(_Backing.memory(provider: provider))
         }
     }
 
-    /// A description of a certificate, in terms of its ``Location`` and ``Encoding``.
+    /// A description of a certificate, in terms of its ``TimedCertificateReloader/Location`` and
+    /// ``TimedCertificateReloader/Encoding``.
     public struct CertificateDescription: Sendable {
-        public var location: Location
-        public var format: Encoding
 
+        /// The certificate's ``TimedCertificateReloader/Location``.
+        public var location: Location
+
+        /// The certificate's ``TimedCertificateReloader/Encoding``.
+        public var format: Encoding
+        
+        /// Initialize a new ``TimedCertificateReloader/CertificateDescription``.
+        /// - Parameters:
+        ///   - location: A ``TimedCertificateReloader/Location``.
+        ///   - format: A ``TimedCertificateReloader/Encoding``.
         public init(location: Location, format: Encoding) {
             self.location = location
             self.format = format
         }
     }
 
-    /// A description of a private key, in terms of its ``Location`` and ``Encoding``.
+    /// A description of a private key, in terms of its ``TimedCertificateReloader/Location`` and
+    /// ``TimedCertificateReloader/Encoding``.
     public struct PrivateKeyDescription: Sendable {
+
+        /// The key's ``TimedCertificateReloader/Location``.
         public var location: Location
+
+        /// The key's ``TimedCertificateReloader/Encoding``.
         public var format: Encoding
 
+        /// Initialize a new ``TimedCertificateReloader/PrivateKeyDescription``.
+        /// - Parameters:
+        ///   - location: A ``TimedCertificateReloader/Location``.
+        ///   - format: A ``TimedCertificateReloader/Encoding``.
         public init(location: Location, format: Encoding) {
             self.location = location
             self.format = format
