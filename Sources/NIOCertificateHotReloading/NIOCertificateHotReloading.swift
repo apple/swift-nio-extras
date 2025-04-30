@@ -32,11 +32,12 @@ import Foundation
 /// the form of a `NIOSSLContextConfigurationOverride`, which will be used when performing a TLS handshake in NIO.
 /// Each implementation can choose how to observe for changes, but they all require an ``sslContextConfigurationOverride``
 /// to be exposed.
+@available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
 public protocol CertificateReloader: Sendable {
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via whatever mechanism the specific ``CertificateReloader``
     /// implementation provides.
-    var sslContextConfigurationOverride: NIOSSLContextConfigurationOverride { get }
+    var sslContextConfigurationOverride: NIOSSLContextConfigurationOverride { get async }
 }
 
 /// A ``TimedCertificateReloader`` is an implementation of a ``CertificateReloader``, where the certificate and private
@@ -287,9 +288,10 @@ extension TLSConfiguration {
     /// Configure a ``CertificateReloader`` to observe updates for the certificate and key pair used.
     /// - Parameter reloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A `TLSConfiguration` that reloads the certificate and key used in its SSL handshake.
-    mutating public func withAutomaticCertificateReloading(using reloader: any CertificateReloader) -> Self {
+    @available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
+    mutating public func withAutomaticCertificateReloading(using reloader: some CertificateReloader) -> Self {
         self.sslContextCallback = { _, promise in
-            promise.succeed(reloader.sslContextConfigurationOverride)
+            promise.completeWithTask { await reloader.sslContextConfigurationOverride }
         }
         return self
     }
