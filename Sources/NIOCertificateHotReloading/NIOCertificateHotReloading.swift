@@ -48,8 +48,8 @@ public protocol CertificateReloader: Sendable {
 /// Once the reloader is running, call ``sslContextConfigurationOverride`` to get a
 /// `NIOSSLContextConfigurationOverride` which can be set on NIO's `TLSConfiguration`: this will keep the certificate
 /// and private key pair up to date.
-/// You may instead call `TLSConfiguration.withAutomaticCertificateReloading(using:)` to get a
-/// `TLSConfiguration` with a configured reloader.
+/// You may instead call  ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)`` to get a
+/// ``NIOSSL/TLSConfiguration`` with a configured reloader.
 ///
 /// If any errors occur during a reload attempt (such as: being unable to find the file(s) containing the certificate or the key; the format
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given
