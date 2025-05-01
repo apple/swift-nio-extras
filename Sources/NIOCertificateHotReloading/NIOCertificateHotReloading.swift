@@ -188,6 +188,24 @@ public struct TimedCertificateReloader: CertificateReloader {
         self.reloadPair()
     }
 
+    /// Initialize a new ``TimedCertificateReloader``.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - certificateDescription: A ``CertificateDescription``.
+    ///   - privateKeyDescription: A ``PrivateKeyDescription``.
+    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
+    public init(
+        refreshingEvery refreshInterval: Duration,
+        certificateDescription: CertificateDescription,
+        privateKeyDescription: PrivateKeyDescription
+    ) {
+        self.init(
+            refreshingEvery: TimeAmount(refreshInterval),
+            certificateDescription: certificateDescription,
+            privateKeyDescription: privateKeyDescription
+        )
+    }
+
     /// A long-running method to run the ``TimedCertificateReloader`` and start observing updates for the certificate and
     /// private key pair.
     /// - Important: You *must* call this method to get certificate and key updates.
