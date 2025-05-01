@@ -15,6 +15,7 @@
 @preconcurrency import Crypto
 import NIOCertificateHotReloading
 import NIOConcurrencyHelpers
+import NIOSSL
 import X509
 import XCTest
 
