@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftASN1
 import NIOConcurrencyHelpers
 import NIOSSL
 import ServiceLifecycle
+import SwiftASN1
 import X509
 
 import struct NIOCore.TimeAmount
@@ -112,7 +112,7 @@ public struct TimedCertificateReloader: CertificateReloader {
 
         /// The certificate's ``TimedCertificateReloader/Encoding``.
         public var format: Encoding
-        
+
         /// Initialize a new ``TimedCertificateReloader/CertificateDescription``.
         /// - Parameters:
         ///   - location: A ``TimedCertificateReloader/Location``.
