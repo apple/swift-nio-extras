@@ -16,6 +16,7 @@
 import NIOCertificateHotReloading
 import NIOConcurrencyHelpers
 import NIOSSL
+import SwiftASN1
 import X509
 import XCTest
 
