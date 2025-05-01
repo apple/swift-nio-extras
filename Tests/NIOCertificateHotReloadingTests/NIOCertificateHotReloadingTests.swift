@@ -302,7 +302,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         let reloader = TimedCertificateReloader(
-            refreshingEvery: .milliseconds(50),
+            refreshInterval: .milliseconds(50),
             certificateDescription: .init(
                 location: certificate.location,
                 format: certificate.format

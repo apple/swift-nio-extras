@@ -174,7 +174,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - certificateDescription: A ``CertificateDescription``.
     ///   - privateKeyDescription: A ``PrivateKeyDescription``.
     public init(
-        refreshingEvery refreshInterval: TimeAmount,
+        refreshInterval: TimeAmount,
         certificateDescription: CertificateDescription,
         privateKeyDescription: PrivateKeyDescription
     ) {
@@ -195,12 +195,12 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - privateKeyDescription: A ``PrivateKeyDescription``.
     @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
     public init(
-        refreshingEvery refreshInterval: Duration,
+        refreshInterval: Duration,
         certificateDescription: CertificateDescription,
         privateKeyDescription: PrivateKeyDescription
     ) {
         self.init(
-            refreshingEvery: TimeAmount(refreshInterval),
+            refreshInterval: TimeAmount(refreshInterval),
             certificateDescription: certificateDescription,
             privateKeyDescription: privateKeyDescription
         )
@@ -307,7 +307,7 @@ extension TLSConfiguration {
     /// - Parameter reloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A `TLSConfiguration` that reloads the certificate and key used in its SSL handshake.
     @available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
-    mutating public func withAutomaticCertificateReloading(using reloader: some CertificateReloader) -> Self {
+    mutating public func setCertificateReloader(_ reloader: some CertificateReloader) -> Self {
         self.sslContextCallback = { _, promise in
             promise.completeWithTask { await reloader.sslContextConfigurationOverride }
         }
