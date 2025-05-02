@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @preconcurrency import Crypto
-import NIOCertificateHotReloading
+import NIOCertificateReloading
 import NIOConcurrencyHelpers
 import NIOSSL
 import SwiftASN1

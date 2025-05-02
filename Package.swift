@@ -258,7 +258,7 @@ var targets: [PackageDescription.Target] = [
         swiftSettings: strictConcurrencySettings
     ),
     .target(
-        name: "NIOCertificateHotReloading",
+        name: "NIOCertificateReloading",
         dependencies: [
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
@@ -269,9 +269,9 @@ var targets: [PackageDescription.Target] = [
         swiftSettings: strictConcurrencySettings
     ),
     .testTarget(
-        name: "NIOCertificateHotReloadingTests",
+        name: "NIOCertificateReloadingTests",
         dependencies: [
-            "NIOCertificateHotReloading",
+            "NIOCertificateReloading",
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOSSL", package: "swift-nio-ssl"),
             .product(name: "X509", package: "swift-certificates"),
@@ -292,7 +292,7 @@ let package = Package(
         .library(name: "NIOHTTPTypesHTTP2", targets: ["NIOHTTPTypesHTTP2"]),
         .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
         .library(name: "NIOHTTPResponsiveness", targets: ["NIOHTTPResponsiveness"]),
-        .library(name: "NIOCertificateHotReloading", targets: ["NIOCertificateHotReloading"]),
+        .library(name: "NIOCertificateReloading", targets: ["NIOCertificateReloading"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
