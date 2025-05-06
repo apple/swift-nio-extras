@@ -34,7 +34,7 @@ import Foundation
 /// key. You may then set it on your ``NIOSSL/TLSConfiguration`` using
 /// ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)``:
 ///
-/// ```
+/// ```swift
 /// var configuration = TLSConfiguration.makeServerConfiguration(
 ///     certificateChain: chain,
 ///     privateKey: key
@@ -46,17 +46,12 @@ import Foundation
 /// )
 /// configuration.setCertificateReloader(reloader)
 /// ```
-/// 
+///
 /// If you're creating a server configuration, you can instead opt to use
 /// ``NIOSSL/TLSConfiguration/makeServerConfiguration(certificateReloader:)``, which will set the initial
 /// certificate chain and private key, as well as set the reloader:
 ///
-/// ```
-/// let reloader = TimedCertificateReloader(
-///     refreshInterval: .seconds(500),
-///     certificateDescription: TimedCertificateReloader.CertificateDescription(...),
-///     privateKeyDescription: TimedCertificateReloader.PrivateKeyDescription(...)
-/// )
+/// ```swift
 /// let configuration = TLSConfiguration.makeServerConfiguration(
 ///     certificateReloader: reloader
 /// )
@@ -67,15 +62,14 @@ import Foundation
 /// `NIOSSLContextConfigurationOverride`, although this will typically not be necessary, as it's the NIO channel that will
 /// handle the override when initiating TLS handshakes.
 ///
-/// ```
+/// ```swift
 /// try await withThrowingTaskGroup(of: Void.self) { group in
-/// group.addTask {
-///     reloader.run()
-/// }
-///
-/// // ...
-/// let override = reloader.sslContextConfigurationOverride
-/// // ...
+///     group.addTask {
+///         reloader.run()
+///     }
+///     // ...
+///     let override = reloader.sslContextConfigurationOverride
+///     // ...
 /// }
 /// ```
 ///
@@ -186,7 +180,7 @@ public struct TimedCertificateReloader: CertificateReloader {
         private init(_ backing: _Backing) {
             self._backing = backing
         }
-        
+
         /// The file path given for the certificate cannot be found.
         /// - Parameter path: The file path given for the certificate.
         /// - Returns: A ``TimedCertificateReloader/Error``.
@@ -319,10 +313,10 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     private func reloadPair() throws {
         if let certificateBytes = try self.loadCertificate(),
-           let keyBytes = try self.loadPrivateKey(),
-           let certificate = try self.parseCertificate(from: certificateBytes),
-           let key = try self.parsePrivateKey(from: keyBytes),
-           key.publicKey.isValidSignature(certificate.signature, for: certificate)
+            let keyBytes = try self.loadPrivateKey(),
+            let certificate = try self.parseCertificate(from: certificateBytes),
+            let key = try self.parsePrivateKey(from: keyBytes),
+            key.publicKey.isValidSignature(certificate.signature, for: certificate)
         {
             try self.attemptToUpdatePair(certificate: certificate, key: key)
         }

@@ -40,14 +40,14 @@ extension TLSConfiguration {
         private init(backing: _Backing) {
             self.backing = backing
         }
-        
+
         /// The given ``CertificateReloader`` could not provide a certificate chain with which to create this config.
         public static let missingCertificateChain: Self = .init(backing: .missingCertificateChain)
 
         /// The given ``CertificateReloader`` could not provide a private key with which to create this config.
         public static let missingPrivateKey: Self = .init(backing: .missingPrivateKey)
     }
-    
+
     /// Create a ``NIOSSL/TLSConfiguration`` for use with server-side contexts, with certificate reloading enabled.
     /// - Parameter certificateReloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A ``NIOSSL/TLSConfiguration`` for use with server-side contexts, that reloads the certificate and key
