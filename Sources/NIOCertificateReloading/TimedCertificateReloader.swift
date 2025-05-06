@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import AsyncAlgorithms
 import NIOConcurrencyHelpers
 import NIOSSL
 import ServiceLifecycle
@@ -41,7 +42,7 @@ import Foundation
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given
 /// private key; etc), then that attempt will be aborted but the service will keep on trying at the configured interval.
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
-@available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
+@available(macOS 13, iOS 14, tvOS 14, watchOS 7, *)
 public struct TimedCertificateReloader: CertificateReloader {
     /// The encoding for the certificate or the key.
     public struct Encoding: Sendable, Equatable {
@@ -162,7 +163,7 @@ public struct TimedCertificateReloader: CertificateReloader {
         var privateKey: NIOSSLPrivateKeySource
     }
 
-    private let refreshInterval: TimeAmount
+    private let refreshInterval: Duration
     private let certificateDescription: CertificateDescription
     private let privateKeyDescription: PrivateKeyDescription
     private let state: NIOLockedValueBox<CertificateKeyPair?>
@@ -192,6 +193,42 @@ public struct TimedCertificateReloader: CertificateReloader {
         certificateDescription: CertificateDescription,
         privateKeyDescription: PrivateKeyDescription
     ) {
+        self.init(
+            refreshInterval: Duration(refreshInterval),
+            certificateDescription: certificateDescription,
+            privateKeyDescription: privateKeyDescription
+        )
+    }
+
+    /// Attempt to initialize a new ``TimedCertificateReloader``, but throw if the given certificate and private keys cannot be
+    /// loaded.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - validatingCertificateDescription: A ``CertificateDescription``.
+    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
+    /// - Throws: If the certificate or private key cannot be loaded.
+    public init(
+        refreshInterval: TimeAmount,
+        validatingCertificateDescription: CertificateDescription,
+        validatingPrivateKeyDescription: PrivateKeyDescription
+    ) throws {
+        try self.init(
+            refreshInterval: Duration(refreshInterval),
+            validatingCertificateDescription: validatingCertificateDescription,
+            validatingPrivateKeyDescription: validatingPrivateKeyDescription
+        )
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - certificateDescription: A ``CertificateDescription``.
+    ///   - privateKeyDescription: A ``PrivateKeyDescription``.
+    public init(
+        refreshInterval: Duration,
+        certificateDescription: CertificateDescription,
+        privateKeyDescription: PrivateKeyDescription
+    ) {
         self.refreshInterval = refreshInterval
         self.certificateDescription = certificateDescription
         self.privateKeyDescription = privateKeyDescription
@@ -212,7 +249,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
     /// - Throws: If the certificate or private key cannot be loaded.
     public init(
-        refreshInterval: TimeAmount,
+        refreshInterval: Duration,
         validatingCertificateDescription: CertificateDescription,
         validatingPrivateKeyDescription: PrivateKeyDescription
     ) throws {
@@ -226,52 +263,12 @@ public struct TimedCertificateReloader: CertificateReloader {
         try self.reloadPair()
     }
 
-    /// Initialize a new ``TimedCertificateReloader``.
-    /// - Parameters:
-    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - certificateDescription: A ``CertificateDescription``.
-    ///   - privateKeyDescription: A ``PrivateKeyDescription``.
-    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
-    public init(
-        refreshInterval: Duration,
-        certificateDescription: CertificateDescription,
-        privateKeyDescription: PrivateKeyDescription
-    ) {
-        self.init(
-            refreshInterval: TimeAmount(refreshInterval),
-            certificateDescription: certificateDescription,
-            privateKeyDescription: privateKeyDescription
-        )
-    }
-
-    /// Attempt to initialize a new ``TimedCertificateReloader``, but throw if the given certificate and private keys cannot be
-    /// loaded.
-    /// - Parameters:
-    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - validatingCertificateDescription: A ``CertificateDescription``.
-    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
-    /// - Throws: If the certificate or private key cannot be loaded.
-    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
-    public init(
-        refreshInterval: Duration,
-        validatingCertificateDescription: CertificateDescription,
-        validatingPrivateKeyDescription: PrivateKeyDescription
-    ) throws {
-        try self.init(
-            refreshInterval: TimeAmount(refreshInterval),
-            validatingCertificateDescription: validatingCertificateDescription,
-            validatingPrivateKeyDescription: validatingPrivateKeyDescription
-        )
-    }
-
     /// A long-running method to run the ``TimedCertificateReloader`` and start observing updates for the certificate and
     /// private key pair.
     /// - Important: You *must* call this method to get certificate and key updates.
-    public func startReloading() async throws {
-        while !Task.isShuttingDownGracefully {
-            try await Task.sleep(nanoseconds: UInt64(self.refreshInterval.nanoseconds))
-            // We don't want to throw out of this method (other than because of `CancellationError`
-            // when calling `Task.sleep`) so simply ignore errors thrown from `reloadPair`.
+    public func run() async throws {
+        for try await _ in AsyncTimerSequence.repeating(every: self.refreshInterval).cancelOnGracefulShutdown() {
+            // We don't want to throw out of this method so simply ignore errors thrown from `reloadPair`.
             try? self.reloadPair()
         }
     }
@@ -361,5 +358,5 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 }
 
-@available(macOS 11.0, iOS 14, tvOS 14, watchOS 7, *)
+@available(macOS 13, iOS 14, tvOS 14, watchOS 7, *)
 extension TimedCertificateReloader: Service {}
