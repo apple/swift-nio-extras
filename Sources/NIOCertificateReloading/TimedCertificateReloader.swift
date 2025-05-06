@@ -31,12 +31,56 @@ import Foundation
 /// key pair is updated at a fixed interval from the file path or memory location configured.
 ///
 /// You initialize a ``TimedCertificateReloader`` by providing a refresh interval, and locations for the certificate and the private
-/// key. You must then call ``run()`` on this reloader for it to start observing changes.
-/// Once the reloader is running, call ``sslContextConfigurationOverride`` to get a
-/// `NIOSSLContextConfigurationOverride` which can be set on NIO's `TLSConfiguration`: this will keep the certificate
-/// and private key pair up to date.
-/// You may instead call  ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)`` to get a
-/// ``NIOSSL/TLSConfiguration`` with a configured reloader.
+/// key. You may then set it on your ``NIOSSL/TLSConfiguration`` using
+/// ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)``:
+///
+/// ```
+/// var configuration = TLSConfiguration.makeServerConfiguration(
+///     certificateChain: chain,
+///     privateKey: key
+/// )
+/// let reloader = TimedCertificateReloader(
+///     refreshInterval: .seconds(500),
+///     certificateDescription: TimedCertificateReloader.CertificateDescription(...),
+///     privateKeyDescription: TimedCertificateReloader.PrivateKeyDescription(...)
+/// )
+/// configuration.setCertificateReloader(reloader)
+/// ```
+/// 
+/// If you're creating a server configuration, you can instead opt to use
+/// ``NIOSSL/TLSConfiguration/makeServerConfiguration(certificateReloader:)``, which will set the initial
+/// certificate chain and private key, as well as set the reloader:
+///
+/// ```
+/// let reloader = TimedCertificateReloader(
+///     refreshInterval: .seconds(500),
+///     certificateDescription: TimedCertificateReloader.CertificateDescription(...),
+///     privateKeyDescription: TimedCertificateReloader.PrivateKeyDescription(...)
+/// )
+/// let configuration = TLSConfiguration.makeServerConfiguration(
+///     certificateReloader: reloader
+/// )
+/// ```
+///
+/// Finally, you must call ``run()`` on the reloader for it to start observing changes.
+/// Once the reloader is running, you can also manually access its ``sslContextConfigurationOverride`` property to get a
+/// `NIOSSLContextConfigurationOverride`, although this will typically not be necessary, as it's the NIO channel that will
+/// handle the override when initiating TLS handshakes.
+///
+/// ```
+/// try await withThrowingTaskGroup(of: Void.self) { group in
+/// group.addTask {
+///     reloader.run()
+/// }
+///
+/// // ...
+/// let override = reloader.sslContextConfigurationOverride
+/// // ...
+/// }
+/// ```
+///
+/// ``TimedCertificateReloader`` conforms to `ServiceLifecycle`'s `Service` protocol, meaning you can simply create
+/// the reloader and add it to your `ServiceGroup` without having to manually run it.
 ///
 /// If any errors occur during a reload attempt (such as: being unable to find the file(s) containing the certificate or the key; the format
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given

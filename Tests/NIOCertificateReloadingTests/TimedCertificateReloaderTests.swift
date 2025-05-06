@@ -315,10 +315,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
             group.addTask {
                 try await reloader.run()
             }
-            group.addTask {
-                try await body(reloader)
-            }
-            try await group.next()
+            try await body(reloader)
             group.cancelAll()
         }
     }
