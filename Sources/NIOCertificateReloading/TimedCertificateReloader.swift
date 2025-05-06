@@ -129,6 +129,34 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
     }
 
+    /// Errors specific to the ``TimedCertificateReloader``.
+    public struct Error: Swift.Error {
+        private enum _Backing {
+            case certificatePathNotFound(String)
+            case privateKeyPathNotFound(String)
+        }
+
+        private let _backing: _Backing
+
+        private init(_ backing: _Backing) {
+            self._backing = backing
+        }
+        
+        /// The file path given for the certificate cannot be found.
+        /// - Parameter path: The file path given for the certificate.
+        /// - Returns: A ``TimedCertificateReloader/Error``.
+        public static func certificatePathNotFound(_ path: String) -> Self {
+            Self(.certificatePathNotFound(path))
+        }
+
+        /// The file path given for the private key cannot be found.
+        /// - Parameter path: The file path given for the private key.
+        /// - Returns: A ``TimedCertificateReloader/Error``.
+        public static func privateKeyPathNotFound(_ path: String) -> Self {
+            Self(.privateKeyPathNotFound(path))
+        }
+    }
+
     private struct CertificateKeyPair {
         var certificate: NIOSSLCertificateSource
         var privateKey: NIOSSLPrivateKeySource
@@ -171,7 +199,31 @@ public struct TimedCertificateReloader: CertificateReloader {
 
         // Immediately try to load the configured cert and key to avoid having to wait for the first
         // reload loop to run.
-        self.reloadPair()
+        // We ignore errors because this initializer tolerates not finding the certificate and/or
+        // private key on first load.
+        try? self.reloadPair()
+    }
+
+    /// Attempt to initialize a new ``TimedCertificateReloader``, but throw if the given certificate and private keys cannot be
+    /// loaded.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - validatingCertificateDescription: A ``CertificateDescription``.
+    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
+    /// - Throws: If the certificate or private key cannot be loaded.
+    public init(
+        refreshInterval: TimeAmount,
+        validatingCertificateDescription: CertificateDescription,
+        validatingPrivateKeyDescription: PrivateKeyDescription
+    ) throws {
+        self.refreshInterval = refreshInterval
+        self.certificateDescription = validatingCertificateDescription
+        self.privateKeyDescription = validatingPrivateKeyDescription
+        self.state = NIOLockedValueBox(nil)
+
+        // Immediately try to load the configured cert and key to avoid having to wait for the first
+        // reload loop to run.
+        try self.reloadPair()
     }
 
     /// Initialize a new ``TimedCertificateReloader``.
@@ -192,33 +244,57 @@ public struct TimedCertificateReloader: CertificateReloader {
         )
     }
 
+    /// Attempt to initialize a new ``TimedCertificateReloader``, but throw if the given certificate and private keys cannot be
+    /// loaded.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - validatingCertificateDescription: A ``CertificateDescription``.
+    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
+    /// - Throws: If the certificate or private key cannot be loaded.
+    @available(macOS 13, iOS 16, tvOS 16, watchOS 9, *)
+    public init(
+        refreshInterval: Duration,
+        validatingCertificateDescription: CertificateDescription,
+        validatingPrivateKeyDescription: PrivateKeyDescription
+    ) throws {
+        try self.init(
+            refreshInterval: TimeAmount(refreshInterval),
+            validatingCertificateDescription: validatingCertificateDescription,
+            validatingPrivateKeyDescription: validatingPrivateKeyDescription
+        )
+    }
+
     /// A long-running method to run the ``TimedCertificateReloader`` and start observing updates for the certificate and
     /// private key pair.
     /// - Important: You *must* call this method to get certificate and key updates.
-    public func run() async throws {
-        while !Task.isCancelled {
+    public func startReloading() async throws {
+        while !Task.isShuttingDownGracefully {
             try await Task.sleep(nanoseconds: UInt64(self.refreshInterval.nanoseconds))
-            self.reloadPair()
+            // We don't want to throw out of this method (other than because of `CancellationError`
+            // when calling `Task.sleep`) so simply ignore errors thrown from `reloadPair`.
+            try? self.reloadPair()
         }
     }
 
-    private func reloadPair() {
-        if let certificateBytes = self.loadCertificate(),
-           let keyBytes = self.loadPrivateKey(),
-           let certificate = self.parseCertificate(from: certificateBytes),
-           let key = self.parsePrivateKey(from: keyBytes),
+    private func reloadPair() throws {
+        if let certificateBytes = try self.loadCertificate(),
+           let keyBytes = try self.loadPrivateKey(),
+           let certificate = try self.parseCertificate(from: certificateBytes),
+           let key = try self.parsePrivateKey(from: keyBytes),
            key.publicKey.isValidSignature(certificate.signature, for: certificate)
         {
-            self.attemptToUpdatePair(certificate: certificate, key: key)
+            try self.attemptToUpdatePair(certificate: certificate, key: key)
         }
     }
 
-    private func loadCertificate() -> [UInt8]? {
+    private func loadCertificate() throws -> [UInt8]? {
         let certificateBytes: [UInt8]?
         switch self.certificateDescription.location._backing {
         case .file(let path):
-            let bytes = FileManager.default.contents(atPath: path)
-            certificateBytes = bytes.map { Array($0) }
+            guard let bytes = FileManager.default.contents(atPath: path) else {
+                throw Error.certificatePathNotFound(path)
+            }
+            certificateBytes = Array(bytes)
 
         case .memory(let bytesProvider):
             certificateBytes = bytesProvider()
@@ -226,12 +302,14 @@ public struct TimedCertificateReloader: CertificateReloader {
         return certificateBytes
     }
 
-    private func loadPrivateKey() -> [UInt8]? {
+    private func loadPrivateKey() throws -> [UInt8]? {
         let keyBytes: [UInt8]?
         switch self.privateKeyDescription.location._backing {
         case .file(let path):
-            let bytes = FileManager.default.contents(atPath: path)
-            keyBytes = bytes.map { Array($0) }
+            guard let bytes = FileManager.default.contents(atPath: path) else {
+                throw Error.privateKeyPathNotFound(path)
+            }
+            keyBytes = Array(bytes)
 
         case .memory(let bytesProvider):
             keyBytes = bytesProvider()
@@ -239,46 +317,41 @@ public struct TimedCertificateReloader: CertificateReloader {
         return keyBytes
     }
 
-    private func parseCertificate(from certificateBytes: [UInt8]) -> Certificate? {
+    private func parseCertificate(from certificateBytes: [UInt8]) throws -> Certificate? {
         let certificate: Certificate?
         switch self.certificateDescription.format._backing {
         case .der:
-            certificate = try? Certificate(derEncoded: certificateBytes)
+            certificate = try Certificate(derEncoded: certificateBytes)
 
         case .pem:
-            certificate = String(bytes: certificateBytes, encoding: .utf8)
-                .flatMap { try? Certificate(pemEncoded: $0) }
+            certificate = try String(bytes: certificateBytes, encoding: .utf8)
+                .flatMap { try Certificate(pemEncoded: $0) }
         }
         return certificate
     }
 
-    private func parsePrivateKey(from keyBytes: [UInt8]) -> Certificate.PrivateKey? {
+    private func parsePrivateKey(from keyBytes: [UInt8]) throws -> Certificate.PrivateKey? {
         let key: Certificate.PrivateKey?
         switch self.privateKeyDescription.format._backing {
         case .der:
-            key = try? Certificate.PrivateKey(derBytes: keyBytes)
+            key = try Certificate.PrivateKey(derBytes: keyBytes)
 
         case .pem:
-            key = String(bytes: keyBytes, encoding: .utf8)
-                .flatMap { try? Certificate.PrivateKey(pemEncoded: $0) }
+            key = try String(bytes: keyBytes, encoding: .utf8)
+                .flatMap { try Certificate.PrivateKey(pemEncoded: $0) }
         }
         return key
     }
 
-    private func attemptToUpdatePair(certificate: Certificate, key: Certificate.PrivateKey) {
-        let nioSSLCertificate = try? NIOSSLCertificate(
+    private func attemptToUpdatePair(certificate: Certificate, key: Certificate.PrivateKey) throws {
+        let nioSSLCertificate = try NIOSSLCertificate(
             bytes: certificate.serializeAsPEM().derBytes,
             format: .der
         )
-        let nioSSLPrivateKey = try? NIOSSLPrivateKey(
+        let nioSSLPrivateKey = try NIOSSLPrivateKey(
             bytes: key.serializeAsPEM().derBytes,
             format: .der
         )
-
-        guard let nioSSLCertificate, let nioSSLPrivateKey else {
-            return
-        }
-
         self.state.withLockedValue {
             $0 = CertificateKeyPair(
                 certificate: .certificate(nioSSLCertificate),
