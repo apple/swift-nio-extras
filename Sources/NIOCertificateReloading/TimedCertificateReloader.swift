@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import AsyncAlgorithms
+import Logging
 import NIOConcurrencyHelpers
 import NIOSSL
 import ServiceLifecycle
@@ -205,6 +206,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     private let certificateDescription: CertificateDescription
     private let privateKeyDescription: PrivateKeyDescription
     private let state: NIOLockedValueBox<CertificateKeyPair?>
+    private let logger: Logger?
 
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
@@ -229,12 +231,14 @@ public struct TimedCertificateReloader: CertificateReloader {
     public init(
         refreshInterval: TimeAmount,
         certificateDescription: CertificateDescription,
-        privateKeyDescription: PrivateKeyDescription
+        privateKeyDescription: PrivateKeyDescription,
+        logger: Logger? = nil
     ) {
         self.init(
             refreshInterval: Duration(refreshInterval),
             certificateDescription: certificateDescription,
-            privateKeyDescription: privateKeyDescription
+            privateKeyDescription: privateKeyDescription,
+            logger: logger
         )
     }
 
@@ -248,12 +252,14 @@ public struct TimedCertificateReloader: CertificateReloader {
     public init(
         refreshInterval: TimeAmount,
         validatingCertificateDescription: CertificateDescription,
-        validatingPrivateKeyDescription: PrivateKeyDescription
+        validatingPrivateKeyDescription: PrivateKeyDescription,
+        logger: Logger? = nil
     ) throws {
         try self.init(
             refreshInterval: Duration(refreshInterval),
             validatingCertificateDescription: validatingCertificateDescription,
-            validatingPrivateKeyDescription: validatingPrivateKeyDescription
+            validatingPrivateKeyDescription: validatingPrivateKeyDescription,
+            logger: nil
         )
     }
 
@@ -265,12 +271,14 @@ public struct TimedCertificateReloader: CertificateReloader {
     public init(
         refreshInterval: Duration,
         certificateDescription: CertificateDescription,
-        privateKeyDescription: PrivateKeyDescription
+        privateKeyDescription: PrivateKeyDescription,
+        logger: Logger? = nil
     ) {
         self.refreshInterval = refreshInterval
         self.certificateDescription = certificateDescription
         self.privateKeyDescription = privateKeyDescription
         self.state = NIOLockedValueBox(nil)
+        self.logger = logger
 
         // Immediately try to load the configured cert and key to avoid having to wait for the first
         // reload loop to run.
@@ -289,12 +297,14 @@ public struct TimedCertificateReloader: CertificateReloader {
     public init(
         refreshInterval: Duration,
         validatingCertificateDescription: CertificateDescription,
-        validatingPrivateKeyDescription: PrivateKeyDescription
+        validatingPrivateKeyDescription: PrivateKeyDescription,
+        logger: Logger? = nil
     ) throws {
         self.refreshInterval = refreshInterval
         self.certificateDescription = validatingCertificateDescription
         self.privateKeyDescription = validatingPrivateKeyDescription
         self.state = NIOLockedValueBox(nil)
+        self.logger = logger
 
         // Immediately try to load the configured cert and key to avoid having to wait for the first
         // reload loop to run.
@@ -306,8 +316,19 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// - Important: You *must* call this method to get certificate and key updates.
     public func run() async throws {
         for try await _ in AsyncTimerSequence.repeating(every: self.refreshInterval).cancelOnGracefulShutdown() {
-            // We don't want to throw out of this method so simply ignore errors thrown from `reloadPair`.
-            try? self.reloadPair()
+            do {
+                try self.reloadPair()
+            } catch {
+                self.logger?.error(
+                    """
+                    An unexpected error was encountered while trying to reload the certificate and \
+                    private key pair.
+                    """,
+                    metadata: [
+                        "error": error
+                    ]
+                )
+            }
         }
     }
 

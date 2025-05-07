@@ -266,6 +266,7 @@ var targets: [PackageDescription.Target] = [
             .product(name: "SwiftASN1", package: "swift-asn1"),
             .product(name: "ServiceLifecycle", package: "swift-service-lifecycle"),
             .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+            .product(name: "Logging", package: "swift-log"),
         ],
         swiftSettings: strictConcurrencySettings
     ),
@@ -307,6 +308,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.3.1"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
 
     ],
     targets: targets
