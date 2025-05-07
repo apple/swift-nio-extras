@@ -276,18 +276,18 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// loaded.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - validatingCertificateDescription: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - validatingCertificateSource: A ``TimedCertificateReloader/CertificateSource``.
     ///   - validatingPrivateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     /// - Throws: If the certificate or private key cannot be loaded.
     public init(
         refreshInterval: TimeAmount,
-        validatingCertificateDescription: CertificateSource,
+        validatingCertificateSource: CertificateSource,
         validatingPrivateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) throws {
         try self.init(
             refreshInterval: Duration(refreshInterval),
-            validatingCertificateDescription: validatingCertificateDescription,
+            validatingCertificateSource: validatingCertificateSource,
             validatingPrivateKeySource: validatingPrivateKeySource,
             logger: logger
         )
@@ -321,17 +321,17 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// loaded.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - validatingCertificateDescription: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - validatingCertificateSource: A ``TimedCertificateReloader/CertificateSource``.
     ///   - validatingPrivateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     /// - Throws: If the certificate or private key cannot be loaded.
     public init(
         refreshInterval: Duration,
-        validatingCertificateDescription: CertificateSource,
+        validatingCertificateSource: CertificateSource,
         validatingPrivateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) throws {
         self.refreshInterval = refreshInterval
-        self.certificateSource = validatingCertificateDescription
+        self.certificateSource = validatingCertificateSource
         self.privateKeySource = validatingPrivateKeySource
         self.state = NIOLockedValueBox(nil)
         self.logger = logger
