@@ -272,6 +272,28 @@ final class TimedCertificateReloaderTests: XCTestCase {
         }
     }
 
+    func testCertificateReloaderErrorDescription() {
+        XCTAssertEqual(
+            "\(TLSConfiguration.CertificateReloaderError.missingCertificateChain)",
+            "Missing certificate chain"
+        )
+        XCTAssertEqual(
+            "\(TLSConfiguration.CertificateReloaderError.missingPrivateKey)",
+            "Missing private key"
+        )
+    }
+
+    func testTimedCertificateReloaderErrorDescription() {
+        XCTAssertEqual(
+            "\(TimedCertificateReloader.Error.certificatePathNotFound("some/path"))",
+            "Certificate path not found: some/path"
+        )
+        XCTAssertEqual(
+            "\(TimedCertificateReloader.Error.privateKeyPathNotFound("some/path"))",
+            "Private key path not found: some/path"
+        )
+    }
+
     static let startDate = Date()
     static let samplePrivateKey = P384.Signing.PrivateKey()
     static let sampleCertName = try! DistinguishedName {

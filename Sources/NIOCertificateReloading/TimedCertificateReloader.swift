@@ -81,10 +81,14 @@ import Foundation
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given
 /// private key; etc), then that attempt will be aborted but the service will keep on trying at the configured interval.
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
+#if compiler(>=6.0)
 @available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1, *)
+#else
+@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, *)
+#endif
 public struct TimedCertificateReloader: CertificateReloader {
     /// The encoding for the certificate or the key.
-    public struct Encoding: Sendable, Equatable {
+    public struct Encoding: Sendable, Hashable {
         fileprivate enum _Backing {
             case der
             case pem
@@ -96,23 +100,36 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
 
         /// The encoding of this certificate/key is DER bytes.
-        public static let der = Encoding(.der)
+        public static var der: Self { .init(.der) }
 
         /// The encoding of this certificate/key is PEM.
-        public static let pem = Encoding(.pem)
+        public static var pem: Self { .init(.pem) }
     }
 
     /// A location specification for a certificate or key.
-    public struct Location: Sendable {
-        fileprivate enum _Backing {
+    public struct Location: Sendable, CustomStringConvertible {
+        fileprivate enum _Backing: CustomStringConvertible {
             case file(path: String)
             case memory(provider: @Sendable () -> [UInt8]?)
+
+            var description: String {
+                switch self {
+                case .file(let path):
+                    return "Filepath: \(path)"
+                case .memory:
+                    return "<in-memory location>"
+                }
+            }
         }
 
         fileprivate let _backing: _Backing
 
         private init(_ backing: _Backing) {
             self._backing = backing
+        }
+
+        public var description: String {
+            self._backing.description
         }
 
         /// This certificate/key can be found at the given filepath.
@@ -170,10 +187,19 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 
     /// Errors specific to the ``TimedCertificateReloader``.
-    public struct Error: Swift.Error {
-        private enum _Backing {
+    public struct Error: Swift.Error, Hashable, CustomStringConvertible {
+        private enum _Backing: Hashable, CustomStringConvertible {
             case certificatePathNotFound(String)
             case privateKeyPathNotFound(String)
+
+            var description: String {
+                switch self {
+                case .certificatePathNotFound(let path):
+                    return "Certificate path not found: \(path)"
+                case .privateKeyPathNotFound(let path):
+                    return "Private key path not found: \(path)"
+                }
+            }
         }
 
         private let _backing: _Backing
@@ -194,6 +220,10 @@ public struct TimedCertificateReloader: CertificateReloader {
         /// - Returns: A ``TimedCertificateReloader/Error``.
         public static func privateKeyPathNotFound(_ path: String) -> Self {
             Self(.privateKeyPathNotFound(path))
+        }
+
+        public var description: String {
+            self._backing.description
         }
     }
 
@@ -259,7 +289,7 @@ public struct TimedCertificateReloader: CertificateReloader {
             refreshInterval: Duration(refreshInterval),
             validatingCertificateDescription: validatingCertificateDescription,
             validatingPrivateKeyDescription: validatingPrivateKeyDescription,
-            logger: nil
+            logger: logger
         )
     }
 
@@ -319,13 +349,12 @@ public struct TimedCertificateReloader: CertificateReloader {
             do {
                 try self.reloadPair()
             } catch {
-                self.logger?.error(
-                    """
-                    An unexpected error was encountered while trying to reload the certificate and \
-                    private key pair.
-                    """,
+                self.logger?.debug(
+                    "Failed to reload certificate and private key.",
                     metadata: [
-                        "error": error
+                        "error": "\(error)",
+                        "certificatePath": "\(self.certificateDescription.location)",
+                        "privateKeyPath": "\(self.privateKeyDescription.location)",
                     ]
                 )
             }
@@ -417,5 +446,9 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 }
 
+#if compiler(>=6.0)
 @available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1, *)
+#else
+@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, *)
+#endif
 extension TimedCertificateReloader: Service {}

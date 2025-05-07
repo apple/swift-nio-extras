@@ -30,23 +30,36 @@ public protocol CertificateReloader: Sendable {
 
 extension TLSConfiguration {
     /// Errors thrown when creating a ``NIOSSL/TLSConfiguration`` with a ``CertificateReloader``.
-    public struct CertificateReloaderError: Error {
-        private enum _Backing {
+    public struct CertificateReloaderError: Error, Hashable, CustomStringConvertible {
+        private enum _Backing: CustomStringConvertible {
             case missingCertificateChain
             case missingPrivateKey
+
+            var description: String {
+                switch self {
+                case .missingCertificateChain:
+                    return "Missing certificate chain"
+                case .missingPrivateKey:
+                    return "Missing private key"
+                }
+            }
         }
 
-        private let backing: _Backing
+        private let _backing: _Backing
 
         private init(backing: _Backing) {
-            self.backing = backing
+            self._backing = backing
+        }
+
+        public var description: String {
+            self._backing.description
         }
 
         /// The given ``CertificateReloader`` could not provide a certificate chain with which to create this config.
-        public static let missingCertificateChain: Self = .init(backing: .missingCertificateChain)
+        public static var missingCertificateChain: Self { .init(backing: .missingCertificateChain) }
 
         /// The given ``CertificateReloader`` could not provide a private key with which to create this config.
-        public static let missingPrivateKey: Self = .init(backing: .missingPrivateKey)
+        public static var missingPrivateKey: Self { .init(backing: .missingPrivateKey) }
     }
 
     /// Create a ``NIOSSL/TLSConfiguration`` for use with server-side contexts, with certificate reloading enabled.
@@ -70,17 +83,15 @@ extension TLSConfiguration {
             certificateChain: certificateChain,
             privateKey: privateKey
         )
-        return configuration.setCertificateReloader(certificateReloader)
+        configuration.setCertificateReloader(certificateReloader)
+        return configuration
     }
 
     /// Configure a ``CertificateReloader`` to observe updates for the certificate and key pair used.
     /// - Parameter reloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
-    /// - Returns: A ``NIOSSL/TLSConfiguration`` that reloads the certificate and key used in its SSL handshake.
-    @discardableResult
-    mutating public func setCertificateReloader(_ reloader: some CertificateReloader) -> Self {
+    mutating public func setCertificateReloader(_ reloader: some CertificateReloader) {
         self.sslContextCallback = { _, promise in
             promise.succeed(reloader.sslContextConfigurationOverride)
         }
-        return self
     }
 }
