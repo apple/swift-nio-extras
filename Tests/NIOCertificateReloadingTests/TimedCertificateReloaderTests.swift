@@ -321,13 +321,13 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }()
 
     private func runTimedCertificateReloaderTest(
-        certificate: TimedCertificateReloader.CertificateDescription,
+        certificate: TimedCertificateReloader.CertificateSource,
         privateKey: TimedCertificateReloader.PrivateKeyDescription,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         let reloader = TimedCertificateReloader(
             refreshInterval: .milliseconds(50),
-            certificateDescription: .init(
+            certificateSource: .init(
                 location: certificate.location,
                 format: certificate.format
             ),
