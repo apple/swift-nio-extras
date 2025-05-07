@@ -80,7 +80,7 @@ import Foundation
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given
 /// private key; etc), then that attempt will be aborted but the service will keep on trying at the configured interval.
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
-@available(macOS 13, iOS 14, tvOS 14, watchOS 7, *)
+@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1.0, *)
 public struct TimedCertificateReloader: CertificateReloader {
     /// The encoding for the certificate or the key.
     public struct Encoding: Sendable, Equatable {
@@ -396,5 +396,5 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 }
 
-@available(macOS 13, iOS 14, tvOS 14, watchOS 7, *)
+@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1.0, *)
 extension TimedCertificateReloader: Service {}
