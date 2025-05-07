@@ -75,6 +75,7 @@ extension TLSConfiguration {
     /// Configure a ``CertificateReloader`` to observe updates for the certificate and key pair used.
     /// - Parameter reloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A ``NIOSSL/TLSConfiguration`` that reloads the certificate and key used in its SSL handshake.
+    @discardableResult
     mutating public func setCertificateReloader(_ reloader: some CertificateReloader) -> Self {
         self.sslContextCallback = { _, promise in
             promise.succeed(reloader.sslContextConfigurationOverride)
