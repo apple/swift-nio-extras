@@ -43,7 +43,7 @@ import Foundation
 /// let reloader = TimedCertificateReloader(
 ///     refreshInterval: .seconds(500),
 ///     certificateSource: TimedCertificateReloader.CertificateSource(...),
-///     privateKeyDescription: TimedCertificateReloader.PrivateKeyDescription(...)
+///     privateKeySource: TimedCertificateReloader.PrivateKeySource(...)
 /// )
 /// configuration.setCertificateReloader(reloader)
 /// ```
@@ -168,7 +168,7 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     /// A description of a private key, in terms of its ``TimedCertificateReloader/Location`` and
     /// ``TimedCertificateReloader/Encoding``.
-    public struct PrivateKeyDescription: Sendable {
+    public struct PrivateKeySource: Sendable {
 
         /// The key's ``TimedCertificateReloader/Location``.
         public var location: Location
@@ -176,7 +176,7 @@ public struct TimedCertificateReloader: CertificateReloader {
         /// The key's ``TimedCertificateReloader/Encoding``.
         public var format: Encoding
 
-        /// Initialize a new ``TimedCertificateReloader/PrivateKeyDescription``.
+        /// Initialize a new ``TimedCertificateReloader/PrivateKeySource``.
         /// - Parameters:
         ///   - location: A ``TimedCertificateReloader/Location``.
         ///   - format: A ``TimedCertificateReloader/Encoding``.
@@ -234,7 +234,7 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     private let refreshInterval: Duration
     private let certificateSource: CertificateSource
-    private let privateKeyDescription: PrivateKeyDescription
+    private let privateKeySource: PrivateKeySource
     private let state: NIOLockedValueBox<CertificateKeyPair?>
     private let logger: Logger?
 
@@ -256,18 +256,18 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - certificateSource: A ``CertificateSource``.
-    ///   - privateKeyDescription: A ``PrivateKeyDescription``.
+    ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - privateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     public init(
         refreshInterval: TimeAmount,
         certificateSource: CertificateSource,
-        privateKeyDescription: PrivateKeyDescription,
+        privateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) {
         self.init(
             refreshInterval: Duration(refreshInterval),
             certificateSource: certificateSource,
-            privateKeyDescription: privateKeyDescription,
+            privateKeySource: privateKeySource,
             logger: logger
         )
     }
@@ -276,19 +276,19 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// loaded.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - validatingCertificateDescription: A ``CertificateSource``.
-    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
+    ///   - validatingCertificateDescription: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - validatingPrivateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     /// - Throws: If the certificate or private key cannot be loaded.
     public init(
         refreshInterval: TimeAmount,
         validatingCertificateDescription: CertificateSource,
-        validatingPrivateKeyDescription: PrivateKeyDescription,
+        validatingPrivateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) throws {
         try self.init(
             refreshInterval: Duration(refreshInterval),
             validatingCertificateDescription: validatingCertificateDescription,
-            validatingPrivateKeyDescription: validatingPrivateKeyDescription,
+            validatingPrivateKeySource: validatingPrivateKeySource,
             logger: logger
         )
     }
@@ -296,17 +296,17 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - certificateSource: A ``CertificateSource``.
-    ///   - privateKeyDescription: A ``PrivateKeyDescription``.
+    ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - privateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     public init(
         refreshInterval: Duration,
         certificateSource: CertificateSource,
-        privateKeyDescription: PrivateKeyDescription,
+        privateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) {
         self.refreshInterval = refreshInterval
         self.certificateSource = certificateSource
-        self.privateKeyDescription = privateKeyDescription
+        self.privateKeySource = privateKeySource
         self.state = NIOLockedValueBox(nil)
         self.logger = logger
 
@@ -321,18 +321,18 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// loaded.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
-    ///   - validatingCertificateDescription: A ``CertificateSource``.
-    ///   - validatingPrivateKeyDescription: A ``PrivateKeyDescription``.
+    ///   - validatingCertificateDescription: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - validatingPrivateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
     /// - Throws: If the certificate or private key cannot be loaded.
     public init(
         refreshInterval: Duration,
         validatingCertificateDescription: CertificateSource,
-        validatingPrivateKeyDescription: PrivateKeyDescription,
+        validatingPrivateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) throws {
         self.refreshInterval = refreshInterval
         self.certificateSource = validatingCertificateDescription
-        self.privateKeyDescription = validatingPrivateKeyDescription
+        self.privateKeySource = validatingPrivateKeySource
         self.state = NIOLockedValueBox(nil)
         self.logger = logger
 
@@ -354,7 +354,7 @@ public struct TimedCertificateReloader: CertificateReloader {
                     metadata: [
                         "error": "\(error)",
                         "certificatePath": "\(self.certificateSource.location)",
-                        "privateKeyPath": "\(self.privateKeyDescription.location)",
+                        "privateKeyPath": "\(self.privateKeySource.location)",
                     ]
                 )
             }
@@ -389,7 +389,7 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     private func loadPrivateKey() throws -> [UInt8]? {
         let keyBytes: [UInt8]?
-        switch self.privateKeyDescription.location._backing {
+        switch self.privateKeySource.location._backing {
         case .file(let path):
             guard let bytes = FileManager.default.contents(atPath: path) else {
                 throw Error.privateKeyPathNotFound(path)
@@ -417,7 +417,7 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     private func parsePrivateKey(from keyBytes: [UInt8]) throws -> Certificate.PrivateKey? {
         let key: Certificate.PrivateKey?
-        switch self.privateKeyDescription.format._backing {
+        switch self.privateKeySource.format._backing {
         case .der:
             key = try Certificate.PrivateKey(derBytes: keyBytes)
 

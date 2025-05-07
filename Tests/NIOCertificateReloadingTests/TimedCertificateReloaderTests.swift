@@ -322,7 +322,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
 
     private func runTimedCertificateReloaderTest(
         certificate: TimedCertificateReloader.CertificateSource,
-        privateKey: TimedCertificateReloader.PrivateKeyDescription,
+        privateKey: TimedCertificateReloader.PrivateKeySource,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         let reloader = TimedCertificateReloader(
@@ -331,7 +331,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 location: certificate.location,
                 format: certificate.format
             ),
-            privateKeyDescription: .init(location: privateKey.location, format: privateKey.format)
+            privateKeySource: .init(location: privateKey.location, format: privateKey.format)
         )
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
