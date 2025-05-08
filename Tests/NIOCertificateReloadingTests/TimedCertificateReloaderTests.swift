@@ -27,11 +27,31 @@ final class TimedCertificateReloaderTests: XCTestCase {
             privateKey: .init(
                 location: .memory(provider: { Array(Self.samplePrivateKey.derRepresentation) }),
                 format: .der
-            )
+            ),
+            validateSources: false
         ) { reloader in
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
+        }
+    }
+
+    func testCertificatePathDoesNotExist_ValidatingSource() async throws {
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(location: .file(path: "doesnotexist"), format: .der),
+                privateKey: .init(
+                    location: .memory(provider: { Array(Self.samplePrivateKey.derRepresentation) }),
+                    format: .der
+                )
+            ) { _ in
+                XCTFail("Test should have failed before reaching this point.")
+            }
+        } catch {
+            XCTAssertEqual(
+                error as? TimedCertificateReloader.Error,
+                TimedCertificateReloader.Error.certificatePathNotFound("doesnotexist")
+            )
         }
     }
 
@@ -44,11 +64,34 @@ final class TimedCertificateReloaderTests: XCTestCase {
             privateKey: .init(
                 location: .file(path: "doesnotexist"),
                 format: .der
-            )
+            ),
+            validateSources: false
         ) { reloader in
             let override = reloader.sslContextConfigurationOverride
             XCTAssertNil(override.certificateChain)
             XCTAssertNil(override.privateKey)
+        }
+    }
+
+    func testKeyPathDoesNotExist_ValidatingSource() async throws {
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { try? Self.sampleCert.serializeAsPEM().derBytes }),
+                    format: .der
+                ),
+                privateKey: .init(
+                    location: .file(path: "doesnotexist"),
+                    format: .der
+                )
+            ) { _ in
+                XCTFail("Test should have failed before reaching this point.")
+            }
+        } catch {
+            XCTAssertEqual(
+                error as? TimedCertificateReloader.Error,
+                TimedCertificateReloader.Error.privateKeyPathNotFound("doesnotexist")
+            )
         }
     }
 
@@ -323,6 +366,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
     private func runTimedCertificateReloaderTest(
         certificate: TimedCertificateReloader.CertificateSource,
         privateKey: TimedCertificateReloader.PrivateKeySource,
+        validateSources: Bool = true,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         let reloader = TimedCertificateReloader(
@@ -333,6 +377,11 @@ final class TimedCertificateReloaderTests: XCTestCase {
             ),
             privateKeySource: .init(location: privateKey.location, format: privateKey.format)
         )
+
+        if validateSources {
+            try reloader.reload()
+        }
+
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
                 try await reloader.run()
