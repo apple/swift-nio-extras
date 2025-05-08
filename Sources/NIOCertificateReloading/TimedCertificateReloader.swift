@@ -248,12 +248,16 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
     /// implementation provides.
+    /// - Note: If no reload attempt has yet been tried (either by creating the reloader with
+    /// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``,
+    /// manually calling ``reload()``, or by calling ``run()``), `NIOSSLContextConfigurationOverride/noChanges`
+    /// will be returned.
     public var sslContextConfigurationOverride: NIOSSLContextConfigurationOverride {
         get {
-            var override = NIOSSLContextConfigurationOverride()
             guard let certificateKeyPair = self.state.withLockedValue({ $0 }) else {
-                return override
+                return .noChanges
             }
+            var override = NIOSSLContextConfigurationOverride()
             override.certificateChain = [certificateKeyPair.certificate]
             override.privateKey = certificateKeyPair.privateKey
             return override
@@ -261,8 +265,8 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 
     /// Initialize a new ``TimedCertificateReloader``.
-    /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will not contain any
-    /// certificate or private key overrides until either ``TimedCertificateReloader/run()`` or
+    /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
+    /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
     /// ``TimedCertificateReloader/reload()`` are called.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
