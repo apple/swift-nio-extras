@@ -32,7 +32,12 @@ import Foundation
 /// key pair is updated at a fixed interval from the file path or memory location configured.
 ///
 /// You initialize a ``TimedCertificateReloader`` by providing a refresh interval, and locations for the certificate and the private
-/// key. You may then set it on your ``NIOSSL/TLSConfiguration`` using
+/// key via ``init(refreshInterval:certificateSource:privateKeySource:logger:)``.
+/// Simply creating a timed reloader won't validate that the sources provide valid certificate and private key pairs. If you want this to be
+/// validated at creation time, you may instead use
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``.
+///
+/// You may then set the timed reloader on your ``NIOSSL/TLSConfiguration`` using
 /// ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)``:
 ///
 /// ```swift
@@ -59,7 +64,9 @@ import Foundation
 /// ```
 ///
 /// Finally, you must call ``run()`` on the reloader for it to start observing changes.
-/// Once the reloader is running, you can also manually access its ``sslContextConfigurationOverride`` property to get a
+/// If you want to trigger a manual reload at any point, you may call ``reload()``.
+///
+/// Once the reloader is running, you can manually access its ``sslContextConfigurationOverride`` property to get a
 /// `NIOSSLContextConfigurationOverride`, although this will typically not be necessary, as it's the NIO channel that will
 /// handle the override when initiating TLS handshakes.
 ///
