@@ -53,6 +53,9 @@ import Foundation
 /// configuration.setCertificateReloader(reloader)
 /// ```
 ///
+/// Finally, you must call ``run()`` on the reloader for it to start observing changes.
+/// If you want to trigger a manual reload at any point, you may call ``reload()``.
+///
 /// If you're creating a server configuration, you can instead opt to use
 /// ``NIOSSL/TLSConfiguration/makeServerConfiguration(certificateReloader:)``, which will set the initial
 /// certificate chain and private key, as well as set the reloader:
@@ -63,8 +66,17 @@ import Foundation
 /// )
 /// ```
 ///
-/// Finally, you must call ``run()`` on the reloader for it to start observing changes.
-/// If you want to trigger a manual reload at any point, you may call ``reload()``.
+/// If you're creating a client configuration, you can instead opt to use
+/// ``NIOSSL/TLSConfiguration/makeClientConfiguration(certificateReloader:)`` which will set the reloader:
+/// ```swift
+/// let configuration = TLSConfiguration.makeClientConfiguration(
+///     certificateReloader: reloader
+/// )
+/// ```
+///
+/// In both cases, make sure you've either called ``run()`` or created the ``TimedCertificateReloader`` using
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``
+/// _before_ creating the ``NIOSSL/TLSConfiguration``, as otherwise the validation will fail.
 ///
 /// Once the reloader is running, you can manually access its ``sslContextConfigurationOverride`` property to get a
 /// `NIOSSLContextConfigurationOverride`, although this will typically not be necessary, as it's the NIO channel that will

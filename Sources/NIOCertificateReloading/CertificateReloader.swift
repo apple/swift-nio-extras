@@ -66,6 +66,8 @@ extension TLSConfiguration {
     /// - Parameter certificateReloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A ``NIOSSL/TLSConfiguration`` for use with server-side contexts, that reloads the certificate and key
     /// used in its SSL handshake.
+    /// - Throws: This method will throw if an override isn't present. This may happen if a certificate or private key could not be
+    /// loaded from the given paths.
     public static func makeServerConfiguration(
         certificateReloader: some CertificateReloader
     ) throws -> Self {
@@ -83,6 +85,30 @@ extension TLSConfiguration {
             certificateChain: certificateChain,
             privateKey: privateKey
         )
+        configuration.setCertificateReloader(certificateReloader)
+        return configuration
+    }
+
+    /// Create a ``NIOSSL/TLSConfiguration`` for use with client-side contexts, with certificate reloading enabled.
+    /// - Parameter certificateReloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
+    /// - Returns: A ``NIOSSL/TLSConfiguration`` for use with client-side contexts, that reloads the certificate and key
+    /// used in its SSL handshake.
+    /// - Throws: This method will throw if an override isn't present. This may happen if a certificate or private key could not be
+    /// loaded from the given paths.
+    public static func makeClientConfiguration(
+        certificateReloader: some CertificateReloader
+    ) throws -> Self {
+        let override = certificateReloader.sslContextConfigurationOverride
+
+        guard override.certificateChain != nil else {
+            throw CertificateReloaderError.missingCertificateChain
+        }
+
+        guard override.privateKey != nil else {
+            throw CertificateReloaderError.missingPrivateKey
+        }
+
+        var configuration = Self.makeClientConfiguration()
         configuration.setCertificateReloader(certificateReloader)
         return configuration
     }
