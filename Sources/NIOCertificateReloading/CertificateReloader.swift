@@ -117,7 +117,7 @@ extension TLSConfiguration {
 
     /// Configure a ``CertificateReloader`` to observe updates for the certificate and key pair used.
     /// - Parameter reloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
-    mutating public func setCertificateReloader(_ reloader: some CertificateReloader) {
+    public mutating func setCertificateReloader(_ reloader: some CertificateReloader) {
         self.sslContextCallback = { _, promise in
             promise.succeed(reloader.sslContextConfigurationOverride)
         }

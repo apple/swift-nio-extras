@@ -129,7 +129,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     public struct Location: Sendable, CustomStringConvertible {
         fileprivate enum _Backing: CustomStringConvertible {
             case file(path: String)
-            case memory(provider: @Sendable () -> [UInt8]?)
+            case memory(provider: @Sendable () throws -> [UInt8])
 
             var description: String {
                 switch self {
@@ -157,10 +157,10 @@ public struct TimedCertificateReloader: CertificateReloader {
         public static func file(path: String) -> Self { Self(_Backing.file(path: path)) }
 
         /// This certificate/key is available in memory, and will be provided by the given closure.
-        /// - Parameter provider: A closure providing the bytes for the given certificate or key. This closure should return
-        /// `nil` if a certificate/key isn't currently available for whatever reason.
+        /// - Parameter provider: A closure providing the bytes for the given certificate or key. It may throw if, e.g., a
+        /// certificate or key isn't available.
         /// - Returns: A `Location`.
-        public static func memory(provider: @Sendable @escaping () -> [UInt8]?) -> Self {
+        public static func memory(provider: @Sendable @escaping () throws -> [UInt8]) -> Self {
             Self(_Backing.memory(provider: provider))
         }
     }
@@ -310,7 +310,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - logger: An optional logger.
     /// - Returns: The newly created ``TimedCertificateReloader``.
     /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
-    static public func makeReloaderValidatingSources(
+    public static func makeReloaderValidatingSources(
         refreshInterval: Duration,
         certificateSource: CertificateSource,
         privateKeySource: PrivateKeySource,
@@ -348,9 +348,9 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     /// Manually attempt a certificate and private key pair update.
     public func reload() throws {
-        if let certificateBytes = try self.loadCertificate(),
-            let keyBytes = try self.loadPrivateKey(),
-            let certificate = try self.parseCertificate(from: certificateBytes),
+        let certificateBytes = try self.loadCertificate()
+        let keyBytes = try self.loadPrivateKey()
+        if let certificate = try self.parseCertificate(from: certificateBytes),
             let key = try self.parsePrivateKey(from: keyBytes),
             key.publicKey.isValidSignature(certificate.signature, for: certificate)
         {
@@ -358,8 +358,8 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
     }
 
-    private func loadCertificate() throws -> [UInt8]? {
-        let certificateBytes: [UInt8]?
+    private func loadCertificate() throws -> [UInt8] {
+        let certificateBytes: [UInt8]
         switch self.certificateSource.location._backing {
         case .file(let path):
             guard let bytes = FileManager.default.contents(atPath: path) else {
@@ -368,13 +368,13 @@ public struct TimedCertificateReloader: CertificateReloader {
             certificateBytes = Array(bytes)
 
         case .memory(let bytesProvider):
-            certificateBytes = bytesProvider()
+            certificateBytes = try bytesProvider()
         }
         return certificateBytes
     }
 
-    private func loadPrivateKey() throws -> [UInt8]? {
-        let keyBytes: [UInt8]?
+    private func loadPrivateKey() throws -> [UInt8] {
+        let keyBytes: [UInt8]
         switch self.privateKeySource.location._backing {
         case .file(let path):
             guard let bytes = FileManager.default.contents(atPath: path) else {
@@ -383,7 +383,7 @@ public struct TimedCertificateReloader: CertificateReloader {
             keyBytes = Array(bytes)
 
         case .memory(let bytesProvider):
-            keyBytes = bytesProvider()
+            keyBytes = try bytesProvider()
         }
         return keyBytes
     }
