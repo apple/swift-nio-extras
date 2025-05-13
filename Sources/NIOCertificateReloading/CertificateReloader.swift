@@ -100,15 +100,17 @@ extension TLSConfiguration {
     ) throws -> Self {
         let override = certificateReloader.sslContextConfigurationOverride
 
-        guard override.certificateChain != nil else {
+        guard let certificateChain = override.certificateChain else {
             throw CertificateReloaderError.missingCertificateChain
         }
 
-        guard override.privateKey != nil else {
+        guard let privateKey = override.privateKey else {
             throw CertificateReloaderError.missingPrivateKey
         }
 
         var configuration = Self.makeClientConfiguration()
+        configuration.certificateChain = certificateChain
+        configuration.privateKey = privateKey
         configuration.setCertificateReloader(certificateReloader)
         return configuration
     }
