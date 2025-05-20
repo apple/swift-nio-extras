@@ -247,7 +247,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 
     private struct CertificateKeyPair {
-        var certificate: NIOSSLCertificateSource
+        var certificates: [NIOSSLCertificateSource]
         var privateKey: NIOSSLPrivateKeySource
     }
 
@@ -270,7 +270,7 @@ public struct TimedCertificateReloader: CertificateReloader {
                 return .noChanges
             }
             var override = NIOSSLContextConfigurationOverride()
-            override.certificateChain = [certificateKeyPair.certificate]
+            override.certificateChain = certificateKeyPair.certificates
             override.privateKey = certificateKeyPair.privateKey
             return override
         }
@@ -350,11 +350,12 @@ public struct TimedCertificateReloader: CertificateReloader {
     public func reload() throws {
         let certificateBytes = try self.loadCertificate()
         let keyBytes = try self.loadPrivateKey()
-        if let certificate = try self.parseCertificate(from: certificateBytes),
+        if let certificates = try self.parseCertificates(from: certificateBytes),
             let key = try self.parsePrivateKey(from: keyBytes),
-            key.publicKey.isValidSignature(certificate.signature, for: certificate)
+            let firstCertificate = certificates.first,
+            key.publicKey.isValidSignature(firstCertificate.signature, for: firstCertificate)
         {
-            try self.attemptToUpdatePair(certificate: certificate, key: key)
+            try self.attemptToUpdatePair(certificates: certificates, key: key)
         }
     }
 
@@ -388,17 +389,17 @@ public struct TimedCertificateReloader: CertificateReloader {
         return keyBytes
     }
 
-    private func parseCertificate(from certificateBytes: [UInt8]) throws -> Certificate? {
-        let certificate: Certificate?
+    private func parseCertificates(from certificateBytes: [UInt8]) throws -> [Certificate]? {
+        let certificates: [Certificate]?
         switch self.certificateSource.format._backing {
         case .der:
-            certificate = try Certificate(derEncoded: certificateBytes)
+            certificates = [try Certificate(derEncoded: certificateBytes)]
 
         case .pem:
-            certificate = try String(bytes: certificateBytes, encoding: .utf8)
-                .flatMap { try Certificate(pemEncoded: $0) }
+            certificates = try String(bytes: certificateBytes, encoding: .utf8)
+                .flatMap { try PEMDocument.parseMultiple(pemString: $0).map { try Certificate(pemDocument: $0) } }
         }
-        return certificate
+        return certificates
     }
 
     private func parsePrivateKey(from keyBytes: [UInt8]) throws -> Certificate.PrivateKey? {
@@ -414,18 +415,22 @@ public struct TimedCertificateReloader: CertificateReloader {
         return key
     }
 
-    private func attemptToUpdatePair(certificate: Certificate, key: Certificate.PrivateKey) throws {
-        let nioSSLCertificate = try NIOSSLCertificate(
-            bytes: certificate.serializeAsPEM().derBytes,
-            format: .der
-        )
+    private func attemptToUpdatePair(certificates: [Certificate], key: Certificate.PrivateKey) throws {
+        let nioSSLCertificates =
+            try certificates
+            .map {
+                try NIOSSLCertificate(
+                    bytes: $0.serializeAsPEM().derBytes,
+                    format: .der
+                )
+            }
         let nioSSLPrivateKey = try NIOSSLPrivateKey(
             bytes: key.serializeAsPEM().derBytes,
             format: .der
         )
         self.state.withLockedValue {
             $0 = CertificateKeyPair(
-                certificate: .certificate(nioSSLCertificate),
+                certificates: nioSSLCertificates.map { .certificate($0) },
                 privateKey: .privateKey(nioSSLPrivateKey)
             )
         }
