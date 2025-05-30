@@ -210,6 +210,9 @@ public struct TimedCertificateReloader: CertificateReloader {
         private enum _Backing: Hashable, CustomStringConvertible {
             case certificatePathNotFound(String)
             case privateKeyPathNotFound(String)
+            case certificateLoadingError(reason: String)
+            case privateKeyLoadingError(reason: String)
+            case publicKeyMismatch
 
             var description: String {
                 switch self {
@@ -217,6 +220,16 @@ public struct TimedCertificateReloader: CertificateReloader {
                     return "Certificate path not found: \(path)"
                 case .privateKeyPathNotFound(let path):
                     return "Private key path not found: \(path)"
+                case let .certificateLoadingError(reason):
+                    return "Failed to load certificate: \(reason)"
+                case let .privateKeyLoadingError(reason):
+                    return "Failed to load private key: \(reason)"
+                case .publicKeyMismatch:
+                    return
+                        """
+                        The public key derived from the private key does not match the public key in the certificate. \n
+                        This may occur if the certificate and key were reloaded inconsistently or during an update in progress.
+                        """
                 }
             }
         }
@@ -239,6 +252,25 @@ public struct TimedCertificateReloader: CertificateReloader {
         /// - Returns: A ``TimedCertificateReloader/Error``.
         public static func privateKeyPathNotFound(_ path: String) -> Self {
             Self(.privateKeyPathNotFound(path))
+        }
+
+        /// Failed to load the certificate.
+        /// - Parameter reason: A description of the error occurred.
+        /// - Returns: A ``TimedCertificateReloader/Error``.
+        public static func certificateLoadingError(reason: String) -> Self {
+            Self(.certificateLoadingError(reason: reason))
+        }
+
+        /// Failed to load the private key.
+        /// - Parameter reason: A description of the error occurred.
+        /// - Returns: A ``TimedCertificateReloader/Error``.
+        public static func privateKeyLoadingError(reason: String) -> Self {
+            Self(.privateKeyLoadingError(reason: reason))
+        }
+
+        /// The private key does not match the provided certificate.
+        public static var publicKeyMismatch: Self {
+            Self(.publicKeyMismatch)
         }
 
         public var description: String {
@@ -350,13 +382,19 @@ public struct TimedCertificateReloader: CertificateReloader {
     public func reload() throws {
         let certificateBytes = try self.loadCertificate()
         let keyBytes = try self.loadPrivateKey()
-        if let certificates = try self.parseCertificates(from: certificateBytes),
-            let key = try self.parsePrivateKey(from: keyBytes),
-            let firstCertificate = certificates.first,
-            key.publicKey.isValidSignature(firstCertificate.signature, for: firstCertificate)
-        {
-            try self.attemptToUpdatePair(certificates: certificates, key: key)
+
+        let certificates = try self.parseCertificates(from: certificateBytes)
+        let key = try self.parsePrivateKey(from: keyBytes)
+
+        guard let firstCertificate = certificates.first else {
+            throw Error.certificateLoadingError(reason: "The provided file does not contain any certificates.")
         }
+
+        guard key.publicKey == firstCertificate.publicKey else {
+            throw Error.publicKeyMismatch
+        }
+
+        try self.attemptToUpdatePair(certificates: certificates, key: key)
     }
 
     private func loadCertificate() throws -> [UInt8] {
@@ -389,28 +427,34 @@ public struct TimedCertificateReloader: CertificateReloader {
         return keyBytes
     }
 
-    private func parseCertificates(from certificateBytes: [UInt8]) throws -> [Certificate]? {
-        let certificates: [Certificate]?
+    private func parseCertificates(from certificateBytes: [UInt8]) throws -> [Certificate] {
+        let certificates: [Certificate]
         switch self.certificateSource.format._backing {
         case .der:
             certificates = [try Certificate(derEncoded: certificateBytes)]
 
         case .pem:
-            certificates = try String(bytes: certificateBytes, encoding: .utf8)
-                .flatMap { try PEMDocument.parseMultiple(pemString: $0).map { try Certificate(pemDocument: $0) } }
+            guard let pemString = String(bytes: certificateBytes, encoding: .utf8) else {
+                throw Error.certificateLoadingError(reason: "Certificate data is not valid UTF-8.")
+            }
+
+            certificates = try PEMDocument.parseMultiple(pemString: pemString)
+                .map { try Certificate(pemDocument: $0) }
         }
         return certificates
     }
 
-    private func parsePrivateKey(from keyBytes: [UInt8]) throws -> Certificate.PrivateKey? {
-        let key: Certificate.PrivateKey?
+    private func parsePrivateKey(from keyBytes: [UInt8]) throws -> Certificate.PrivateKey {
+        let key: Certificate.PrivateKey
         switch self.privateKeySource.format._backing {
         case .der:
             key = try Certificate.PrivateKey(derBytes: keyBytes)
 
         case .pem:
-            key = try String(bytes: keyBytes, encoding: .utf8)
-                .flatMap { try Certificate.PrivateKey(pemEncoded: $0) }
+            guard let pemString = String(bytes: keyBytes, encoding: .utf8) else {
+                throw Error.privateKeyLoadingError(reason: "Private Key data is not valid UTF-8.")
+            }
+            key = try Certificate.PrivateKey(pemEncoded: pemString)
         }
         return key
     }

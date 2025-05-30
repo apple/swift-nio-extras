@@ -61,6 +61,24 @@ final class TimedCertificateReloaderTests: XCTestCase {
         }
     }
 
+    func testNonSelfSignedCert() async throws {
+        try await runTimedCertificateReloaderTest(
+            certificate: .init(
+                location: .memory(provider: { try Self.sampleCertNotSelfSigned.serializeAsPEM().derBytes }),
+                format: .der
+            ),
+            privateKey: .init(
+                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                format: .der
+            ),
+            validateSources: true
+        ) { reloader in
+            let override = reloader.sslContextConfigurationOverride
+            XCTAssertNotNil(override.certificateChain)
+            XCTAssertNotNil(override.privateKey)
+        }
+    }
+
     func testKeyPathDoesNotExist() async throws {
         try await runTimedCertificateReloaderTest(
             certificate: .init(
@@ -102,19 +120,23 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     func testCertificateIsInUnexpectedFormat_FromMemory() async throws {
-        try await runTimedCertificateReloaderTest(
-            certificate: .init(
-                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
-                format: .pem
-            ),
-            privateKey: .init(
-                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
-                format: .der
-            )
-        ) { reloader in
-            let override = reloader.sslContextConfigurationOverride
-            XCTAssertNil(override.certificateChain)
-            XCTAssertNil(override.privateKey)
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                    format: .pem
+                ),
+                privateKey: .init(
+                    location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                    format: .der
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .certificateLoadingError(reason: "Certificate data is not valid UTF-8."))
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
         }
     }
 
@@ -131,72 +153,111 @@ final class TimedCertificateReloaderTests: XCTestCase {
     func testCertificateIsInUnexpectedFormat_FromFile() async throws {
         let certBytes = try Self.sampleCert.serializeAsPEM().derBytes
         let file = try self.createTempFile(contents: Data(certBytes))
-        try await runTimedCertificateReloaderTest(
-            certificate: .init(
-                location: .file(path: file.path),
-                format: .pem
-            ),
-            privateKey: .init(
-                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
-                format: .der
-            )
-        ) { reloader in
-            let override = reloader.sslContextConfigurationOverride
-            XCTAssertNil(override.certificateChain)
-            XCTAssertNil(override.privateKey)
+
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .file(path: file.path),
+                    format: .pem
+                ),
+                privateKey: .init(
+                    location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                    format: .der
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .certificateLoadingError(reason: "Certificate data is not valid UTF-8."))
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
         }
     }
 
     func testKeyIsInUnexpectedFormat_FromMemory() async throws {
-        try await runTimedCertificateReloaderTest(
-            certificate: .init(
-                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
-                format: .der
-            ),
-            privateKey: .init(
-                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
-                format: .pem
-            )
-        ) { reloader in
-            let override = reloader.sslContextConfigurationOverride
-            XCTAssertNil(override.certificateChain)
-            XCTAssertNil(override.privateKey)
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                    format: .der
+                ),
+                privateKey: .init(
+                    location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                    format: .pem
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .privateKeyLoadingError(reason: "Private Key data is not valid UTF-8."))
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
         }
     }
 
     func testKeyIsInUnexpectedFormat_FromFile() async throws {
         let keyBytes = Self.samplePrivateKey1.derRepresentation
         let file = try self.createTempFile(contents: keyBytes)
-        try await runTimedCertificateReloaderTest(
-            certificate: .init(
-                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
-                format: .der
-            ),
-            privateKey: .init(
-                location: .file(path: file.path),
-                format: .pem
-            )
-        ) { reloader in
-            let override = reloader.sslContextConfigurationOverride
-            XCTAssertNil(override.certificateChain)
-            XCTAssertNil(override.privateKey)
+
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                    format: .der
+                ),
+                privateKey: .init(
+                    location: .file(path: file.path),
+                    format: .pem
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .privateKeyLoadingError(reason: "Private Key data is not valid UTF-8."))
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
         }
     }
 
     func testCertificateAndKeyDoNotMatch() async throws {
-        try await runTimedCertificateReloaderTest(
-            certificate: .init(
-                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
-                format: .der
-            ),
-            privateKey: .init(
-                location: .memory(provider: { Array(P384.Signing.PrivateKey().derRepresentation) }),
-                format: .der
-            )
-        ) { reloader in
-            let override = reloader.sslContextConfigurationOverride
-            XCTAssertNil(override.certificateChain)
-            XCTAssertNil(override.privateKey)
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                    format: .der
+                ),
+                privateKey: .init(
+                    location: .memory(provider: { Array(P384.Signing.PrivateKey().derRepresentation) }),
+                    format: .der
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .publicKeyMismatch)
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
+        }
+    }
+
+    func testEmptyCertificateChain() async throws {
+        do {
+            try await runTimedCertificateReloaderTest(
+                certificate: .init(
+                    location: .memory(provider: { [] }),
+                    format: .pem
+                ),
+                privateKey: .init(
+                    location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                    format: .der
+                )
+            ) { reloader in
+                XCTFail("Certificate reloader loaded correctly.")
+            }
+        } catch let error as TimedCertificateReloader.Error {
+            XCTAssert(error == .certificateLoadingError(reason: "The provided file does not contain any certificates."))
+        } catch {
+            XCTFail("Encountered unexpected error \(error)")
         }
     }
 
@@ -563,6 +624,11 @@ final class TimedCertificateReloaderTests: XCTestCase {
         OrganizationName("Apple")
         CommonName("Swift Certificate Test")
     }
+    static let issuerCertName = try! DistinguishedName {
+        CountryName("US")
+        OrganizationName("Apple")
+        CommonName("Swift Certificate Test Issuer")
+    }
     static let sampleCert: Certificate = {
         try! Certificate(
             version: .v3,
@@ -579,6 +645,24 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 )
             },
             issuerPrivateKey: .init(samplePrivateKey1)
+        )
+    }()
+    static let sampleCertNotSelfSigned: Certificate = {
+        try! Certificate(
+            version: .v3,
+            serialNumber: .init(),
+            publicKey: .init(samplePrivateKey1.publicKey),
+            notValidBefore: startDate.advanced(by: -60 * 60 * 24 * 360),
+            notValidAfter: startDate.advanced(by: 60 * 60 * 24 * 360),
+            issuer: issuerCertName,
+            subject: sampleCertName,
+            signatureAlgorithm: .ecdsaWithSHA384,
+            extensions: Certificate.Extensions {
+                Critical(
+                    BasicConstraints.isCertificateAuthority(maxPathLength: nil)
+                )
+            },
+            issuerPrivateKey: .init(samplePrivateKey2)
         )
     }()
     static let sampleCertChain: [Certificate] = {
