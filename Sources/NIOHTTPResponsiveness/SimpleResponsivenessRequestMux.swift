@@ -25,7 +25,7 @@ import NIOHTTPTypes
 /// - GET `/responsiveness/download/{size}`: Adds a handler for downloading data of the specified size
 /// - POST `/responsiveness/upload`: Adds a handler for uploading data
 /// - GET `/drip`: Adds a handler for responds with a configurable stream of zeroes
-/// 
+///
 /// Per default other requests get a 404 response. Can be configured to accept other requests as well and forward them
 /// along the channel pipeline.
 public final class SimpleResponsivenessRequestMux: ChannelInboundHandler {
