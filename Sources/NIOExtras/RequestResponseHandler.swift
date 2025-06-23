@@ -14,7 +14,6 @@
 
 import NIOCore
 
-
 /// `RequestResponseHandler` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
 /// outbound side. It will fulfil the promise with the `Response` once it's received from the `Channel`'s inbound
 /// side.
