@@ -56,7 +56,6 @@ final class NIOHTTPResponsivenessTests: XCTestCase {
             }
         }
         XCTAssertEqual(received, n)
-
     }
 
     func upload(channel: EmbeddedChannel, length: Int, includeContentLength: Bool) throws {
@@ -116,6 +115,50 @@ final class NIOHTTPResponsivenessTests: XCTestCase {
         }
     }
 
+    func downloadOtherPath(channel: EmbeddedChannel, n: Int, expectFailue: Bool) throws {
+        // The path "/other" is just an example, this can be any path not defined by the
+        // responsiveness mux itself.
+        try channel.writeInbound(
+            HTTPRequestPart.head(
+                HTTPRequest(
+                    method: .get,
+                    scheme: "http",
+                    authority: "localhost:8888",
+                    path: "/other/\(n)"
+                )
+            )
+        )
+
+        let out: HTTPResponsePart = (try channel.readOutbound())!
+        guard case let HTTPResponsePart.head(head) = out else {
+            XCTFail("expected response head")
+            return
+        }
+
+        if expectFailue {
+            // Should get 404 response
+            XCTAssertEqual(head.status, .notFound)
+        } else {
+            // Should get response head with content length
+            XCTAssertEqual(Int(head.headerFields[.contentLength]!)!, n)
+
+            // Drain response body until completed
+            var received = 0
+            loop: while true {
+                let out: HTTPResponsePart = (try channel.readOutbound())!
+                switch out {
+                case .head:
+                    XCTFail("cannot get head twice")
+                case .body(let body):
+                    received += body.readableBytes
+                case .end:
+                    break loop
+                }
+            }
+            XCTAssertEqual(received, n)
+        }
+    }
+
     private static let defaultValues = [0, 1, 2, 10, 1000, 20000]
 
     func testDownload() throws {
@@ -166,6 +209,54 @@ final class NIOHTTPResponsivenessTests: XCTestCase {
                 )
             )
             try upload(channel: channel, length: val, includeContentLength: false)
+            let _ = try channel.finish()
+        }
+    }
+
+    func testRejectOther() throws {
+        for val in NIOHTTPResponsivenessTests.defaultValues {
+            let channel = EmbeddedChannel(
+                handler: SimpleResponsivenessRequestMux(
+                    responsivenessConfigBuffer: ByteBuffer(string: "test"),
+                    forwardOtherRequests: false
+                )
+            )
+            // Sending an unhandled path results in a 404 when not forwarding other requests.
+            try downloadOtherPath(channel: channel, n: val, expectFailue: true)
+            let _ = try channel.finish()
+        }
+    }
+
+    func testMuxNoInterference() throws {
+        for val in NIOHTTPResponsivenessTests.defaultValues {
+            let channel = EmbeddedChannel(
+                handler: SimpleResponsivenessRequestMux(
+                    responsivenessConfigBuffer: ByteBuffer(string: "test"),
+                    forwardOtherRequests: true
+                )
+            )
+            // Add another handler to the channel pipeline
+            try channel.pipeline.syncOperations.addHandler(HTTPDrippingDownloadHandler(count: 1, size: val))
+
+            // An upload request is handled directly by the mux even with another handler added to the pipeline
+            try upload(channel: channel, length: val, includeContentLength: true)
+            let _ = try channel.finish()
+        }
+    }
+
+    func testMuxForwardOther() throws {
+        for val in NIOHTTPResponsivenessTests.defaultValues {
+            let channel = EmbeddedChannel(
+                handler: SimpleResponsivenessRequestMux(
+                    responsivenessConfigBuffer: ByteBuffer(string: "test"),
+                    forwardOtherRequests: true
+                )
+            )
+            // Add another handler to the channel pipeline
+            try channel.pipeline.syncOperations.addHandler(HTTPDrippingDownloadHandler(count: 1, size: val))
+
+            // A request that is not handled by the mux itself is forwarded to the handler added to pipeline
+            try downloadOtherPath(channel: channel, n: val, expectFailue: false)
             let _ = try channel.finish()
         }
     }
