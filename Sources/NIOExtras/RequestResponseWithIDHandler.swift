@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2023 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2025 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -28,125 +28,160 @@ import NIOCore
 /// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
 public final class NIORequestResponseWithIDHandler<
     Request: NIORequestIdentifiable,
-    Response: NIORequestIdentifiable
+    Response: NIORequestIdentifiable,
 >: ChannelDuplexHandler
-where Request.RequestID == Response.RequestID {
+where Request.RequestID == Response.RequestID, Response: Sendable {
     public typealias InboundIn = Response
     public typealias InboundOut = Never
     public typealias OutboundIn = (Request, EventLoopPromise<Response>)
     public typealias OutboundOut = Request
 
-    private enum State {
-        case operational
-        case inactive
-        case error(Error)
+    private var state: RequestResponseHandlerState<ResponseDictionaryBuffer<Response>>
 
-        var isOperational: Bool {
-            switch self {
-            case .operational:
-                return true
-            case .error, .inactive:
-                return false
-            }
-        }
-    }
-
-    private var state: State = .operational
-    private var promiseBuffer: [Request.RequestID: EventLoopPromise<Response>]
-
-    /// Create a new `RequestResponseHandler`.
+    /// Create a new `NIORequestResponseWithIDHandler`.
     ///
     /// - parameters:
-    ///    - initialBufferCapacity: `RequestResponseHandler` saves the promises for all outstanding responses in a
+    ///    - initialBufferCapacity: `NIORequestResponseWithIDHandler` saves the promises for all outstanding responses in a
     ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
     ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
     public init(initialBufferCapacity: Int = 4) {
-        self.promiseBuffer = [:]
-        self.promiseBuffer.reserveCapacity(initialBufferCapacity)
+        state = .init(initialBufferCapacity: 4)
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
-        switch self.state {
-        case .error:
-            // We failed any outstanding promises when we entered the error state and will fail any
-            // new promises in write.
-            assert(self.promiseBuffer.count == 0)
-        case .inactive:
-            assert(self.promiseBuffer.count == 0)
-            // This is weird, we shouldn't get this more than once but it's not the end of the world either. But in
-            // debug we probably want to crash.
-            assertionFailure("Received channelInactive on an already-inactive NIORequestResponseWithIDHandler")
-        case .operational:
-            let promiseBuffer = self.promiseBuffer
-            self.promiseBuffer.removeAll()
-            self.state = .inactive
-            for promise in promiseBuffer {
-                promise.value.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
-            }
+        switch state.deactivateChannel() {
+        case .fireInactive: context.fireChannelInactive()
+        case .`return`: return
         }
-        context.fireChannelInactive()
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        guard self.state.isOperational else {
-            // we're in an error state, ignore further responses
-            assert(self.promiseBuffer.count == 0)
-            return
-        }
-
         let response = self.unwrapInboundIn(data)
-        if let promise = self.promiseBuffer.removeValue(forKey: response.requestID) {
-            // If the event loop of the promise is the same as the context then there's no
-            // change in isolation. Otherwise transfer the response onto the correct event-loop
-            // before succeeding the promise.
-            if promise.futureResult.eventLoop === context.eventLoop {
-                promise.assumeIsolatedUnsafeUnchecked().succeed(response)
-            } else {
-                let unsafeTransfer = UnsafeTransfer(response)
-                promise.futureResult.eventLoop.execute {
-                    let response = unsafeTransfer.wrappedValue
-                    promise.assumeIsolatedUnsafeUnchecked().succeed(response)
+        switch self.state.readPromise(id: response.requestID) {
+        case .succeed(let promiseEnum):
+            switch promiseEnum {
+            case .nonisolated(let promise):
+                if promise.futureResult.eventLoop === context.eventLoop {
+                    promise.succeed(response)
+                } else {
+                    promise.futureResult.eventLoop.execute {
+                        promise.succeed(response)
+                    }
                 }
+            case .isolated(_):
+                // The type checker will not allow the responses to be isolated.
+                fatalError("Unreachable: NIORequestResponseWithIDHandler received isolated promise")
             }
-        } else {
+        case .error:
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
+        case .return: return
         }
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        guard self.state.isOperational else {
-            assert(self.promiseBuffer.count == 0)
-            return
-        }
-        self.state = .error(error)
-        let promiseBuffer = self.promiseBuffer
-        self.promiseBuffer.removeAll()
-        context.close(promise: nil)
-        for promise in promiseBuffer {
-            promise.value.fail(error)
+        switch self.state.errorCaught(error: error) {
+        case .closeContext: context.close(promise: nil)
+        case .return: return
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
-        switch self.state {
-        case .error(let error):
-            assert(self.promiseBuffer.count == 0)
+        switch self.state.writePromise(id: request.requestID, responsePromise: .nonisolated(responsePromise)) {
+        case .failWith(let error):
             responsePromise.fail(error)
             promise?.fail(error)
-        case .inactive:
-            assert(self.promiseBuffer.count == 0)
-            promise?.fail(ChannelError.ioOnClosedChannel)
-            responsePromise.fail(ChannelError.ioOnClosedChannel)
-        case .operational:
-            self.promiseBuffer[request.requestID] = responsePromise
-            context.write(self.wrapOutboundOut(request), promise: promise)
+        case .writeContext: context.write(self.wrapOutboundOut(request), promise: promise)
         }
     }
 }
 
 @available(*, unavailable)
 extension NIORequestResponseWithIDHandler: Sendable {}
+
+/// `NIORequestIsolatedResponseWithIDHandler` receives a `Request` alongside an `EventLoopPromise<Response>.Isolated` from the
+/// `Channel`'s outbound side. It will fulfill the promise with the `Response` once it's received from the `Channel`'s
+/// inbound side. Requests and responses can arrive out-of-order and are matched by the virtue of being
+/// `NIORequestIdentifiable`.
+///
+/// `NIORequestIsolatedResponseWithIDHandler` does support pipelining `Request`s and it will send them pipelined further down the
+/// `Channel`. Should `RequestResponseHandler` receive an error from the `Channel`, it will fail all promises meant for
+/// the outstanding `Reponse`s and close the `Channel`. All requests enqueued after an error occured will be immediately
+/// failed with the first error the channel received.
+///
+/// `NIORequestIsolatedResponseWithIDHandler` does _not_ require that the `Response`s arrive on `Channel` in the same order as
+/// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
+///
+public final class NIORequestIsolatedResponseWithIDHandler<
+    Request: NIORequestIdentifiable,
+    Response: NIORequestIdentifiable,
+>: ChannelDuplexHandler
+where Request.RequestID == Response.RequestID {
+    public typealias InboundIn = Response
+    public typealias InboundOut = Never
+    public typealias OutboundIn = (Request, EventLoopPromise<Response>.Isolated)
+    public typealias OutboundOut = Request
+
+    private var state: RequestResponseHandlerState<ResponseDictionaryBuffer<Response>>
+
+    /// Create a new `NIORequestIsolatedResponseWithIDHandler`.
+    ///
+    /// - parameters:
+    ///    - initialBufferCapacity: `NIORequestIsolatedResponseWithIDHandler` saves the promises for all outstanding responses in a
+    ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
+    ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
+    public init(initialBufferCapacity: Int = 4) {
+        state = .init(initialBufferCapacity: 4)
+    }
+
+    public func channelInactive(context: ChannelHandlerContext) {
+        switch state.deactivateChannel() {
+        case .fireInactive: context.fireChannelInactive()
+        case .`return`: return
+        }
+    }
+
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let response = self.unwrapInboundIn(data)
+        switch self.state.readPromise(id: response.requestID) {
+        case .succeed(let promiseEnum):
+            switch promiseEnum {
+            case .isolated(let promise):
+                if promise.futureResult.nonisolated().eventLoop === context.eventLoop {
+                    promise.succeed(response)
+                } else {
+                    promise.nonisolated().fail(NIOExtrasErrors.IsolatedPromiseUsedFromDifferentEventLoop())
+                }
+            case .nonisolated(_):
+                // The type checker will not allow the responses to be nonisolated.
+                fatalError("Unreachable: NIORequestIsolatedResponseWithIDHandler received nonisolated promise")
+            }
+        case .error:
+            context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
+        case .return: return
+        }
+    }
+
+    public func errorCaught(context: ChannelHandlerContext, error: Error) {
+        switch self.state.errorCaught(error: error) {
+        case .closeContext: context.close(promise: nil)
+        case .return: return
+        }
+    }
+
+    public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let (request, responsePromise) = self.unwrapOutboundIn(data)
+        switch self.state.writePromise(id: request.requestID, responsePromise: .isolated(responsePromise)) {
+        case .failWith(let error):
+            responsePromise.nonisolated().fail(error)
+            promise?.fail(error)
+        case .writeContext: context.write(self.wrapOutboundOut(request), promise: promise)
+        }
+    }
+}
+
+@available(*, unavailable)
+extension NIORequestIsolatedResponseWithIDHandler: Sendable {}
 
 extension NIOExtrasErrors {
     public struct ResponseForInvalidRequest<Response: NIORequestIdentifiable>: NIOExtrasError, Equatable {

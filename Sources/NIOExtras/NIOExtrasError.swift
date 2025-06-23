@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2021 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2017-2025 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -26,4 +26,6 @@ public enum NIOExtrasErrors: Sendable {
 
     /// The channel was closed before receiving a response to a request.
     public struct ClosedBeforeReceivingResponse: NIOExtrasError {}
+
+    public struct IsolatedPromiseUsedFromDifferentEventLoop: NIOExtrasError {}
 }
