@@ -162,17 +162,17 @@ class RequestResponseHandlerTest: XCTestCase {
             XCTAssertTrue(error is NIOExtrasErrors.ClosedBeforeReceivingResponse)
         }
     }
-    
+
     func testHandlerAllowsPromisesForDifferentEventLoops() {
         let dummyEventLoop: EmbeddedEventLoop = .init()
-        
+
         XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(RequestResponseHandler<IOData, String>()))
         XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
-        
+
         self.buffer.writeString("world")
-        
+
         let promiseAcrossEventLoop: EventLoopPromise<String> = dummyEventLoop.makePromise()
-        
+
         // write request from another event loop
         XCTAssertNoThrow(try self.channel.writeOutbound((IOData.byteBuffer(self.buffer), promiseAcrossEventLoop)))
         // write response
@@ -181,7 +181,7 @@ class RequestResponseHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(IOData.byteBuffer(self.buffer), try self.channel.readOutbound()))
         // verify response was not forwarded
         XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
-        
+
         // Run the dummy event loop so the submitted future gets executed
         dummyEventLoop.run()
         // verify the promise got succeeded with the response
@@ -234,7 +234,7 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
         p.futureResult.whenComplete { res in
             switch res {
             case .success(let value):
-               XCTAssertEqual("okay", value)
+                XCTAssertEqual("okay", value)
             case .failure(_):
                 XCTFail()
             }
@@ -309,7 +309,9 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
 
     func testRequestsEnqueuedAfterErrorAreFailed() {
         struct DummyError: Error {}
-        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, Void>()))
+        XCTAssertNoThrow(
+            try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, Void>())
+        )
 
         self.channel.pipeline.fireErrorCaught(DummyError())
 
@@ -329,7 +331,9 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
         struct DummyError1: Error {}
         struct DummyError2: Error {}
 
-        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, Void>()))
+        XCTAssertNoThrow(
+            try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, Void>())
+        )
 
         let p: EventLoopPromise<Void>.Isolated = self.eventLoop.makePromise().assumeIsolated()
         // right now, everything's still okay so the enqueued request won't immediately be failed
@@ -353,13 +357,15 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
     }
 
     func testClosedConnectionFailsOutstandingPromises() {
-        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<String, Void>()))
+        XCTAssertNoThrow(
+            try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<String, Void>())
+        )
 
         let promise = self.eventLoop.makePromise(of: Void.self).assumeIsolated()
         XCTAssertNoThrow(try self.channel.writeOutbound(("Hello!", promise)))
 
         XCTAssertNoThrow(try self.channel.close().wait())
-        
+
         promise.futureResult.whenComplete { result in
             switch result {
             case .success(_): XCTFail()
@@ -367,17 +373,19 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
             }
         }
     }
-    
+
     func testHandlerAllowsPromisesForDifferentEventLoops() {
         let dummyEventLoop: EmbeddedEventLoop = .init()
-        
-        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, NSString>()))
+
+        XCTAssertNoThrow(
+            try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, NSString>())
+        )
         XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
-        
+
         self.buffer.writeString("world")
-        
+
         let promiseAcrossEventLoop: EventLoopPromise<NSString>.Isolated = dummyEventLoop.makePromise().assumeIsolated()
-        
+
         // write request from another event loop
         XCTAssertNoThrow(try self.channel.writeOutbound((IOData.byteBuffer(self.buffer), promiseAcrossEventLoop)))
         // write response
@@ -386,7 +394,7 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual(IOData.byteBuffer(self.buffer), try self.channel.readOutbound()))
         // verify response was not forwarded
         XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
-        
+
         promiseAcrossEventLoop.futureResult.whenComplete { res in
             switch res {
             case .success(_): XCTFail()

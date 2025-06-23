@@ -726,7 +726,8 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
             typealias OutboundOut = (ValueWithRequestID<IOData>, EventLoopPromise<ValueWithRequestID<String>>.Isolated)
 
             func channelInactive(context: ChannelHandlerContext) {
-                let responsePromise = context.eventLoop.makePromise(of: ValueWithRequestID<String>.self).assumeIsolated()
+                let responsePromise = context.eventLoop.makePromise(of: ValueWithRequestID<String>.self)
+                    .assumeIsolated()
                 let writePromise = context.eventLoop.makePromise(of: Void.self)
                 context.writeAndFlush(
                     self.wrapOutboundOut(
@@ -818,7 +819,8 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
 
         self.buffer.writeString("world")
 
-        let promiseAcrossEventLoop: EventLoopPromise<ValueWithRequestID<NSString>>.Isolated = dummyEventLoop.makePromise().assumeIsolated()
+        let promiseAcrossEventLoop: EventLoopPromise<ValueWithRequestID<NSString>>.Isolated =
+            dummyEventLoop.makePromise().assumeIsolated()
 
         // write request from another event loop
         XCTAssertNoThrow(
@@ -829,7 +831,12 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         // write response
         XCTAssertNoThrow(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "okay" as NSString)))
         // verify request was forwarded
-        XCTAssertNoThrow(XCTAssertEqual(ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)), try self.channel.readOutbound()))
+        XCTAssertNoThrow(
+            XCTAssertEqual(
+                ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
+                try self.channel.readOutbound()
+            )
+        )
         // verify response was not forwarded
         XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
 
