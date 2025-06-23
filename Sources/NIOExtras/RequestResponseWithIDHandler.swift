@@ -28,7 +28,7 @@ import NIOCore
 /// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
 public final class NIORequestResponseWithIDHandler<
     Request: NIORequestIdentifiable,
-    Response: NIORequestIdentifiable,
+    Response: NIORequestIdentifiable
 >: ChannelDuplexHandler
 where Request.RequestID == Response.RequestID, Response: Sendable {
     public typealias InboundIn = Response
@@ -114,7 +114,7 @@ extension NIORequestResponseWithIDHandler: Sendable {}
 ///
 public final class NIORequestIsolatedResponseWithIDHandler<
     Request: NIORequestIdentifiable,
-    Response: NIORequestIdentifiable,
+    Response: NIORequestIdentifiable
 >: ChannelDuplexHandler
 where Request.RequestID == Response.RequestID {
     public typealias InboundIn = Response
