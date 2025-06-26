@@ -16,7 +16,7 @@ import CNIOExtrasZlib
 import NIOCore
 
 /// Namespace for compression code.
-public enum NIOCompression {
+public enum NIOCompression: Sendable {
 
     /// Which algorithm should be used for compression.
     public struct Algorithm: CustomStringConvertible, Equatable, Sendable {

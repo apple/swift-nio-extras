@@ -18,8 +18,10 @@ import NIOHTTPTypes
 
 /// The child channel that persists across upload resumption attempts, delivering data as if it is
 /// a single HTTP upload.
-final class HTTPResumableUploadChannel: Channel, ChannelCore {
-    let upload: HTTPResumableUpload
+final class HTTPResumableUploadChannel: Channel, ChannelCore, @unchecked Sendable {
+    // @unchecked because of '_pipeline' which is an IUO assigned during init.
+
+    let upload: HTTPResumableUpload.SendableView
 
     let allocator: ByteBufferAllocator
 
@@ -63,10 +65,10 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
 
     let eventLoop: EventLoop
 
-    private var autoRead: Bool
+    private var autoRead: NIOLoopBound<Bool>
 
     init(
-        upload: HTTPResumableUpload,
+        upload: HTTPResumableUpload.SendableView,
         parent: Channel,
         channelConfigurator: (Channel) -> Void
     ) {
@@ -75,7 +77,8 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
         self.closePromise = parent.eventLoop.makePromise()
         self.eventLoop = parent.eventLoop
         // Only support Channels that implement sync options
-        self.autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
+        let autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
+        self.autoRead = NIOLoopBound(autoRead, eventLoop: eventLoop)
         self._pipeline = ChannelPipeline(channel: self)
         channelConfigurator(self)
     }
@@ -109,7 +112,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
 
         switch option {
         case _ as ChannelOptions.Types.AutoReadOption:
-            self.autoRead = value as! Bool
+            self.autoRead.value = value as! Bool
         default:
             if let parent = self.parent {
                 // Only support Channels that implement sync options
@@ -125,7 +128,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
 
         switch option {
         case _ as ChannelOptions.Types.AutoReadOption:
-            return self.autoRead as! Option.Value
+            return self.autoRead.value as! Option.Value
         default:
             if let parent = self.parent {
                 // Only support Channels that implement sync options
@@ -157,23 +160,19 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore {
     }
 
     func write0(_ data: NIOAny, promise: EventLoopPromise<Void>?) {
-        self.eventLoop.preconditionInEventLoop()
-        self.upload.write(unwrapData(data), promise: promise)
+        self.upload.loopBoundUpload.value.write(unwrapData(data), promise: promise)
     }
 
     func flush0() {
-        self.eventLoop.preconditionInEventLoop()
-        self.upload.flush()
+        self.upload.loopBoundUpload.value.flush()
     }
 
     func read0() {
-        self.eventLoop.preconditionInEventLoop()
-        self.upload.read()
+        self.upload.loopBoundUpload.value.read()
     }
 
     func close0(error: Error, mode: CloseMode, promise: EventLoopPromise<Void>?) {
-        self.eventLoop.preconditionInEventLoop()
-        self.upload.close(mode: mode, promise: promise)
+        self.upload.loopBoundUpload.value.close(mode: mode, promise: promise)
     }
 
     func triggerUserOutboundEvent0(_ event: Any, promise: EventLoopPromise<Void>?) {
@@ -228,7 +227,7 @@ extension HTTPResumableUploadChannel {
         self.eventLoop.preconditionInEventLoop()
         self.pipeline.fireChannelReadComplete()
 
-        if self.autoRead {
+        if self.autoRead.value {
             self.pipeline.read()
         }
     }

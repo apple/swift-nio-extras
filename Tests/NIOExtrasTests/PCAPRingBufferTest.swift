@@ -161,7 +161,7 @@ class PCAPRingBufferTest: XCTestCase {
 
         private var bytesUntilTrigger: Int
         private var pcapRingBuffer: NIOPCAPRingBuffer
-        private var sink: (ByteBuffer) -> Void
+        private let sink: (ByteBuffer) -> Void
 
         init(triggerBytes: Int, pcapRingBuffer: NIOPCAPRingBuffer, sink: @escaping (ByteBuffer) -> Void) {
             self.bytesUntilTrigger = triggerBytes
@@ -173,9 +173,9 @@ class PCAPRingBufferTest: XCTestCase {
             if bytesUntilTrigger > 0 {
                 self.bytesUntilTrigger -= self.unwrapOutboundIn(data).readableBytes
                 if self.bytesUntilTrigger <= 0 {
-                    context.write(data).map {
+                    context.write(data).assumeIsolated().map {
                         self.sink(captureBytes(ringBuffer: self.pcapRingBuffer))
-                    }.cascade(to: promise)
+                    }.nonisolated().cascade(to: promise)
                     return
                 }
             }

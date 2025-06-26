@@ -13,6 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 /// Namespace to contain JSON framing implementation.
-public enum NIOJSONRPCFraming {
+public enum NIOJSONRPCFraming: Sendable {
     // just a name-space
 }

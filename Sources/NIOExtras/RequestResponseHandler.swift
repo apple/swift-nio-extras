@@ -15,12 +15,12 @@
 import NIOCore
 
 /// ``RequestResponseHandler`` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
-/// outbound side. It will fulfill the promise with the `Response` once it's received from the `Channel`'s inbound
+/// outbound side. It will fulfil the promise with the `Response` once it's received from the `Channel`'s inbound
 /// side.
 ///
 /// ``RequestResponseHandler`` does support pipelining `Request`s and it will send them pipelined further down the
 /// `Channel`. Should ``RequestResponseHandler`` receive an error from the `Channel`, it will fail all promises meant for
-/// the outstanding `Reponse`s and close the `Channel`. All requests enqueued after an error occured will be immediately
+/// the outstanding `Response`s and close the `Channel`. All requests enqueued after an error occurred will be immediately
 /// failed with the first error the channel received.
 ///
 /// ``RequestResponseHandler`` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
@@ -88,7 +88,18 @@ public final class RequestResponseHandler<Request, Response>: ChannelDuplexHandl
         let response = self.unwrapInboundIn(data)
         let promise = self.promiseBuffer.removeFirst()
 
-        promise.succeed(response)
+        // If the event loop of the promise is the same as the context then there's no
+        // change in isolation. Otherwise transfer the response onto the correct event-loop
+        // before succeeding the promise.
+        if promise.futureResult.eventLoop === context.eventLoop {
+            promise.assumeIsolatedUnsafeUnchecked().succeed(response)
+        } else {
+            let unsafeTransfer = UnsafeTransfer(response)
+            promise.futureResult.eventLoop.execute {
+                let response = unsafeTransfer.wrappedValue
+                promise.assumeIsolatedUnsafeUnchecked().succeed(response)
+            }
+        }
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {

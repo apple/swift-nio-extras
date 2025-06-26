@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Wrapper for SOCKS protcol error.
-public enum SOCKSError {
+/// Wrapper for SOCKS protocol error.
+public enum SOCKSError: Sendable {
 
     /// The SOCKS client was in a different state to that required.
     public struct InvalidClientState: Error, Hashable {

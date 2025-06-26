@@ -12,8 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+@preconcurrency
 public protocol NIORequestIdentifiable {
-    associatedtype RequestID: Hashable
+    associatedtype RequestID: Hashable & Sendable
 
     var requestID: RequestID { get }
 }

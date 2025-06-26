@@ -17,7 +17,7 @@ import NIOCore
 public protocol NIOExtrasError: Equatable, Error {}
 
 /// Errors that are raised in NIOExtras.
-public enum NIOExtrasErrors {
+public enum NIOExtrasErrors: Sendable {
 
     /// Error indicating that after an operation some unused bytes are left.
     public struct LeftOverBytesError: NIOExtrasError {

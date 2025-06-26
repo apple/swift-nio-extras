@@ -111,7 +111,7 @@ extension DebugOutboundEventsHandler.Event {
 }
 
 #if compiler(>=6.0)
-extension DebugOutboundEventsHandler.Event: @retroactive Equatable {}
+extension DebugOutboundEventsHandler.Event: Equatable {}
 #else
 extension DebugOutboundEventsHandler.Event: Equatable {}
 #endif

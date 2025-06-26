@@ -14,7 +14,7 @@
 
 import NIOCore
 
-public struct NFS3CallDecoder: NIOSingleStepByteToMessageDecoder {
+public struct NFS3CallDecoder: NIOSingleStepByteToMessageDecoder, Sendable {
     public typealias InboundOut = RPCNFS3Call
 
     public init() {}

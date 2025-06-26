@@ -24,7 +24,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
     public typealias OutboundIn = Never
     public typealias OutboundOut = HTTPResponsePart
 
-    var upload: HTTPResumableUpload? = nil
+    var upload: HTTPResumableUpload.SendableView? = nil
     let createUpload: () -> HTTPResumableUpload
     var shouldReset: Bool = false
 
@@ -60,7 +60,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         self.createUpload = {
             HTTPResumableUpload(context: context) { channel in
                 if !handlers.isEmpty {
-                    _ = channel.pipeline.addHandlers(handlers)
+                    try? channel.pipeline.syncOperations.addHandlers(handlers)
                 }
             }
         }
@@ -73,7 +73,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         let upload = self.createUpload()
         upload.scheduleOnEventLoop(self.eventLoop)
         upload.attachUploadHandler(self, channel: context.channel)
-        self.upload = upload
+        self.upload = upload.sendableView
         self.shouldReset = false
     }
 
@@ -124,49 +124,32 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
     }
 }
 
+@available(*, unavailable)
+extension HTTPResumableUploadHandler: Sendable {}
+
 // For `HTTPResumableUpload`.
 extension HTTPResumableUploadHandler {
-    private func runInEventLoop(_ work: @escaping () -> Void) {
-        if self.eventLoop.inEventLoop {
-            work()
-        } else {
-            self.eventLoop.execute(work)
-        }
-    }
-
     func write(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
-        self.runInEventLoop {
-            self.context?.write(self.wrapOutboundOut(part), promise: promise)
-        }
+        self.context?.write(self.wrapOutboundOut(part), promise: promise)
     }
 
     func flush() {
-        self.runInEventLoop {
-            self.context?.flush()
-        }
+        self.context?.flush()
     }
 
     func writeAndFlush(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
-        self.runInEventLoop {
-            self.context?.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
-        }
+        self.context?.writeAndFlush(self.wrapOutboundOut(part), promise: promise)
     }
 
     func read() {
-        self.runInEventLoop {
-            self.context?.read()
-        }
+        self.context?.read()
     }
 
     func close(mode: CloseMode, promise: EventLoopPromise<Void>?) {
-        self.runInEventLoop {
-            self.context?.close(mode: mode, promise: promise)
-        }
+        self.context?.close(mode: mode, promise: promise)
     }
 
     func detach() {
-        self.runInEventLoop {
-            self.context = nil
-        }
+        self.context = nil
     }
 }

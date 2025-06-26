@@ -115,7 +115,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     func testClientHTTP1ToHTTP() throws {
         let recorder = InboundRecorder<HTTPResponsePart>()
 
-        try self.channel.pipeline.addHandlers(HTTP1ToHTTPClientCodec(), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP1ToHTTPClientCodec(), recorder)
 
         try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
         try self.channel.writeOutbound(HTTPRequestPart.end(Self.trailers))
@@ -135,7 +135,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     func testServerHTTP1ToHTTP() throws {
         let recorder = InboundRecorder<HTTPRequestPart>()
 
-        try self.channel.pipeline.addHandlers(HTTP1ToHTTPServerCodec(secure: true), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP1ToHTTPServerCodec(secure: true), recorder)
 
         try self.channel.writeInbound(HTTPServerRequestPart.head(Self.oldRequest))
         try self.channel.writeInbound(HTTPServerRequestPart.end(Self.oldTrailers))
@@ -155,7 +155,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     func testClientHTTPToHTTP1() throws {
         let recorder = InboundRecorder<HTTPClientResponsePart>()
 
-        try self.channel.pipeline.addHandlers(HTTPToHTTP1ClientCodec(secure: true), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTPToHTTP1ClientCodec(secure: true), recorder)
 
         try self.channel.writeOutbound(HTTPClientRequestPart.head(Self.oldRequest))
         try self.channel.writeOutbound(HTTPClientRequestPart.end(Self.oldTrailers))
@@ -175,7 +175,7 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
     func testServerHTTPToHTTP1() throws {
         let recorder = InboundRecorder<HTTPServerRequestPart>()
 
-        try self.channel.pipeline.addHandlers(HTTPToHTTP1ServerCodec(), recorder).wait()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTPToHTTP1ServerCodec(), recorder)
 
         try self.channel.writeInbound(HTTPRequestPart.head(Self.request))
         try self.channel.writeInbound(HTTPRequestPart.end(Self.trailers))
