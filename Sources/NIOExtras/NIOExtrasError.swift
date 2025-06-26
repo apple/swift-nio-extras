@@ -26,6 +26,4 @@ public enum NIOExtrasErrors: Sendable {
 
     /// The channel was closed before receiving a response to a request.
     public struct ClosedBeforeReceivingResponse: NIOExtrasError {}
-
-    public struct IsolatedPromiseUsedFromDifferentEventLoop: NIOExtrasError {}
 }

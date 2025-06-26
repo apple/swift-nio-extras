@@ -80,7 +80,7 @@ struct ResponseCircularBuffer<R>: ResponsePromiseBuffer {
     }
 
     mutating func remove(key: ID = ()) -> EventLoopPromiseEnum<Response>? {
-        self.buffer.removeFirst()
+        self.buffer.popFirst()
     }
 
     mutating func removeAll(failWith error: any Error) {
@@ -199,7 +199,8 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
     enum ReadPromiseAction {
         // succeed the returned promise
         case succeed(EventLoopPromiseEnum<PromiseBuffer.Response>)
-        case error  // no matching promise found
+        case promiseNotFound  // no matching promise found
+        case bufferEmpty  // buffer is empty
         case `return`  // ignore (not operational)
     }
 
@@ -213,7 +214,11 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
         if let promise = self.promiseBuffer.remove(key: id) {
             return .succeed(promise)
         } else {
-            return .error
+            if self.promiseBuffer.count == 0 {
+                return .bufferEmpty
+            } else {
+                return .promiseNotFound
+            }
         }
     }
 
@@ -239,4 +244,10 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
             return .writeContext
         }
     }
+}
+
+extension NIOExtrasErrors {
+    public struct IsolatedPromiseUsedFromDifferentEventLoop: NIOExtrasError {}
+
+    public struct ResponseOnEmptyBuffer: NIOExtrasError {}
 }

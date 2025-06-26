@@ -14,17 +14,18 @@
 
 import NIOCore
 
-/// `RequestResponseHandler` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
+/// ``RequestResponseHandler`` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
 /// outbound side. It will fulfil the promise with the `Response` once it's received from the `Channel`'s inbound
 /// side.
 ///
-/// `RequestResponseHandler` does support pipelining `Request`s and it will send them pipelined further down the
+/// ``RequestResponseHandler`` does support pipelining `Request`s and it will send them pipelined further down the
 /// `Channel`. Should ``RequestResponseHandler`` receive an error from the `Channel`, it will fail all promises meant for
 /// the outstanding `Response`s and close the `Channel`. All requests enqueued after an error occurred will be immediately
 /// failed with the first error the channel received.
 ///
-/// `RequestResponseHandler` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
+/// ``RequestResponseHandler`` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
 /// were submitted.
+@preconcurrency
 public final class RequestResponseHandler<Request, Response: Sendable>: ChannelDuplexHandler {
     /// `Response` is the type this class expects to receive inbound.
     public typealias InboundIn = Response
@@ -71,11 +72,9 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
                 // The type checker will not allow the responses to be isolated.
                 fatalError("Unreachable: RequestResponseHandler received isolated promise")
             }
-        case .error:
-            // This should throw an error before it reaches here due to CircularBuffer removeFirst
-            //      assuming that the buffer is not empty.
-            // The only case where readPromise returns an error state is when the removed element is nil.
-            fatalError("Unreachable: RequestResponseHandler circular buffer is empty")
+        // Matching promiseNotFound here as it should never be received from an CircularBuffer as the key is Void.
+        case .bufferEmpty, .promiseNotFound:
+            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
         case .return: return
         }
     }
@@ -101,6 +100,17 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
 @available(*, unavailable)
 extension RequestResponseHandler: Sendable {}
 
+/// ``NIORequestIsolatedResponseHandler`` receives a `Request` alongside an `EventLoopPromise<Response>` from the `Channel`'s
+/// outbound side. It will fulfil the promise with the `Response` once it's received from the `Channel`'s inbound
+/// side.
+///
+/// ``NIORequestIsolatedResponseHandler`` does support pipelining `Request`s and it will send them pipelined further down the
+/// `Channel`. Should ``NIORequestIsolatedResponseHandler`` receive an error from the `Channel`, it will fail all promises meant for
+/// the outstanding `Response`s and close the `Channel`. All requests enqueued after an error occurred will be immediately
+/// failed with the first error the channel received.
+///
+/// ``NIORequestIsolatedResponseHandler`` requires that the `Response`s arrive on `Channel` in the same order as the `Request`s
+/// were submitted.
 public final class NIORequestIsolatedResponseHandler<Request, Response>: ChannelDuplexHandler {
     /// `Response` is the type this class expects to receive inbound.
     public typealias InboundIn = Response
@@ -145,11 +155,9 @@ public final class NIORequestIsolatedResponseHandler<Request, Response>: Channel
                 // The type checker will not allow the responses to be nonisolated.
                 fatalError("Unreachable: NIORequestIsolatedResponseHandler received nonisolated promise")
             }
-        case .error:
-            // This should throw an error before it reaches here due to CircularBuffer removeFirst
-            //      assuming that the buffer is not empty.
-            // The only case where readPromise returns an error state is when the removed element is nil.
-            fatalError("Unreachable: NIORequestIsolatedResponseHandler circular buffer is empty")
+        // Matching promiseNotFound here as it should never be received from an CircularBuffer as the key is Void
+        case .bufferEmpty, .promiseNotFound:
+            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
         case .return: return
         }
     }

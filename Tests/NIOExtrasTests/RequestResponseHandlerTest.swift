@@ -60,6 +60,18 @@ class RequestResponseHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertEqual("okay", try p.futureResult.wait()))
     }
 
+    func testReadOnEmptyBuffer() {
+        XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(RequestResponseHandler<IOData, String>()))
+
+        // pretend to connect to the EmbeddedChannel knows it's supposed to be active
+        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
+
+        // read from the empty handler
+        XCTAssertThrowsError(try self.channel.writeInbound("should error")) { error in
+            XCTAssertTrue(error is NIOExtrasErrors.ResponseOnEmptyBuffer)
+        }
+    }
+
     func testEnqueingMultipleRequestsWorks() throws {
         struct DummyError: Error {}
         XCTAssertNoThrow(try self.channel.pipeline.syncOperations.addHandler(RequestResponseHandler<IOData, Int>()))
@@ -182,7 +194,7 @@ class RequestResponseHandlerTest: XCTestCase {
         // verify response was not forwarded
         XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
 
-        // Run the dummy event loop so the submitted future gets executed
+        // run the dummy event loop so the submitted future gets executed
         dummyEventLoop.run()
         // verify the promise got succeeded with the response
         XCTAssertNoThrow(XCTAssertEqual("okay", try promiseAcrossEventLoop.futureResult.wait()))
@@ -238,6 +250,20 @@ class NIORequestIsolatedResponseHandlerTest: XCTestCase {
             case .failure(_):
                 XCTFail()
             }
+        }
+    }
+
+    func testReadOnEmptyBuffer() {
+        XCTAssertNoThrow(
+            try self.channel.pipeline.syncOperations.addHandler(NIORequestIsolatedResponseHandler<IOData, NSString>())
+        )
+
+        // pretend to connect to the EmbeddedChannel knows it's supposed to be active
+        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
+
+        // read from the empty handler
+        XCTAssertThrowsError(try self.channel.writeInbound("should error")) { error in
+            XCTAssertTrue(error is NIOExtrasErrors.ResponseOnEmptyBuffer)
         }
     }
 

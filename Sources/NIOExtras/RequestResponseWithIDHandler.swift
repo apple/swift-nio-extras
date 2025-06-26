@@ -14,18 +14,19 @@
 
 import NIOCore
 
-/// `NIORequestResponseWithIDHandler` receives a `Request` alongside an `EventLoopPromise<Response>` from the
+/// ``NIORequestResponseWithIDHandler`` receives a `Request` alongside an `EventLoopPromise<Response>` from the
 /// `Channel`'s outbound side. It will fulfill the promise with the `Response` once it's received from the `Channel`'s
 /// inbound side. Requests and responses can arrive out-of-order and are matched by the virtue of being
 /// `NIORequestIdentifiable`.
 ///
-/// `NIORequestResponseWithIDHandler` does support pipelining `Request`s and it will send them pipelined further down the
-/// `Channel`. Should `RequestResponseHandler` receive an error from the `Channel`, it will fail all promises meant for
+/// ``NIORequestResponseWithIDHandler`` does support pipelining `Request`s and it will send them pipelined further down the
+/// `Channel`. Should ``NIORequestResponseWithIDHandler`` receive an error from the `Channel`, it will fail all promises meant for
 /// the outstanding `Reponse`s and close the `Channel`. All requests enqueued after an error occured will be immediately
 /// failed with the first error the channel received.
 ///
-/// `NIORequestResponseWithIDHandler` does _not_ require that the `Response`s arrive on `Channel` in the same order as
+/// ``NIORequestResponseWithIDHandler`` does _not_ require that the `Response`s arrive on `Channel` in the same order as
 /// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
+@preconcurrency
 public final class NIORequestResponseWithIDHandler<
     Request: NIORequestIdentifiable,
     Response: NIORequestIdentifiable
@@ -72,7 +73,9 @@ where Request.RequestID == Response.RequestID, Response: Sendable {
                 // The type checker will not allow the responses to be isolated.
                 fatalError("Unreachable: NIORequestResponseWithIDHandler received isolated promise")
             }
-        case .error:
+        case .bufferEmpty:
+            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
+        case .promiseNotFound:
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
         case .return: return
         }
@@ -99,19 +102,18 @@ where Request.RequestID == Response.RequestID, Response: Sendable {
 @available(*, unavailable)
 extension NIORequestResponseWithIDHandler: Sendable {}
 
-/// `NIORequestIsolatedResponseWithIDHandler` receives a `Request` alongside an `EventLoopPromise<Response>.Isolated` from the
+/// ``NIORequestIsolatedResponseWithIDHandler`` receives a `Request` alongside an `EventLoopPromise<Response>.Isolated` from the
 /// `Channel`'s outbound side. It will fulfill the promise with the `Response` once it's received from the `Channel`'s
 /// inbound side. Requests and responses can arrive out-of-order and are matched by the virtue of being
 /// `NIORequestIdentifiable`.
 ///
-/// `NIORequestIsolatedResponseWithIDHandler` does support pipelining `Request`s and it will send them pipelined further down the
-/// `Channel`. Should `RequestResponseHandler` receive an error from the `Channel`, it will fail all promises meant for
+/// ``NIORequestIsolatedResponseWithIDHandler`` does support pipelining `Request`s and it will send them pipelined further down the
+/// `Channel`. Should ``NIORequestIsolatedResponseWithIDHandler`` receive an error from the `Channel`, it will fail all promises meant for
 /// the outstanding `Reponse`s and close the `Channel`. All requests enqueued after an error occured will be immediately
 /// failed with the first error the channel received.
 ///
-/// `NIORequestIsolatedResponseWithIDHandler` does _not_ require that the `Response`s arrive on `Channel` in the same order as
+/// ``NIORequestIsolatedResponseWithIDHandler`` does _not_ require that the `Response`s arrive on `Channel` in the same order as
 /// the `Request`s were submitted. They are matched by their `requestID` property (from `NIORequestIdentifiable`).
-///
 public final class NIORequestIsolatedResponseWithIDHandler<
     Request: NIORequestIdentifiable,
     Response: NIORequestIdentifiable
@@ -156,7 +158,9 @@ where Request.RequestID == Response.RequestID {
                 // The type checker will not allow the responses to be nonisolated.
                 fatalError("Unreachable: NIORequestIsolatedResponseWithIDHandler received nonisolated promise")
             }
-        case .error:
+        case .bufferEmpty:
+            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
+        case .promiseNotFound:
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
         case .return: return
         }
