@@ -14,35 +14,29 @@
 
 import NIOCore
 
-// MARK: - EventLoopPromiseEnum
+// MARK: - ResponsePromiseBuffer
 
-/// A thin wrapper that lets the handlers treat the two promise types as an enum to allow for stronger abstraction.
-enum EventLoopPromiseEnum<Response> {
-    case nonisolated(EventLoopPromise<Response>)
-    case isolated(EventLoopPromise<Response>.Isolated)
-
-    /// Fail the stored `EventLoopPromise`
-    /// - parameters:
-    ///  - error: `Error` to use to fail the promise
-    func fail(_ error: Error) {
-        switch self {
-        case .nonisolated(let promise):
-            promise.fail(error)
-        case .isolated(let promise):
-            promise.nonisolated().fail(error)
-        }
-    }
+/// Protocol to expose the stored `Value` type inside `EventLoopPromise` letting
+/// generic code refer to it for additional constraints.
+protocol ResponsePromise {
+    associatedtype Response
 }
 
-// MARK: - ResponsePromiseBuffer
+extension EventLoopPromise: ResponsePromise {
+    typealias Response = Value
+}
+
+extension EventLoopPromise.Isolated: ResponsePromise {
+    typealias Response = Value
+}
 
 /// A storage abstraction for outstanding response promises.
 ///
 /// The state-machine never assumes how the promises are stored,
 /// any type that conforms to this protocol is acceptable by the state machine.
 protocol ResponsePromiseBuffer {
-    associatedtype Response
     associatedtype ID
+    associatedtype Promise
 
     /// Number of promises that are currently in the buffer.
     var count: Int { get }
@@ -51,21 +45,22 @@ protocol ResponsePromiseBuffer {
     init(initialBufferCapacity: Int)
 
     /// Store `response` under `key`.
-    mutating func insert(key: ID, _ response: EventLoopPromiseEnum<Response>)
+    mutating func insert(key: ID, _ promise: Promise)
 
     /// Remove and return the promise for `key` or `nil` if no promise with the given `ID` exists.
-    mutating func remove(key: ID) -> EventLoopPromiseEnum<Response>?
+    mutating func remove(key: ID) -> Promise?
 
-    /// Fail **all** stored promises with `error` and empty the buffer.
-    mutating func removeAll(failWith error: any Error)
+    /// Remove all stored promises and return them so they can be failed/succeeded.
+    mutating func removeAll() -> [Promise]
 }
 
 /// Buffer implementation using the `CircularBuffer` type provided in NIO.
-/// `ID` is `Void` as the `CircularBuffer` is FIFO
-struct ResponseCircularBuffer<R>: ResponsePromiseBuffer {
-    typealias Response = R
+/// `ID` is `Void` as the `CircularBuffer` is FIFO.
+struct ResponseCircularBuffer<P: ResponsePromise>: ResponsePromiseBuffer {
     typealias ID = Void
-    private var buffer: CircularBuffer<EventLoopPromiseEnum<Response>>
+    typealias Promise = P
+
+    private var buffer: CircularBuffer<Promise>
 
     var count: Int {
         buffer.count
@@ -75,31 +70,33 @@ struct ResponseCircularBuffer<R>: ResponsePromiseBuffer {
         buffer = CircularBuffer(initialCapacity: initialBufferCapacity)
     }
 
-    mutating func insert(key: ID = (), _ response: EventLoopPromiseEnum<Response>) {
-        self.buffer.append(response)
+    mutating func insert(key: ID = (), _ promise: Promise) {
+        self.buffer.append(promise)
     }
 
-    mutating func remove(key: ID = ()) -> EventLoopPromiseEnum<Response>? {
+    mutating func remove(key: ID = ()) -> Promise? {
         self.buffer.popFirst()
     }
 
-    mutating func removeAll(failWith error: any Error) {
-        let buffer = self.buffer
-        self.buffer.removeAll()
-        for promise in buffer {
-            promise.fail(error)
+    mutating func removeAll() -> [Promise] {
+        defer {
+            self.buffer.removeAll()
         }
+        return Array(buffer)
     }
 }
 
 /// Buffer implementation using a `Dictionary` to store the promises.
-/// The response (`R`) must be `NIORequestIdentifiable` to
-///     provide the `Dictionary` a key to store the promise under.
-struct ResponseDictionaryBuffer<R: NIORequestIdentifiable>: ResponsePromiseBuffer {
-    typealias Response = R
-    typealias ID = R.RequestID
+///
+/// The promise (`P`) `Value` must be `NIORequestIdentifiable` to
+/// provide the `Dictionary` a key to store the promise ('P') under.
+struct ResponseDictionaryBuffer<P: ResponsePromise>: ResponsePromiseBuffer
+where P.Response: NIORequestIdentifiable {
+    typealias ID = P.Response.RequestID
+    typealias Promise = P
 
-    private var buffer: [ID: EventLoopPromiseEnum<Response>]
+    private var buffer: [ID: Promise]
+
     var count: Int {
         buffer.count
     }
@@ -109,20 +106,19 @@ struct ResponseDictionaryBuffer<R: NIORequestIdentifiable>: ResponsePromiseBuffe
         buffer.reserveCapacity(initialBufferCapacity)
     }
 
-    mutating func insert(key: ID, _ response: EventLoopPromiseEnum<Response>) {
-        self.buffer[key] = response
+    mutating func insert(key: ID, _ promise: Promise) {
+        self.buffer[key] = promise
     }
 
-    mutating func remove(key: ID) -> EventLoopPromiseEnum<Response>? {
+    mutating func remove(key: ID) -> Promise? {
         self.buffer.removeValue(forKey: key)
     }
 
-    mutating func removeAll(failWith error: any Error) {
-        let buffer = self.buffer
-        self.buffer.removeAll()
-        for (_, promise) in buffer {
-            promise.fail(error)
+    mutating func removeAll() -> [Promise] {
+        defer {
+            self.buffer.removeAll()
         }
+        return Array(buffer.values)
     }
 }
 
@@ -156,6 +152,8 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
 
     enum DeactiveChannelAction {
         case fireInactive  // propagate channelInactive to the context
+        // fail the promises and propagate channelInactive to the context
+        case failPromisesAndFireInactive([PromiseBuffer.Promise])
         case `return`  // do nothing
     }
 
@@ -175,13 +173,13 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
             return .return
         case .operational:
             self.state = .inactive
-            self.promiseBuffer.removeAll(failWith: NIOExtrasErrors.ClosedBeforeReceivingResponse())
-            return .fireInactive
+            return .failPromisesAndFireInactive(self.promiseBuffer.removeAll())
         }
     }
 
     enum ErrorCaughtAction {
-        case closeContext  // close the context as we received an error
+        // fail the promises and close the context as we received an error
+        case failPromisesAndCloseContext([PromiseBuffer.Promise])
         case `return`  // do nothing
     }
 
@@ -192,13 +190,12 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
             return .return
         }
         self.state = .error(error)
-        self.promiseBuffer.removeAll(failWith: error)
-        return .closeContext
+        return .failPromisesAndCloseContext(self.promiseBuffer.removeAll())
     }
 
     enum ReadPromiseAction {
         // succeed the returned promise
-        case succeed(EventLoopPromiseEnum<PromiseBuffer.Response>)
+        case succeed(PromiseBuffer.Promise)
         case promiseNotFound  // no matching promise found
         case bufferEmpty  // buffer is empty
         case `return`  // ignore (not operational)
@@ -230,7 +227,7 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
     /// Buffer the promise or fail it immediately, depending on current state.
     mutating func writePromise(
         id: PromiseBuffer.ID,
-        responsePromise: EventLoopPromiseEnum<PromiseBuffer.Response>
+        responsePromise: PromiseBuffer.Promise
     ) -> WritePromiseAction {
         switch self.state {
         case .error(let error):

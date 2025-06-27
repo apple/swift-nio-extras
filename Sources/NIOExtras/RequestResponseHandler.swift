@@ -36,7 +36,7 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
     /// Type this class passes out.
     public typealias OutboundOut = Request
 
-    private var state: RequestResponseHandlerState<ResponseCircularBuffer<Response>>
+    private var state: RequestResponseHandlerState<ResponseCircularBuffer<EventLoopPromise<Response>>>
 
     /// Create a new `RequestResponseHandler`.
     ///
@@ -50,6 +50,11 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
 
     public func channelInactive(context: ChannelHandlerContext) {
         switch state.deactivateChannel() {
+        case .failPromisesAndFireInactive(let promisesToFail):
+            for promise in promisesToFail {
+                promise.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
+            }
+            context.fireChannelInactive()
         case .fireInactive: context.fireChannelInactive()
         case .`return`: return
         }
@@ -58,19 +63,13 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
         switch self.state.readPromise(id: ()) {
-        case .succeed(let promiseEnum):
-            switch promiseEnum {
-            case .nonisolated(let promise):
-                if promise.futureResult.eventLoop === context.eventLoop {
+        case .succeed(let promise):
+            if promise.futureResult.eventLoop === context.eventLoop {
+                promise.succeed(response)
+            } else {
+                promise.futureResult.eventLoop.execute {
                     promise.succeed(response)
-                } else {
-                    promise.futureResult.eventLoop.execute {
-                        promise.succeed(response)
-                    }
                 }
-            case .isolated(_):
-                // The type checker will not allow the responses to be isolated.
-                fatalError("Unreachable: RequestResponseHandler received isolated promise")
             }
         // Matching promiseNotFound here as it should never be received from an CircularBuffer as the key is Void.
         case .bufferEmpty, .promiseNotFound:
@@ -81,14 +80,18 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch self.state.errorCaught(error: error) {
-        case .closeContext: context.close(promise: nil)
+        case .failPromisesAndCloseContext(let promisesToFail):
+            for promise in promisesToFail {
+                promise.fail(error)
+            }
+            context.close(promise: nil)
         case .return: return
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
-        switch self.state.writePromise(id: (), responsePromise: .nonisolated(responsePromise)) {
+        switch self.state.writePromise(id: (), responsePromise: responsePromise) {
         case .failWith(let error):
             responsePromise.fail(error)
             promise?.fail(error)
@@ -121,7 +124,7 @@ public final class NIORequestIsolatedResponseHandler<Request, Response>: Channel
     /// Type this class passes out.
     public typealias OutboundOut = Request
 
-    private var state: RequestResponseHandlerState<ResponseCircularBuffer<Response>>
+    private var state: RequestResponseHandlerState<ResponseCircularBuffer<EventLoopPromise<Response>.Isolated>>
 
     /// Create a new `NIORequestIsolatedResponseHandler`.
     ///
@@ -135,6 +138,11 @@ public final class NIORequestIsolatedResponseHandler<Request, Response>: Channel
 
     public func channelInactive(context: ChannelHandlerContext) {
         switch state.deactivateChannel() {
+        case .failPromisesAndFireInactive(let promisesToFail):
+            for promise in promisesToFail {
+                promise.nonisolated().fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
+            }
+            context.fireChannelInactive()
         case .fireInactive: context.fireChannelInactive()
         case .`return`: return
         }
@@ -143,17 +151,11 @@ public final class NIORequestIsolatedResponseHandler<Request, Response>: Channel
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
         switch self.state.readPromise(id: ()) {
-        case .succeed(let promiseEnum):
-            switch promiseEnum {
-            case .isolated(let promise):
-                if promise.futureResult.nonisolated().eventLoop === context.eventLoop {
-                    promise.succeed(response)
-                } else {
-                    promise.nonisolated().fail(NIOExtrasErrors.IsolatedPromiseUsedFromDifferentEventLoop())
-                }
-            case .nonisolated(_):
-                // The type checker will not allow the responses to be nonisolated.
-                fatalError("Unreachable: NIORequestIsolatedResponseHandler received nonisolated promise")
+        case .succeed(let promise):
+            if promise.futureResult.nonisolated().eventLoop === context.eventLoop {
+                promise.succeed(response)
+            } else {
+                promise.nonisolated().fail(NIOExtrasErrors.IsolatedPromiseUsedFromDifferentEventLoop())
             }
         // Matching promiseNotFound here as it should never be received from an CircularBuffer as the key is Void
         case .bufferEmpty, .promiseNotFound:
@@ -164,14 +166,18 @@ public final class NIORequestIsolatedResponseHandler<Request, Response>: Channel
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
         switch self.state.errorCaught(error: error) {
-        case .closeContext: context.close(promise: nil)
+        case .failPromisesAndCloseContext(let promisesToFail):
+            for promise in promisesToFail {
+                promise.nonisolated().fail(error)
+            }
+            context.close(promise: nil)
         case .return: return
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
-        switch self.state.writePromise(id: (), responsePromise: .isolated(responsePromise)) {
+        switch self.state.writePromise(id: (), responsePromise: responsePromise) {
         case .failWith(let error):
             responsePromise.nonisolated().fail(error)
             promise?.fail(error)
