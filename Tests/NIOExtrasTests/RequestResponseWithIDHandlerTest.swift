@@ -418,8 +418,6 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         // verify response was not forwarded
         XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
 
-        // run the dummy event loop so the submitted future gets executed
-        dummyEventLoop.run()
         // verify the promise got succeeded with the response
         XCTAssertNoThrow(
             XCTAssertEqual(

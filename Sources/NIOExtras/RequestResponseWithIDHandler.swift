@@ -65,13 +65,7 @@ where Request.RequestID == Response.RequestID, Response: Sendable {
         let response = self.unwrapInboundIn(data)
         switch self.state.readPromise(id: response.requestID) {
         case .succeed(let promise):
-            if promise.futureResult.eventLoop === context.eventLoop {
-                promise.succeed(response)
-            } else {
-                promise.futureResult.eventLoop.execute {
-                    promise.succeed(response)
-                }
-            }
+            promise.succeed(response)
         case .bufferEmpty:
             context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
         case .promiseNotFound:

@@ -64,13 +64,7 @@ public final class RequestResponseHandler<Request, Response: Sendable>: ChannelD
         let response = self.unwrapInboundIn(data)
         switch self.state.readPromise(id: ()) {
         case .succeed(let promise):
-            if promise.futureResult.eventLoop === context.eventLoop {
-                promise.succeed(response)
-            } else {
-                promise.futureResult.eventLoop.execute {
-                    promise.succeed(response)
-                }
-            }
+            promise.succeed(response)
         // Matching promiseNotFound here as it should never be received from an CircularBuffer as the key is Void.
         case .bufferEmpty, .promiseNotFound:
             context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
