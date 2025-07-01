@@ -37,7 +37,7 @@ where Request.RequestID == Response.RequestID, Response: Sendable {
     public typealias OutboundIn = (Request, EventLoopPromise<Response>)
     public typealias OutboundOut = Request
 
-    private var state: RequestResponseHandlerState<ResponseDictionaryBuffer<EventLoopPromise<Response>>>
+    private var state: RequestResponseHandlerState<UnorderedResponsePromiseBuffer<EventLoopPromise<Response>>>
 
     /// Create a new `NIORequestResponseWithIDHandler`.
     ///
@@ -46,52 +46,57 @@ where Request.RequestID == Response.RequestID, Response: Sendable {
     ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
     ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
     public init(initialBufferCapacity: Int = 4) {
-        state = .init(initialBufferCapacity: 4)
+        self.state = .init(initialBufferCapacity: 4)
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
-        switch state.deactivateChannel() {
+        switch self.state.deactivateChannel() {
         case .failPromisesAndFireInactive(let promisesToFail):
             for promise in promisesToFail {
                 promise.fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
             }
             context.fireChannelInactive()
-        case .fireInactive: context.fireChannelInactive()
-        case .`return`: return
+        case .fireInactive:
+            context.fireChannelInactive()
+        case .doNothing:
+            return
         }
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
-        switch self.state.readPromise(id: response.requestID) {
+        switch self.state.readResponse(id: response.requestID) {
         case .succeed(let promise):
             promise.succeed(response)
         case .bufferEmpty:
-            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
+            context.fireErrorCaught(NIOExtrasErrors.ResponsePromiseBufferEmpty())
         case .promiseNotFound:
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
-        case .return: return
+        case .notOperational:
+            return
         }
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        switch self.state.errorCaught(error: error) {
+        switch self.state.caughtError(error: error) {
         case .failPromisesAndCloseContext(let promisesToFail):
             for promise in promisesToFail {
                 promise.fail(error)
             }
             context.close(promise: nil)
-        case .return: return
+        case .notOperational:
+            return
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
-        switch self.state.writePromise(id: request.requestID, responsePromise: responsePromise) {
-        case .failWith(let error):
+        switch self.state.writeRequest(id: request.requestID, responsePromise: responsePromise) {
+        case .failPromise(let error):
             responsePromise.fail(error)
             promise?.fail(error)
-        case .writeContext: context.write(self.wrapOutboundOut(request), promise: promise)
+        case .writeToContext:
+            context.write(self.wrapOutboundOut(request), promise: promise)
         }
     }
 }
@@ -121,7 +126,7 @@ where Request.RequestID == Response.RequestID {
     public typealias OutboundIn = (Request, EventLoopPromise<Response>.Isolated)
     public typealias OutboundOut = Request
 
-    private var state: RequestResponseHandlerState<ResponseDictionaryBuffer<EventLoopPromise<Response>.Isolated>>
+    private var state: RequestResponseHandlerState<UnorderedResponsePromiseBuffer<EventLoopPromise<Response>.Isolated>>
 
     /// Create a new `NIORequestIsolatedResponseWithIDHandler`.
     ///
@@ -130,56 +135,57 @@ where Request.RequestID == Response.RequestID {
     ///          buffer. `initialBufferCapacity` is the initial capacity for this buffer. You usually do not need to set
     ///          this parameter unless you intend to pipeline very deeply and don't want the buffer to resize.
     public init(initialBufferCapacity: Int = 4) {
-        state = .init(initialBufferCapacity: 4)
+        self.state = .init(initialBufferCapacity: 4)
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
-        switch state.deactivateChannel() {
+        switch self.state.deactivateChannel() {
         case .failPromisesAndFireInactive(let promisesToFail):
             for promise in promisesToFail {
                 promise.nonisolated().fail(NIOExtrasErrors.ClosedBeforeReceivingResponse())
             }
             context.fireChannelInactive()
-        case .fireInactive: context.fireChannelInactive()
-        case .`return`: return
+        case .fireInactive:
+            context.fireChannelInactive()
+        case .doNothing:
+            return
         }
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let response = self.unwrapInboundIn(data)
-        switch self.state.readPromise(id: response.requestID) {
+        switch self.state.readResponse(id: response.requestID) {
         case .succeed(let promise):
-            if promise.futureResult.nonisolated().eventLoop === context.eventLoop {
-                promise.succeed(response)
-            } else {
-                promise.nonisolated().fail(NIOExtrasErrors.IsolatedPromiseUsedFromDifferentEventLoop())
-            }
+            promise.succeed(response)
         case .bufferEmpty:
-            context.fireErrorCaught(NIOExtrasErrors.ResponseOnEmptyBuffer())
+            context.fireErrorCaught(NIOExtrasErrors.ResponsePromiseBufferEmpty())
         case .promiseNotFound:
             context.fireErrorCaught(NIOExtrasErrors.ResponseForInvalidRequest<Response>(requestID: response.requestID))
-        case .return: return
+        case .notOperational:
+            return
         }
     }
 
     public func errorCaught(context: ChannelHandlerContext, error: Error) {
-        switch self.state.errorCaught(error: error) {
+        switch self.state.caughtError(error: error) {
         case .failPromisesAndCloseContext(let promisesToFail):
             for promise in promisesToFail {
                 promise.nonisolated().fail(error)
             }
             context.close(promise: nil)
-        case .return: return
+        case .notOperational:
+            return
         }
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let (request, responsePromise) = self.unwrapOutboundIn(data)
-        switch self.state.writePromise(id: request.requestID, responsePromise: responsePromise) {
-        case .failWith(let error):
+        switch self.state.writeRequest(id: request.requestID, responsePromise: responsePromise) {
+        case .failPromise(let error):
             responsePromise.nonisolated().fail(error)
             promise?.fail(error)
-        case .writeContext: context.write(self.wrapOutboundOut(request), promise: promise)
+        case .writeToContext:
+            context.write(self.wrapOutboundOut(request), promise: promise)
         }
     }
 }

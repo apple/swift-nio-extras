@@ -44,11 +44,11 @@ protocol ResponsePromiseBuffer {
     /// Create an empty buffer with storage allocated for `initialBufferCapacity` number of elements.
     init(initialBufferCapacity: Int)
 
-    /// Store `response` under `key`.
-    mutating func insert(key: ID, _ promise: Promise)
+    /// Store `promise` under `forKey`.
+    mutating func insert(_ promise: Promise, forKey: ID)
 
     /// Remove and return the promise for `key` or `nil` if no promise with the given `ID` exists.
-    mutating func remove(key: ID) -> Promise?
+    mutating func removePromise(forKey: ID) -> Promise?
 
     /// Remove all stored promises and return them so they can be failed/succeeded.
     mutating func removeAll() -> [Promise]
@@ -56,25 +56,25 @@ protocol ResponsePromiseBuffer {
 
 /// Buffer implementation using the `CircularBuffer` type provided in NIO.
 /// `ID` is `Void` as the `CircularBuffer` is FIFO.
-struct ResponseCircularBuffer<P: ResponsePromise>: ResponsePromiseBuffer {
+struct OrderedResponsePromiseBuffer<Promise: ResponsePromise>: ResponsePromiseBuffer {
     typealias ID = Void
-    typealias Promise = P
+    typealias Promise = Promise
 
     private var buffer: CircularBuffer<Promise>
 
     var count: Int {
-        buffer.count
+        self.buffer.count
     }
 
-    public init(initialBufferCapacity: Int) {
-        buffer = CircularBuffer(initialCapacity: initialBufferCapacity)
+    init(initialBufferCapacity: Int) {
+        self.buffer = CircularBuffer(initialCapacity: initialBufferCapacity)
     }
 
-    mutating func insert(key: ID = (), _ promise: Promise) {
+    mutating func insert(_ promise: Promise, forKey: ID = ()) {
         self.buffer.append(promise)
     }
 
-    mutating func remove(key: ID = ()) -> Promise? {
+    mutating func removePromise(forKey: ID = ()) -> Promise? {
         self.buffer.popFirst()
     }
 
@@ -82,43 +82,42 @@ struct ResponseCircularBuffer<P: ResponsePromise>: ResponsePromiseBuffer {
         defer {
             self.buffer.removeAll()
         }
-        return Array(buffer)
+        return Array(self.buffer)
     }
 }
 
 /// Buffer implementation using a `Dictionary` to store the promises.
 ///
-/// The promise (`P`) `Value` must be `NIORequestIdentifiable` to
-/// provide the `Dictionary` a key to store the promise ('P') under.
-struct ResponseDictionaryBuffer<P: ResponsePromise>: ResponsePromiseBuffer
-where P.Response: NIORequestIdentifiable {
-    typealias ID = P.Response.RequestID
-    typealias Promise = P
+/// The promise (`Promise`) `Value` must be `NIORequestIdentifiable` to
+/// provide the `Dictionary` a key to store the promise under.
+struct UnorderedResponsePromiseBuffer<Promise: ResponsePromise>: ResponsePromiseBuffer
+where Promise.Response: NIORequestIdentifiable {
+    typealias ID = Promise.Response.RequestID
+    typealias Promise = Promise
 
     private var buffer: [ID: Promise]
 
     var count: Int {
-        buffer.count
+        self.buffer.count
     }
 
-    public init(initialBufferCapacity: Int) {
-        buffer = [:]
-        buffer.reserveCapacity(initialBufferCapacity)
+    init(initialBufferCapacity: Int) {
+        self.buffer = .init(minimumCapacity: initialBufferCapacity)
     }
 
-    mutating func insert(key: ID, _ promise: Promise) {
-        self.buffer[key] = promise
+    mutating func insert(_ promise: Promise, forKey: ID) {
+        self.buffer[forKey] = promise
     }
 
-    mutating func remove(key: ID) -> Promise? {
-        self.buffer.removeValue(forKey: key)
+    mutating func removePromise(forKey: ID) -> Promise? {
+        self.buffer.removeValue(forKey: forKey)
     }
 
     mutating func removeAll() -> [Promise] {
         defer {
             self.buffer.removeAll()
         }
-        return Array(buffer.values)
+        return Array(self.buffer.values)
     }
 }
 
@@ -151,10 +150,10 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
     }
 
     enum DeactiveChannelAction {
-        case fireInactive  // propagate channelInactive to the context
         // fail the promises and propagate channelInactive to the context
         case failPromisesAndFireInactive([PromiseBuffer.Promise])
-        case `return`  // do nothing
+        case fireInactive  // propagate channelInactive to the context
+        case doNothing  // do nothing
     }
 
     /// Handle `channelInactive`. Drains the buffer if the state machine is still operational.
@@ -170,81 +169,75 @@ struct RequestResponseHandlerState<PromiseBuffer: ResponsePromiseBuffer> {
             // This is weird, we shouldn't get this more than once but it's not the end of the world either. But in
             // debug we probably want to crash.
             assertionFailure("Received channelInactive on an already-inactive handler")
-            return .return
+            return .doNothing
         case .operational:
             self.state = .inactive
             return .failPromisesAndFireInactive(self.promiseBuffer.removeAll())
         }
     }
 
-    enum ErrorCaughtAction {
+    enum CaughtErrorAction {
         // fail the promises and close the context as we received an error
         case failPromisesAndCloseContext([PromiseBuffer.Promise])
-        case `return`  // do nothing
+        case notOperational  // not operational
     }
 
     /// Handle `errorCaught`. Transitions to `.error` exacly once as there is no way to make the handler operational again.
-    mutating func errorCaught(error: Error) -> ErrorCaughtAction {
+    mutating func caughtError(error: Error) -> CaughtErrorAction {
         guard self.state.isOperational else {
             assert(self.promiseBuffer.count == 0)
-            return .return
+            return .notOperational
         }
+
         self.state = .error(error)
         return .failPromisesAndCloseContext(self.promiseBuffer.removeAll())
     }
 
-    enum ReadPromiseAction {
-        // succeed the returned promise
-        case succeed(PromiseBuffer.Promise)
+    enum ReadResponseAction {
+        case succeed(PromiseBuffer.Promise)  // succeed the returned promise)
         case promiseNotFound  // no matching promise found
         case bufferEmpty  // buffer is empty
-        case `return`  // ignore (not operational)
+        case notOperational  // not operational
     }
 
-    /// Remove and return the promise for `id` if it is present in the buffer.
-    mutating func readPromise(id: PromiseBuffer.ID) -> ReadPromiseAction {
+    /// Remove and return the response for `id` if it is present in the buffer.
+    mutating func readResponse(id: PromiseBuffer.ID) -> ReadResponseAction {
         guard self.state.isOperational else {
             assert(self.promiseBuffer.count == 0)
-            return .return
+            return .notOperational
         }
 
-        if let promise = self.promiseBuffer.remove(key: id) {
+        guard self.promiseBuffer.count != 0 else {
+            return .bufferEmpty
+        }
+
+        if let promise = self.promiseBuffer.removePromise(forKey: id) {
             return .succeed(promise)
         } else {
-            if self.promiseBuffer.count == 0 {
-                return .bufferEmpty
-            } else {
-                return .promiseNotFound
-            }
+            return .promiseNotFound
         }
     }
 
-    enum WritePromiseAction {
-        case failWith(error: Error)  // do not write, fail promise with error
-        case writeContext  // write the promise to the context
+    enum WriteRequestAction {
+        case failPromise(error: Error)  // do not write, fail promise with error
+        case writeToContext  // write to the context
     }
 
     /// Buffer the promise or fail it immediately, depending on current state.
-    mutating func writePromise(
+    mutating func writeRequest(
         id: PromiseBuffer.ID,
         responsePromise: PromiseBuffer.Promise
-    ) -> WritePromiseAction {
+    ) -> WriteRequestAction {
         switch self.state {
         case .error(let error):
             assert(self.promiseBuffer.count == 0)
-            return .failWith(error: error)
+            return .failPromise(error: error)
         case .inactive:
             assert(self.promiseBuffer.count == 0)
-            return .failWith(error: ChannelError.ioOnClosedChannel)
+            return .failPromise(error: ChannelError.ioOnClosedChannel)
         case .operational:
-            self.promiseBuffer.insert(key: id, responsePromise)
-            return .writeContext
+            self.promiseBuffer.insert(responsePromise, forKey: id)
+            return .writeToContext
         }
     }
-}
-
-extension NIOExtrasErrors {
-    public struct IsolatedPromiseUsedFromDifferentEventLoop: NIOExtrasError {}
-
-    public struct ResponseOnEmptyBuffer: NIOExtrasError {}
 }

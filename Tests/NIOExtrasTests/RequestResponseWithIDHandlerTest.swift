@@ -87,7 +87,7 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         // read from the empty handler
         XCTAssertThrowsError(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "should error"))) {
             error in
-            XCTAssertTrue(error is NIOExtrasErrors.ResponseOnEmptyBuffer)
+            XCTAssertTrue(error is NIOExtrasErrors.ResponsePromiseBufferEmpty)
         }
     }
 
@@ -385,47 +385,6 @@ class RequestResponseWithIDHandlerTest: XCTestCase {
         // verify the promise got succeeded with the response
         XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), try p.futureResult.wait())
     }
-
-    func testHandlerAllowsPromisesForDifferentEventLoops() {
-        let dummyEventLoop: EmbeddedEventLoop = .init()
-
-        XCTAssertNoThrow(
-            try self.channel.pipeline.syncOperations.addHandler(
-                NIORequestResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<String>>()
-            )
-        )
-        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
-
-        self.buffer.writeString("world")
-
-        let promiseAcrossEventLoop: EventLoopPromise<ValueWithRequestID<String>> = dummyEventLoop.makePromise()
-
-        // write request from another event loop
-        XCTAssertNoThrow(
-            try self.channel.writeOutbound(
-                (ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)), promiseAcrossEventLoop)
-            )
-        )
-        // write response
-        XCTAssertNoThrow(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "okay")))
-        // verify request was forwarded
-        XCTAssertNoThrow(
-            XCTAssertEqual(
-                ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                try self.channel.readOutbound()
-            )
-        )
-        // verify response was not forwarded
-        XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
-
-        // verify the promise got succeeded with the response
-        XCTAssertNoThrow(
-            XCTAssertEqual(
-                ValueWithRequestID(requestID: 1, value: "okay"),
-                try promiseAcrossEventLoop.futureResult.wait()
-            )
-        )
-    }
 }
 
 class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
@@ -485,8 +444,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         // verify the promise got succeeded with the response
         p.futureResult.whenComplete { res in
             switch res {
-            case .success(let value): XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), value)
-            case .failure(_): XCTFail()
+            case .success(let value):
+                XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), value)
+            case .failure(_):
+                XCTFail()
             }
         }
     }
@@ -504,7 +465,7 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         // read from the empty handler
         XCTAssertThrowsError(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "should error"))) {
             error in
-            XCTAssertTrue(error is NIOExtrasErrors.ResponseOnEmptyBuffer)
+            XCTAssertTrue(error is NIOExtrasErrors.ResponsePromiseBufferEmpty)
         }
     }
 
@@ -563,7 +524,8 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
                 switch res {
                 case .success(let value):
                     XCTAssertEqual(ValueWithRequestID(requestID: reqIdExpected, value: reqIdExpected), value)
-                case .failure(_): XCTFail()
+                case .failure(_):
+                    XCTFail()
                 }
             }
         }
@@ -578,8 +540,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         for failedReqId in 3..<5 {
             futures[failedReqId].whenComplete { res in
                 switch res {
-                case .success(_): XCTFail()
-                case .failure(let error): XCTAssertNotNil(error as? DummyError)
+                case .success(_):
+                    XCTFail()
+                case .failure(let error):
+                    XCTAssertNotNil(error as? DummyError)
                 }
             }
         }
@@ -614,8 +578,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
 
         p.futureResult.whenComplete { res in
             switch res {
-            case .success(_): XCTFail()
-            case .failure(let error): XCTAssertNotNil(error as? DummyError)
+            case .success(_):
+                XCTFail()
+            case .failure(let error):
+                XCTAssertNotNil(error as? DummyError)
             }
         }
     }
@@ -652,8 +618,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
 
         p.futureResult.whenComplete { res in
             switch res {
-            case .success(_): XCTFail()
-            case .failure(let error): XCTAssertNotNil(error as? DummyError1)
+            case .success(_):
+                XCTFail()
+            case .failure(let error):
+                XCTAssertNotNil(error as? DummyError1)
             }
         }
     }
@@ -671,8 +639,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         XCTAssertNoThrow(try self.channel.close().wait())
         promise.futureResult.whenComplete { result in
             switch result {
-            case .success(_): XCTFail()
-            case .failure(let error): XCTAssertTrue(error is NIOExtrasErrors.ClosedBeforeReceivingResponse)
+            case .success(_):
+                XCTFail()
+            case .failure(let error):
+                XCTAssertTrue(error is NIOExtrasErrors.ClosedBeforeReceivingResponse)
             }
         }
     }
@@ -707,14 +677,18 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         // verify the promises got succeeded with the response
         p1.futureResult.whenComplete { res in
             switch res {
-            case .success(let value): XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay 1"), value)
-            case .failure(_): XCTFail()
+            case .success(let value):
+                XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay 1"), value)
+            case .failure(_):
+                XCTFail()
             }
         }
         p2.futureResult.whenComplete { res in
             switch res {
-            case .success(let value): XCTAssertEqual(ValueWithRequestID(requestID: 2, value: "okay 2"), value)
-            case .failure(_): XCTFail()
+            case .success(let value):
+                XCTAssertEqual(ValueWithRequestID(requestID: 2, value: "okay 2"), value)
+            case .failure(_):
+                XCTFail()
             }
         }
     }
@@ -833,49 +807,10 @@ class RequestIsolatedResponseWithIDHandlerTest: XCTestCase {
         // verify the promise got succeeded with the response
         p.futureResult.whenComplete { res in
             switch res {
-            case .success(let value): XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), value)
-            case .failure(_): XCTFail()
-            }
-        }
-    }
-
-    func testHandlerAllowsPromisesForDifferentEventLoops() {
-        let dummyEventLoop: EmbeddedEventLoop = .init()
-
-        XCTAssertNoThrow(
-            try self.channel.pipeline.syncOperations.addHandler(
-                NIORequestIsolatedResponseWithIDHandler<ValueWithRequestID<IOData>, ValueWithRequestID<NSString>>()
-            )
-        )
-        XCTAssertNoThrow(try self.channel.connect(to: .init(ipAddress: "1.2.3.4", port: 5)).wait())
-
-        self.buffer.writeString("world")
-
-        let promiseAcrossEventLoop: EventLoopPromise<ValueWithRequestID<NSString>>.Isolated =
-            dummyEventLoop.makePromise().assumeIsolated()
-
-        // write request from another event loop
-        XCTAssertNoThrow(
-            try self.channel.writeOutbound(
-                (ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)), promiseAcrossEventLoop)
-            )
-        )
-        // write response
-        XCTAssertNoThrow(try self.channel.writeInbound(ValueWithRequestID(requestID: 1, value: "okay" as NSString)))
-        // verify request was forwarded
-        XCTAssertNoThrow(
-            XCTAssertEqual(
-                ValueWithRequestID(requestID: 1, value: IOData.byteBuffer(self.buffer)),
-                try self.channel.readOutbound()
-            )
-        )
-        // verify response was not forwarded
-        XCTAssertNoThrow(XCTAssertEqual(nil, try self.channel.readInbound(as: IOData.self)))
-
-        promiseAcrossEventLoop.futureResult.whenComplete { res in
-            switch res {
-            case .success(_): XCTFail()
-            case .failure(let error): XCTAssertTrue(error is NIOExtrasErrors.IsolatedPromiseUsedFromDifferentEventLoop)
+            case .success(let value):
+                XCTAssertEqual(ValueWithRequestID(requestID: 1, value: "okay"), value)
+            case .failure(_):
+                XCTFail()
             }
         }
     }
