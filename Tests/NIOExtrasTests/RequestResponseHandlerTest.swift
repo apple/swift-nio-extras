@@ -68,7 +68,6 @@ class RequestResponseHandlerTest: XCTestCase {
 
         // read from the empty handler
         XCTAssertThrowsError(try self.channel.writeInbound("should error")) { error in
-            print(error)
             XCTAssertTrue(error is NIOExtrasErrors.ResponsePromiseBufferEmpty)
         }
     }
