@@ -278,9 +278,41 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
     }
 
-    private struct CertificateKeyPair {
+    private struct CertificateKeyPair: Hashable {
         var certificates: [NIOSSLCertificateSource]
         var privateKey: NIOSSLPrivateKeySource
+    }
+
+    /// Provides information about the newly loaded certificate.
+    public struct LoadedInfo: Sendable {
+        public var certificates: [Certificate]
+        public var privateKey: Certificate.PrivateKey
+        public var isNew: Bool
+    }
+
+    public struct Configuration: Sendable {
+        /// The interval at which attempts to update the certificate and private key should be made.
+        public var refreshInterval: Duration
+        /// A ``TimedCertificateReloader/CertificateSource``.
+        public var certificateSource: CertificateSource
+        /// A ``TimedCertificateReloader/PrivateKeySource``.
+        public var privateKeySource: PrivateKeySource
+        /// A logger.
+        public var logger: Logger?
+        /// A closure which will be invoked whenever a certificate is loaded.
+        public var onCertificateLoaded: (@Sendable (LoadedInfo) -> Void)?
+
+        /// Initialize a new ``Configuration``.
+        /// - Parameters:
+        ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+        ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
+        ///   - privateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
+        public init(refreshInterval: Duration, certificateSource: CertificateSource, privateKeySource: PrivateKeySource)
+        {
+            self.refreshInterval = refreshInterval
+            self.certificateSource = certificateSource
+            self.privateKeySource = privateKeySource
+        }
     }
 
     private let refreshInterval: Duration
@@ -288,6 +320,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     private let privateKeySource: PrivateKeySource
     private let state: NIOLockedValueBox<CertificateKeyPair?>
     private let logger: Logger?
+    private let onCertificateLoaded: (@Sendable (LoadedInfo) -> Void)?
 
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
@@ -328,6 +361,23 @@ public struct TimedCertificateReloader: CertificateReloader {
         self.privateKeySource = privateKeySource
         self.state = NIOLockedValueBox(nil)
         self.logger = logger
+        self.onCertificateLoaded = { _ in }
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``.
+    /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
+    /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
+    /// ``TimedCertificateReloader/reload()`` are called.
+    /// - Parameter configuration: Configuration for this reloader.
+    public init(
+        configuration: Configuration
+    ) {
+        self.refreshInterval = configuration.refreshInterval
+        self.certificateSource = configuration.certificateSource
+        self.privateKeySource = configuration.privateKeySource
+        self.state = NIOLockedValueBox(nil)
+        self.logger = configuration.logger
+        self.onCertificateLoaded = configuration.onCertificateLoaded
     }
 
     /// Initialize a new ``TimedCertificateReloader``, and attempt to reload the certificate and private key pair from the given
@@ -472,12 +522,22 @@ public struct TimedCertificateReloader: CertificateReloader {
             bytes: key.serializeAsPEM().derBytes,
             format: .der
         )
-        self.state.withLockedValue {
-            $0 = CertificateKeyPair(
-                certificates: nioSSLCertificates.map { .certificate($0) },
-                privateKey: .privateKey(nioSSLPrivateKey)
-            )
+        let newPair = CertificateKeyPair(
+            certificates: nioSSLCertificates.map { .certificate($0) },
+            privateKey: .privateKey(nioSSLPrivateKey)
+        )
+        let isNew = self.state.withLockedValue {
+            let isNew = $0 != newPair
+            $0 = newPair
+            return isNew
         }
+        self.onCertificateLoaded?(
+            LoadedInfo(
+                certificates: certificates,
+                privateKey: key,
+                isNew: isNew
+            )
+        )
     }
 }
 
