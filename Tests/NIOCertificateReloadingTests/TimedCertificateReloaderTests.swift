@@ -306,16 +306,16 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 // We reload every 50ms and slept 200. There should be 1 reload which has nil previous certs and at least 1 which does not.
                 let updates = updatesBox.withLockedValue { $0 }
                 XCTAssertGreaterThanOrEqual(updates.count, 2)
-                XCTAssertNil(updates.first?.previousCertificates)
+                XCTAssertNil(updates.first?.previousCertificateChain)
                 XCTAssertNil(updates.first?.previousPrivateKey)
                 for update in updates.dropFirst() {
-                    XCTAssertEqual(update.previousCertificates, update.certificates)
-                    XCTAssertEqual(update.previousPrivateKey, update.privateKey)
+                    XCTAssertEqual(update.previousCertificateChain, update.currentCertificateChain)
+                    XCTAssertEqual(update.previousPrivateKey, update.currentPrivateKey)
                 }
                 for updateInfo in updates {
-                    XCTAssertEqual(updateInfo.certificates.count, 1)
-                    XCTAssertEqual(updateInfo.certificates.first, Self.sampleCert)
-                    XCTAssertEqual(updateInfo.privateKey, .init(Self.samplePrivateKey1))
+                    XCTAssertEqual(updateInfo.currentCertificateChain.count, 1)
+                    XCTAssertEqual(updateInfo.currentCertificateChain.first, Self.sampleCert)
+                    XCTAssertEqual(updateInfo.currentPrivateKey, .init(Self.samplePrivateKey1))
                 }
 
                 // Now the overrides should be present.

@@ -289,31 +289,31 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Provides information about a reload.
     public struct LoadedCertificateChainAndKeyPairDiff: Sendable {
         /// The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
-        public var previousCertificates: [Certificate]?
+        public var previousCertificateChain: [Certificate]?
         /// The private which was being used prior to this reload.  This will be nil if this is the first load.
         public var previousPrivateKey: Certificate.PrivateKey?
         /// The certificate chain which has newly been loaded.
-        public var certificates: [Certificate]
+        public var currentCertificateChain: [Certificate]
         /// The private key which has newly been loaded.
-        public var privateKey: Certificate.PrivateKey
+        public var currentPrivateKey: Certificate.PrivateKey
 
         /// Create a new instance.
         /// - Note: You usually do not need to create instances of this object. However, it may be useful for writing unit tests.
         /// - Parameters:
-        ///   - previousCertificates: The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
+        ///   - previousCertificateChain: The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
         ///   - previousPrivateKey: The private which was being used prior to this reload.  This will be nil if this is the first load.
-        ///   - certificates:  The certificate chain which has newly been loaded.
-        ///   - privateKey: The private key which has newly been loaded.
+        ///   - currentCertificateChain:  The certificate chain which has newly been loaded.
+        ///   - currentPrivateKey: The private key which has newly been loaded.
         public init(
-            previousCertificates: [Certificate]?,
+            previousCertificateChain: [Certificate]?,
             previousPrivateKey: Certificate.PrivateKey?,
-            certificates: [Certificate],
-            privateKey: Certificate.PrivateKey
+            currentCertificateChain: [Certificate],
+            currentPrivateKey: Certificate.PrivateKey
         ) {
-            self.previousCertificates = previousCertificates
+            self.previousCertificateChain = previousCertificateChain
             self.previousPrivateKey = previousPrivateKey
-            self.certificates = certificates
-            self.privateKey = privateKey
+            self.currentCertificateChain = currentCertificateChain
+            self.currentPrivateKey = currentPrivateKey
         }
     }
 
@@ -569,10 +569,10 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
         self.onCertificateLoaded?(
             LoadedCertificateChainAndKeyPairDiff(
-                previousCertificates: oldPair?.x509Certificates,
+                previousCertificateChain: oldPair?.x509Certificates,
                 previousPrivateKey: oldPair?.x509Key,
-                certificates: certificates,
-                privateKey: key
+                currentCertificateChain: certificates,
+                currentPrivateKey: key
             )
         )
     }
