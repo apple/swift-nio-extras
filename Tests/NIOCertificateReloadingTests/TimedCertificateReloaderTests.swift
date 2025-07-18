@@ -729,7 +729,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
         onLoaded: (@Sendable (TimedCertificateReloader.LoadedCertificateChainAndKeyPairDiff) -> Void)? = nil,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
-        var config = TimedCertificateReloader.Configuration(
+        let config = TimedCertificateReloader.Configuration(
             refreshInterval: .milliseconds(50),
             certificateSource: .init(
                 location: certificate.location,
