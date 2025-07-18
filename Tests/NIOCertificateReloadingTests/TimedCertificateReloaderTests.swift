@@ -269,7 +269,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
 
     func testReloadSuccessfully_FromMemory() async throws {
         let certificateBox: NIOLockedValueBox<[UInt8]> = NIOLockedValueBox([])
-        let updatesBox = NIOLockedValueBox([TimedCertificateReloader.LoadedInfo]())
+        let updatesBox = NIOLockedValueBox([TimedCertificateReloader.LoadedCertificateChainAndKeyPairDiff]())
         try await runTimedCertificateReloaderTest(
             certificate: .init(
                 location: .memory(provider: {
@@ -303,13 +303,15 @@ final class TimedCertificateReloaderTests: XCTestCase {
 
                 // Give the reload loop some time to run and update the cert-key pair.
                 try await Task.sleep(for: .milliseconds(200), tolerance: .zero)
-                // We reload every 50ms and slept 200. There should be 1 reload which has isNew = true and at least which does not.
+                // We reload every 50ms and slept 200. There should be 1 reload which has nil previous certs and at least 1 which does not.
                 let updates = updatesBox.withLockedValue { $0 }
-                XCTAssertEqual(updates.first?.isNew, true)
-                for update in updates.dropFirst() {
-                    XCTAssertEqual(update.isNew, false)
-                }
                 XCTAssertGreaterThanOrEqual(updates.count, 2)
+                XCTAssertNil(updates.first?.previousCertificates)
+                XCTAssertNil(updates.first?.previousPrivateKey)
+                for update in updates.dropFirst() {
+                    XCTAssertEqual(update.previousCertificates, update.certificates)
+                    XCTAssertEqual(update.previousPrivateKey, update.privateKey)
+                }
                 for updateInfo in updates {
                     XCTAssertEqual(updateInfo.certificates.count, 1)
                     XCTAssertEqual(updateInfo.certificates.first, Self.sampleCert)
@@ -724,7 +726,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
         certificate: TimedCertificateReloader.CertificateSource,
         privateKey: TimedCertificateReloader.PrivateKeySource,
         validateSources: Bool = true,
-        onLoaded: (@Sendable (TimedCertificateReloader.LoadedInfo) -> Void)? = nil,
+        onLoaded: (@Sendable (TimedCertificateReloader.LoadedCertificateChainAndKeyPairDiff) -> Void)? = nil,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         var config = TimedCertificateReloader.Configuration(
@@ -734,8 +736,9 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: certificate.format
             ),
             privateKeySource: .init(location: privateKey.location, format: privateKey.format)
-        )
-        config.onCertificateLoaded = onLoaded
+        ) {
+            $0.onCertificateLoaded = onLoaded
+        }
         let reloader = TimedCertificateReloader(configuration: config)
 
         if validateSources {
