@@ -310,12 +310,16 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 XCTAssertNil(updates.first?.previousPrivateKey)
                 for update in updates.dropFirst() {
                     XCTAssertEqual(update.previousCertificateChain, update.currentCertificateChain)
+                    XCTAssertEqual(update.previousX509CertificateChain, update.currentX509CertificateChain)
                     XCTAssertEqual(update.previousPrivateKey, update.currentPrivateKey)
+                    XCTAssertEqual(update.previousX509PrivateKey, update.currentX509PrivateKey)
                 }
                 for updateInfo in updates {
                     XCTAssertEqual(updateInfo.currentCertificateChain.count, 1)
-                    XCTAssertEqual(updateInfo.currentCertificateChain.first, Self.sampleCert)
-                    XCTAssertEqual(updateInfo.currentPrivateKey, .init(Self.samplePrivateKey1))
+                    XCTAssertEqual(updateInfo.currentCertificateChain, reloader.sslContextConfigurationOverride.certificateChain)
+                    XCTAssertEqual(updateInfo.currentX509CertificateChain.first, Self.sampleCert)
+                    XCTAssertEqual(updateInfo.currentPrivateKey, reloader.sslContextConfigurationOverride.privateKey)
+                    XCTAssertEqual(updateInfo.currentX509PrivateKey, .init(Self.samplePrivateKey1))
                 }
 
                 // Now the overrides should be present.
