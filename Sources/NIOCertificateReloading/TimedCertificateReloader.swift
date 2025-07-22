@@ -102,7 +102,7 @@ import Foundation
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
 ///
 /// Optionally, you may also observe any reloads by specifying the ``TimedCertificateReloader/Configuration/onCertificateLoaded`` parameter.
-/// This will notify you whenever a new certificate is loaded, and you will given an instance of ``TimedCertificateReloader/LoadedCertificateChainAndKeyPairDiff``.
+/// This will notify you whenever a new certificate is loaded, and you will be given an instance of ``TimedCertificateReloader/LoadedCertificateChainAndKeyPairDiff``.
 /// This struct contains the previous certificate and key, as well as the new ones. This is useful for example if you would like to log whenever a new certificate is loaded.
 /// ```swift
 /// let reloaderConfiguration = TimedCertificateReloader.Configuration(

@@ -316,7 +316,10 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 }
                 for updateInfo in updates {
                     XCTAssertEqual(updateInfo.currentCertificateChain.count, 1)
-                    XCTAssertEqual(updateInfo.currentCertificateChain, reloader.sslContextConfigurationOverride.certificateChain)
+                    XCTAssertEqual(
+                        updateInfo.currentCertificateChain,
+                        reloader.sslContextConfigurationOverride.certificateChain
+                    )
                     XCTAssertEqual(updateInfo.currentX509CertificateChain.first, Self.sampleCert)
                     XCTAssertEqual(updateInfo.currentPrivateKey, reloader.sslContextConfigurationOverride.privateKey)
                     XCTAssertEqual(updateInfo.currentX509PrivateKey, .init(Self.samplePrivateKey1))
