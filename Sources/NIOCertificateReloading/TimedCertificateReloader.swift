@@ -100,6 +100,21 @@ import Foundation
 /// not being recognized or not matching the configured one; not being able to verify a certificate's signature against the given
 /// private key; etc), then that attempt will be aborted but the service will keep on trying at the configured interval.
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
+///
+/// Optionally, you may also observe any reloads by specifying the ``TimedCertificateReloader/Configuration/onCertificateLoaded`` parameter.
+/// This will notify you whenever a new certificate is loaded, and you will be given an instance of ``TimedCertificateReloader/LoadedCertificateChainAndKeyPairDiff``.
+/// This struct contains the previous certificate and key, as well as the new ones. This is useful for example if you would like to log whenever a new certificate is loaded.
+/// ```swift
+/// let reloaderConfiguration = TimedCertificateReloader.Configuration(
+///     refreshInterval: .seconds(500),
+///     certificateSource: TimedCertificateReloader.CertificateSource(...),
+///     privateKeySource: TimedCertificateReloader.PrivateKeySource(...)
+/// ) { configuration in
+///     configuration.onCertificateLoaded = { diff in
+///         logger.info("Loaded new certificate", metadata: ["certificate": "\(diff.currentX509CertificateChain)"])
+///     }
+/// }
+/// ```
 #if compiler(>=6.0)
 @available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1, *)
 #else
@@ -278,9 +293,96 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
     }
 
-    private struct CertificateKeyPair {
+    private struct CertificateKeyPair: Hashable {
         var certificates: [NIOSSLCertificateSource]
         var privateKey: NIOSSLPrivateKeySource
+
+        var x509Certificates: [Certificate]
+        var x509Key: Certificate.PrivateKey
+    }
+
+    /// Provides information about a reload.
+    public struct LoadedCertificateChainAndKeyPairDiff: Sendable {
+        /// The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
+        public var previousCertificateChain: [NIOSSLCertificateSource]?
+        /// A swift-certificates representation of the certificate chain which was being used prior to this reload. This will be nil if this is the first load.
+        public var previousX509CertificateChain: [Certificate]?
+        /// The private key which was being used prior to this reload. This will be nil if this is the first load.
+        public var previousPrivateKey: NIOSSLPrivateKeySource?
+        /// A swift-certificates representation of the private key which was being used prior to this reload. This will be nil if this is the first load.
+        public var previousX509PrivateKey: Certificate.PrivateKey?
+
+        /// The certificate chain which has newly been loaded.
+        public var currentCertificateChain: [NIOSSLCertificateSource]
+        /// A swift-certificates representation of the certificate chain which has newly been loaded.
+        public var currentX509CertificateChain: [Certificate]
+        /// The private key which has newly been loaded.
+        public var currentPrivateKey: NIOSSLPrivateKeySource
+        /// A swift-certificates representation of the private key which has newly been loaded.
+        public var currentX509PrivateKey: Certificate.PrivateKey
+
+        /// Create a new instance.
+        /// - Note: You usually do not need to create instances of this object. However, it may be useful for writing unit tests.
+        /// - Parameters:
+        ///   - previousCertificateChain: The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
+        ///   - previousX509CertificateChain: A swift-certificates representation of the certificate chain which was being used prior to this reload. This will be nil if this is the first load.
+        ///   - previousPrivateKey: The private which was being used prior to this reload.  This will be nil if this is the first load.
+        ///   - previousX509PrivateKey: A swift-certificates representation of the private which was being used prior to this reload.  This will be nil if this is the first load.
+        ///   - currentCertificateChain:  The certificate chain which has newly been loaded.
+        ///   - currentX509CertificateChain:  A swift-certificates representation of the certificate chain which has newly been loaded.
+        ///   - currentPrivateKey: The private key which has newly been loaded.
+        ///   - currentX509PrivateKey: A swift-certificates representation of the private key which has newly been loaded.
+        public init(
+            previousCertificateChain: [NIOSSLCertificateSource]?,
+            previousX509CertificateChain: [Certificate]?,
+            previousPrivateKey: NIOSSLPrivateKeySource?,
+            previousX509PrivateKey: Certificate.PrivateKey?,
+            currentCertificateChain: [NIOSSLCertificateSource],
+            currentX509CertificateChain: [Certificate],
+            currentPrivateKey: NIOSSLPrivateKeySource,
+            currentX509PrivateKey: Certificate.PrivateKey
+        ) {
+            self.previousCertificateChain = previousCertificateChain
+            self.previousX509CertificateChain = previousX509CertificateChain
+            self.previousPrivateKey = previousPrivateKey
+            self.previousX509PrivateKey = previousX509PrivateKey
+            self.currentCertificateChain = currentCertificateChain
+            self.currentX509CertificateChain = currentX509CertificateChain
+            self.currentPrivateKey = currentPrivateKey
+            self.currentX509PrivateKey = currentX509PrivateKey
+        }
+    }
+
+    /// Configuration for the ``TimedCertificateReloader``.
+    public struct Configuration: Sendable {
+        /// The interval at which attempts to update the certificate and private key should be made.
+        public var refreshInterval: Duration
+        /// A ``TimedCertificateReloader/CertificateSource``.
+        public var certificateSource: CertificateSource
+        /// A ``TimedCertificateReloader/PrivateKeySource``.
+        public var privateKeySource: PrivateKeySource
+        /// A logger.
+        public var logger: Logger?
+        /// A closure which will be invoked whenever a certificate is loaded.
+        public var onCertificateLoaded: (@Sendable (LoadedCertificateChainAndKeyPairDiff) -> Void)?
+
+        /// Initialize a new ``Configuration``.
+        /// - Parameters:
+        ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+        ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
+        ///   - privateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
+        ///   - configure: A closure in which you can customise the configuration
+        public init(
+            refreshInterval: Duration,
+            certificateSource: CertificateSource,
+            privateKeySource: PrivateKeySource,
+            _ configure: (inout Self) -> Void
+        ) {
+            self.refreshInterval = refreshInterval
+            self.certificateSource = certificateSource
+            self.privateKeySource = privateKeySource
+            configure(&self)
+        }
     }
 
     private let refreshInterval: Duration
@@ -288,6 +390,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     private let privateKeySource: PrivateKeySource
     private let state: NIOLockedValueBox<CertificateKeyPair?>
     private let logger: Logger?
+    private let onCertificateLoaded: (@Sendable (LoadedCertificateChainAndKeyPairDiff) -> Void)?
 
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
@@ -328,6 +431,23 @@ public struct TimedCertificateReloader: CertificateReloader {
         self.privateKeySource = privateKeySource
         self.state = NIOLockedValueBox(nil)
         self.logger = logger
+        self.onCertificateLoaded = { _ in }
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``.
+    /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
+    /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
+    /// ``TimedCertificateReloader/reload()`` are called.
+    /// - Parameter configuration: Configuration for this reloader.
+    public init(
+        configuration: Configuration
+    ) {
+        self.refreshInterval = configuration.refreshInterval
+        self.certificateSource = configuration.certificateSource
+        self.privateKeySource = configuration.privateKeySource
+        self.state = NIOLockedValueBox(nil)
+        self.logger = configuration.logger
+        self.onCertificateLoaded = configuration.onCertificateLoaded
     }
 
     /// Initialize a new ``TimedCertificateReloader``, and attempt to reload the certificate and private key pair from the given
@@ -472,12 +592,29 @@ public struct TimedCertificateReloader: CertificateReloader {
             bytes: key.serializeAsPEM().derBytes,
             format: .der
         )
-        self.state.withLockedValue {
-            $0 = CertificateKeyPair(
-                certificates: nioSSLCertificates.map { .certificate($0) },
-                privateKey: .privateKey(nioSSLPrivateKey)
-            )
+        let newPair = CertificateKeyPair(
+            certificates: nioSSLCertificates.map { .certificate($0) },
+            privateKey: .privateKey(nioSSLPrivateKey),
+            x509Certificates: certificates,
+            x509Key: key
+        )
+        let oldPair = self.state.withLockedValue {
+            let oldPair = $0
+            $0 = newPair
+            return oldPair
         }
+        self.onCertificateLoaded?(
+            LoadedCertificateChainAndKeyPairDiff(
+                previousCertificateChain: oldPair?.certificates,
+                previousX509CertificateChain: oldPair?.x509Certificates,
+                previousPrivateKey: oldPair?.privateKey,
+                previousX509PrivateKey: oldPair?.x509Key,
+                currentCertificateChain: newPair.certificates,
+                currentX509CertificateChain: newPair.x509Certificates,
+                currentPrivateKey: newPair.privateKey,
+                currentX509PrivateKey: newPair.x509Key
+            )
+        )
     }
 }
 
