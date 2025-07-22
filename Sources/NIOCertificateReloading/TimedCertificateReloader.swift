@@ -376,7 +376,7 @@ public struct TimedCertificateReloader: CertificateReloader {
             refreshInterval: Duration,
             certificateSource: CertificateSource,
             privateKeySource: PrivateKeySource,
-            _ configure: (inout Self) -> Void
+            _ configure: (inout Self) -> Void = { _ in }
         ) {
             self.refreshInterval = refreshInterval
             self.certificateSource = certificateSource
@@ -468,12 +468,28 @@ public struct TimedCertificateReloader: CertificateReloader {
         privateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) throws -> Self {
-        let reloader = Self.init(
+        let configuration = Configuration(
             refreshInterval: refreshInterval,
             certificateSource: certificateSource,
-            privateKeySource: privateKeySource,
-            logger: logger
-        )
+            privateKeySource: privateKeySource
+        ) {
+            $0.logger = logger
+        }
+        return try makeReloaderValidatingSources(configuration: configuration)
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``, and attempt to reload the certificate and private key pair from the given
+    /// sources. If the reload fails (because e.g. the paths aren't valid), this method will throw.
+    /// - Important: If this method does not throw, it is guaranteed that
+    /// ``TimedCertificateReloader/sslContextConfigurationOverride`` will contain the configured certificate and
+    /// private key pair, even before the first reload is triggered or ``TimedCertificateReloader/run()`` is called.
+    /// - Parameter configuration: Configuration for the ``TimedCertificateReloader``.
+    /// - Returns: The newly created ``TimedCertificateReloader``.
+    /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
+    public static func makeReloaderValidatingSources(
+        configuration: Configuration
+    ) throws -> Self {
+        let reloader = Self.init(configuration: configuration)
         try reloader.reload()
         return reloader
     }
