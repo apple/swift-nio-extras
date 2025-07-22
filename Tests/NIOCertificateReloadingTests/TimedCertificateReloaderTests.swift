@@ -643,6 +643,71 @@ final class TimedCertificateReloaderTests: XCTestCase {
         )
     }
 
+    /// This tests the first makeReloaderValidatingSources helper function, which takes many parameters.
+    func testCreateValidating() throws {
+        let reloader = try TimedCertificateReloader.makeReloaderValidatingSources(
+            refreshInterval: .milliseconds(50),
+            certificateSource: .init(
+                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                format: .der
+            ),
+            privateKeySource: .init(
+                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                format: .der
+            )
+        )
+        // Cert should have been loaded once already
+        XCTAssertEqual(
+            reloader.sslContextConfigurationOverride.certificateChain,
+            [.certificate(try .init(bytes: Self.sampleCert.serializeAsPEM().derBytes, format: .der))]
+        )
+        XCTAssertEqual(
+            reloader.sslContextConfigurationOverride.privateKey,
+            .privateKey(try .init(bytes: Array(Self.samplePrivateKey1.derRepresentation), format: .der))
+        )
+    }
+
+    /// This tests the other makeReloaderValidatingSources helper function, which takes a configuration.
+    func testCreateValidatingConfig() throws {
+        let config = TimedCertificateReloader.Configuration(
+            refreshInterval: .milliseconds(50),
+            certificateSource: .init(
+                location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
+                format: .der
+            ),
+            privateKeySource: .init(
+                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                format: .der
+            )
+        )
+        let reloader = try TimedCertificateReloader.makeReloaderValidatingSources(configuration: config)
+        // Cert should have been loaded once already
+        XCTAssertEqual(
+            reloader.sslContextConfigurationOverride.certificateChain,
+            [.certificate(try .init(bytes: Self.sampleCert.serializeAsPEM().derBytes, format: .der))]
+        )
+        XCTAssertEqual(
+            reloader.sslContextConfigurationOverride.privateKey,
+            .privateKey(try .init(bytes: Array(Self.samplePrivateKey1.derRepresentation), format: .der))
+        )
+    }
+
+    /// This tests makeReloaderValidatingSources when the sources are not valid.
+    func testCreateValidatingConfigInvalid() throws {
+        let config = TimedCertificateReloader.Configuration(
+            refreshInterval: .milliseconds(50),
+            certificateSource: .init(
+                location: .memory(provider: { Array() }),
+                format: .der
+            ),
+            privateKeySource: .init(
+                location: .memory(provider: { Array() }),
+                format: .der
+            )
+        )
+        XCTAssertThrowsError(try TimedCertificateReloader.makeReloaderValidatingSources(configuration: config))
+    }
+
     static let startDate = Date()
     static let samplePrivateKey1 = P384.Signing.PrivateKey()
     static let samplePrivateKey2 = P384.Signing.PrivateKey()

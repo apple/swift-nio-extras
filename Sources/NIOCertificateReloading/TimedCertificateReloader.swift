@@ -376,7 +376,7 @@ public struct TimedCertificateReloader: CertificateReloader {
             refreshInterval: Duration,
             certificateSource: CertificateSource,
             privateKeySource: PrivateKeySource,
-        _ configure: (inout Self) -> Void = { _ in }
+            _ configure: (inout Self) -> Void = { _ in }
         ) {
             self.refreshInterval = refreshInterval
             self.certificateSource = certificateSource
@@ -462,7 +462,6 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - logger: An optional logger.
     /// - Returns: The newly created ``TimedCertificateReloader``.
     /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
-    @available(*, deprecated, renamed:  "makeReloaderValidatingSources(configuration:logger:)")
     public static func makeReloaderValidatingSources(
         refreshInterval: Duration,
         certificateSource: CertificateSource,
