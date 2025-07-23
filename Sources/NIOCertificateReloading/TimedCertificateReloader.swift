@@ -101,8 +101,12 @@ import Foundation
 /// private key; etc), then that attempt will be aborted but the service will keep on trying at the configured interval.
 /// The last-valid certificate-key pair (if any) will be returned as the ``sslContextConfigurationOverride``.
 ///
+/// Optionally, you may observe such failures by specifying the ``TimedCertificateReloader/Configuration/onCertificateLoadFailed`` parameter.
+/// This will notify you whenever a load fails, and you will be given an instance of ``TimedCertificateReloader/CertificateChainAndKeyPairReloadFailure``.
+/// This struct contains the error which caused the reload to fail.
+///
 /// Optionally, you may also observe any reloads by specifying the ``TimedCertificateReloader/Configuration/onCertificateLoaded`` parameter.
-/// This will notify you whenever a new certificate is loaded, and you will be given an instance of ``TimedCertificateReloader/LoadedCertificateChainAndKeyPairDiff``.
+/// This will notify you whenever a new certificate is loaded, and you will be given an instance of ``TimedCertificateReloader/CertificateChainAndKeyPairReloadDiff``.
 /// This struct contains the previous certificate and key, as well as the new ones. This is useful for example if you would like to log whenever a new certificate is loaded.
 /// ```swift
 /// let reloaderConfiguration = TimedCertificateReloader.Configuration(
@@ -302,7 +306,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 
     /// Provides information about a reload.
-    public struct LoadedCertificateChainAndKeyPairDiff: Sendable {
+    public struct CertificateChainAndKeyPairReloadDiff: Sendable {
         /// The certificate chain which was being used prior to this reload. This will be nil if this is the first load.
         public var previousCertificateChain: [NIOSSLCertificateSource]?
         /// A swift-certificates representation of the certificate chain which was being used prior to this reload. This will be nil if this is the first load.
@@ -353,6 +357,19 @@ public struct TimedCertificateReloader: CertificateReloader {
         }
     }
 
+    /// Provides information about a failed reload.
+    public struct CertificateChainAndKeyPairReloadFailure: Sendable {
+        /// The error thrown when attempting to reload.
+        public var error: any Swift.Error
+
+        /// Create a new instance.
+        /// - Note: You usually do not need to create instances of this object. However, it may be useful for writing unit tests.
+        /// - Parameter error: The error thrown when attempting to reload.
+        public init(error: any Swift.Error) {
+            self.error = error
+        }
+    }
+
     /// Configuration for the ``TimedCertificateReloader``.
     public struct Configuration: Sendable {
         /// The interval at which attempts to update the certificate and private key should be made.
@@ -364,7 +381,9 @@ public struct TimedCertificateReloader: CertificateReloader {
         /// A logger.
         public var logger: Logger?
         /// A closure which will be invoked whenever a certificate is loaded.
-        public var onCertificateLoaded: (@Sendable (LoadedCertificateChainAndKeyPairDiff) -> Void)?
+        public var onCertificateLoaded: (@Sendable (CertificateChainAndKeyPairReloadDiff) -> Void)?
+        /// A closure which will be invoked whenever a certificate fails to load.
+        public var onCertificateLoadFailed: (@Sendable (CertificateChainAndKeyPairReloadFailure) -> Void)?
 
         /// Initialize a new ``Configuration``.
         /// - Parameters:
@@ -390,7 +409,8 @@ public struct TimedCertificateReloader: CertificateReloader {
     private let privateKeySource: PrivateKeySource
     private let state: NIOLockedValueBox<CertificateKeyPair?>
     private let logger: Logger?
-    private let onCertificateLoaded: (@Sendable (LoadedCertificateChainAndKeyPairDiff) -> Void)?
+    private let onCertificateLoaded: (@Sendable (CertificateChainAndKeyPairReloadDiff) -> Void)?
+    private let onCertificateLoadFailed: (@Sendable (CertificateChainAndKeyPairReloadFailure) -> Void)?
 
     /// A `NIOSSLContextConfigurationOverride` that will be used as part of the NIO application's TLS configuration.
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
@@ -426,12 +446,14 @@ public struct TimedCertificateReloader: CertificateReloader {
         privateKeySource: PrivateKeySource,
         logger: Logger? = nil
     ) {
-        self.refreshInterval = refreshInterval
-        self.certificateSource = certificateSource
-        self.privateKeySource = privateKeySource
-        self.state = NIOLockedValueBox(nil)
-        self.logger = logger
-        self.onCertificateLoaded = { _ in }
+        let configuration = Configuration(
+            refreshInterval: refreshInterval,
+            certificateSource: certificateSource,
+            privateKeySource: privateKeySource
+        ) {
+            $0.logger = logger
+        }
+        self.init(configuration: configuration)
     }
 
     /// Initialize a new ``TimedCertificateReloader``.
@@ -448,6 +470,7 @@ public struct TimedCertificateReloader: CertificateReloader {
         self.state = NIOLockedValueBox(nil)
         self.logger = configuration.logger
         self.onCertificateLoaded = configuration.onCertificateLoaded
+        self.onCertificateLoadFailed = configuration.onCertificateLoadFailed
     }
 
     /// Initialize a new ``TimedCertificateReloader``, and attempt to reload the certificate and private key pair from the given
@@ -516,21 +539,26 @@ public struct TimedCertificateReloader: CertificateReloader {
 
     /// Manually attempt a certificate and private key pair update.
     public func reload() throws {
-        let certificateBytes = try self.loadCertificate()
-        let keyBytes = try self.loadPrivateKey()
+        do {
+            let certificateBytes = try self.loadCertificate()
+            let keyBytes = try self.loadPrivateKey()
 
-        let certificates = try self.parseCertificates(from: certificateBytes)
-        let key = try self.parsePrivateKey(from: keyBytes)
+            let certificates = try self.parseCertificates(from: certificateBytes)
+            let key = try self.parsePrivateKey(from: keyBytes)
 
-        guard let firstCertificate = certificates.first else {
-            throw Error.certificateLoadingError(reason: "The provided file does not contain any certificates.")
+            guard let firstCertificate = certificates.first else {
+                throw Error.certificateLoadingError(reason: "The provided file does not contain any certificates.")
+            }
+
+            guard key.publicKey == firstCertificate.publicKey else {
+                throw Error.publicKeyMismatch
+            }
+
+            try self.attemptToUpdatePair(certificates: certificates, key: key)
+        } catch {
+            self.onCertificateLoadFailed?(CertificateChainAndKeyPairReloadFailure(error: error))
+            throw error
         }
-
-        guard key.publicKey == firstCertificate.publicKey else {
-            throw Error.publicKeyMismatch
-        }
-
-        try self.attemptToUpdatePair(certificates: certificates, key: key)
     }
 
     private func loadCertificate() throws -> [UInt8] {
@@ -620,7 +648,7 @@ public struct TimedCertificateReloader: CertificateReloader {
             return oldPair
         }
         self.onCertificateLoaded?(
-            LoadedCertificateChainAndKeyPairDiff(
+            CertificateChainAndKeyPairReloadDiff(
                 previousCertificateChain: oldPair?.certificates,
                 previousX509CertificateChain: oldPair?.x509Certificates,
                 previousPrivateKey: oldPair?.privateKey,
