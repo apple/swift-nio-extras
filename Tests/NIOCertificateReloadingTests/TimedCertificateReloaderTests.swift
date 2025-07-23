@@ -28,7 +28,7 @@ import Foundation
 
 final class TimedCertificateReloaderTests: XCTestCase {
     func testCertificatePathDoesNotExist() async throws {
-        let failureBox = NIOLockedValueBox([TimedCertificateReloader.CertificateLoadFailure]())
+        let failureBox = NIOLockedValueBox([TimedCertificateReloader.CertificateChainAndKeyPairReloadFailure]())
         try await runTimedCertificateReloaderTest(
             certificate: .init(location: .file(path: "doesnotexist"), format: .der),
             privateKey: .init(
@@ -52,7 +52,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     func testCertificatePathDoesNotExist_ValidatingSource() async throws {
-        let failureBox = NIOLockedValueBox([TimedCertificateReloader.CertificateLoadFailure]())
+        let failureBox = NIOLockedValueBox([TimedCertificateReloader.CertificateChainAndKeyPairReloadFailure]())
         do {
             try await runTimedCertificateReloaderTest(
                 certificate: .init(location: .file(path: "doesnotexist"), format: .der),
@@ -291,7 +291,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
 
     func testReloadSuccessfully_FromMemory() async throws {
         let certificateBox: NIOLockedValueBox<[UInt8]> = NIOLockedValueBox([])
-        let updatesBox = NIOLockedValueBox([TimedCertificateReloader.LoadedCertificateChainAndKeyPairDiff]())
+        let updatesBox = NIOLockedValueBox([TimedCertificateReloader.CertificateChainAndKeyPairReloadDiff]())
         try await runTimedCertificateReloaderTest(
             certificate: .init(
                 location: .memory(provider: {
@@ -820,8 +820,8 @@ final class TimedCertificateReloaderTests: XCTestCase {
         certificate: TimedCertificateReloader.CertificateSource,
         privateKey: TimedCertificateReloader.PrivateKeySource,
         validateSources: Bool = true,
-        onLoaded: (@Sendable (TimedCertificateReloader.LoadedCertificateChainAndKeyPairDiff) -> Void)? = nil,
-        onLoadFailed: (@Sendable (TimedCertificateReloader.CertificateLoadFailure) -> Void)? = nil,
+        onLoaded: (@Sendable (TimedCertificateReloader.CertificateChainAndKeyPairReloadDiff) -> Void)? = nil,
+        onLoadFailed: (@Sendable (TimedCertificateReloader.CertificateChainAndKeyPairReloadFailure) -> Void)? = nil,
         _ body: @escaping @Sendable (TimedCertificateReloader) async throws -> Void
     ) async throws {
         let config = TimedCertificateReloader.Configuration(
