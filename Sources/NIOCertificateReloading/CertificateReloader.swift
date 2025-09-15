@@ -89,6 +89,44 @@ extension TLSConfiguration {
         return configuration
     }
 
+    /// Create a ``NIOSSL/TLSConfiguration`` for use with server-side contexts that expect to validate a client, with certificate reloading enabled.
+    /// For servers that don't need mTLS, try ``TLSConfiguration/makeServerConfiguration(certificateReloader:)``.
+    /// This configuration is very similar to ``TLSConfiguration/makeServerConfiguration(certificateReloader:)`` but
+    /// adds a `trustRoots` requirement. These roots will be used to validate the certificate
+    /// presented by the peer. It also sets the ``certificateVerification`` field to
+    /// ``CertificateVerification/noHostnameVerification``, which enables verification but disables
+    /// any hostname checking, which cannot succeed in a server context.
+    ///
+    /// - Parameters:
+    ///  - certificateReloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
+    ///  - trustRoots: The roots used to validate the client certificate.
+    /// - Returns: A ``NIOSSL/TLSConfiguration`` for use with server-side contexts, that reloads the certificate and key
+    /// used in its SSL handshake.
+    /// - Throws: This method will throw if an override isn't present. This may happen if a certificate or private key could not be
+    /// loaded from the given paths.
+    public static func makeServerConfigurationWithMTLS(
+        certificateReloader: some CertificateReloader,
+        trustRoots: NIOSSLTrustRoots
+    ) throws -> Self {
+        let override = certificateReloader.sslContextConfigurationOverride
+
+        guard let certificateChain = override.certificateChain else {
+            throw CertificateReloaderError.missingCertificateChain
+        }
+
+        guard let privateKey = override.privateKey else {
+            throw CertificateReloaderError.missingPrivateKey
+        }
+
+        var configuration = Self.makeServerConfigurationWithMTLS(
+            certificateChain: certificateChain,
+            privateKey: privateKey,
+            trustRoots: trustRoots
+        )
+        configuration.setCertificateReloader(certificateReloader)
+        return configuration
+    }
+
     /// Create a ``NIOSSL/TLSConfiguration`` for use with client-side contexts, with certificate reloading enabled.
     /// - Parameter certificateReloader: A ``CertificateReloader`` to watch for certificate and key pair updates.
     /// - Returns: A ``NIOSSL/TLSConfiguration`` for use with client-side contexts, that reloads the certificate and key
