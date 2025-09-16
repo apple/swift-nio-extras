@@ -93,7 +93,7 @@ extension TLSConfiguration {
     /// For servers that don't need mTLS, try ``TLSConfiguration/makeServerConfiguration(certificateReloader:)``.
     /// This configuration is very similar to ``TLSConfiguration/makeServerConfiguration(certificateReloader:)`` but
     /// adds a `trustRoots` requirement. These roots will be used to validate the certificate
-    /// presented by the peer. It also sets the ``certificateVerification`` field to
+    /// presented by the peer. It also sets the ``TLSConfiguration/certificateVerification`` field to
     /// ``CertificateVerification/noHostnameVerification``, which enables verification but disables
     /// any hostname checking, which cannot succeed in a server context.
     ///
