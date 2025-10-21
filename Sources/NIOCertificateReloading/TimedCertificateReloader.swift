@@ -119,11 +119,7 @@ import Foundation
 ///     }
 /// }
 /// ```
-#if compiler(>=6.0)
 @available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1, *)
-#else
-@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, *)
-#endif
 public struct TimedCertificateReloader: CertificateReloader {
     /// The encoding for the certificate or the key.
     public struct Encoding: Sendable, Hashable {
@@ -662,9 +658,5 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 }
 
-#if compiler(>=6.0)
 @available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, visionOS 1, *)
-#else
-@available(macOS 13, iOS 16, watchOS 9, tvOS 16, macCatalyst 16, *)
-#endif
 extension TimedCertificateReloader: Service {}

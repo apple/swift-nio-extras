@@ -123,8 +123,4 @@ extension DebugInboundEventsHandler.Event {
     }
 }
 
-#if compiler(>=6.0)
 extension DebugInboundEventsHandler.Event: Equatable {}
-#else
-extension DebugInboundEventsHandler.Event: Equatable {}
-#endif

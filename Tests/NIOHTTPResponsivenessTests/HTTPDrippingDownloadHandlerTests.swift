@@ -69,6 +69,9 @@ final class HTTPDrippingDownloadHandlerTests: XCTestCase {
         delay: TimeAmount = .seconds(5),
         code: HTTPResponse.Status = .ok
     ) throws {
+        #if compiler(>=6.2) && compiler(<6.3) && !canImport(Darwin)
+        throw XCTSkip("Runtime has runtime crashes that make this test useless on non-Apple platforms")
+        #else
         let eventLoop = EmbeddedEventLoop()
         let channel = EmbeddedChannel(
             handler: HTTPDrippingDownloadHandler(
@@ -128,6 +131,7 @@ final class HTTPDrippingDownloadHandlerTests: XCTestCase {
         }
 
         let _ = try channel.finish()
+        #endif
     }
 
 }
