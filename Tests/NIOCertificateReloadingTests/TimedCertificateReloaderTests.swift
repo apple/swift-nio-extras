@@ -730,6 +730,56 @@ final class TimedCertificateReloaderTests: XCTestCase {
         XCTAssertThrowsError(try TimedCertificateReloader.makeReloaderValidatingSources(configuration: config))
     }
 
+    /// This tests that `makeServerConfigurationWithMTLS(certificateReloader:trustRoots:)` correctly extracts the
+    /// certificate chain and private key from `certificateReloader` and sets those in the returned `TLSConfiguration`
+    /// (along with `trustRoots` and setting `.certificateVerification` to `.noHostnameVerification`)
+    func testCreateServerConfigWithMTLS() async throws {
+        let certificateReloader = try TimedCertificateReloader.makeReloaderValidatingSources(
+            refreshInterval: .seconds(10),
+            certificateSource: .init(
+                location: .memory(provider: {
+                    .init(
+                        try Self.sampleCertChain.map { try $0.serializeAsPEM().pemString }.joined(separator: "\n").utf8
+                    )
+                }),
+                format: .pem
+            ),
+            privateKeySource: .init(
+                location: .memory(provider: { .init(Self.samplePrivateKey1.derRepresentation) }),
+                format: .der
+            )
+        )
+
+        let trustRoots = NIOSSLTrustRoots.certificates(
+            try Self.sampleCertChain.map {
+                try NIOSSLCertificate(bytes: .init($0.serializeAsPEM().pemString.utf8), format: .pem)
+            }
+        )
+
+        let tlsConfiguration = try TLSConfiguration.makeServerConfigurationWithMTLS(
+            certificateReloader: certificateReloader,
+            trustRoots: trustRoots
+        )
+
+        // Check whether the configuration is set up with the same certificate chain, private key, and trust roots
+        // that were used to initialize the reloader
+        XCTAssertEqual(
+            tlsConfiguration.certificateChain,
+            try Self.sampleCertChain.map {
+                .certificate(try NIOSSLCertificate(bytes: $0.serializeAsPEM().derBytes, format: .der))
+            }
+        )
+        XCTAssertEqual(
+            tlsConfiguration.privateKey,
+            NIOSSLPrivateKeySource.privateKey(
+                try NIOSSLPrivateKey(bytes: .init(Self.samplePrivateKey1.derRepresentation), format: .der)
+            )
+        )
+        XCTAssertEqual(tlsConfiguration.trustRoots, trustRoots)
+
+        XCTAssertEqual(tlsConfiguration.certificateVerification, .noHostnameVerification)
+    }
+
     static let startDate = Date()
     static let samplePrivateKey1 = P384.Signing.PrivateKey()
     static let samplePrivateKey2 = P384.Signing.PrivateKey()
