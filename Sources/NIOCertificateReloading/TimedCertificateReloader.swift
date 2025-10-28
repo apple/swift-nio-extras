@@ -321,6 +321,16 @@ public struct TimedCertificateReloader: CertificateReloader {
         /// A swift-certificates representation of the private key which has newly been loaded.
         public var currentX509PrivateKey: Certificate.PrivateKey
 
+        /// Whether the contents of the certificate chain changed in this reload.
+        public var didCertificateChainChange: Bool {
+            self.previousCertificateChain != self.currentCertificateChain
+        }
+
+        /// Whether the contents of the private key changed in this reload.
+        public var didPrivateKeyChange: Bool {
+            self.previousPrivateKey != self.currentPrivateKey
+        }
+
         /// Create a new instance.
         /// - Note: You usually do not need to create instances of this object. However, it may be useful for writing unit tests.
         /// - Parameters:

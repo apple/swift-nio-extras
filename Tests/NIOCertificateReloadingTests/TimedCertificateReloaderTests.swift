@@ -780,6 +780,54 @@ final class TimedCertificateReloaderTests: XCTestCase {
         XCTAssertEqual(tlsConfiguration.certificateVerification, .noHostnameVerification)
     }
 
+    /// This tests the correctness of the `didCertificateChainChange` and `didPrivateKeyChange` properties on
+    /// ``CertificateChainAndKeyPairReloadDiff``
+    func testReloadDiffDidChange() async throws {
+        let certificateFile = try self.createTempFile(contents: Data())
+        let privateKeyFile = try self.createTempFile(contents: Data())
+
+        let numTimesReloaded: NIOLockedValueBox<Int> = .init(0)
+
+        let reloader = TimedCertificateReloader(
+            configuration: .init(
+                refreshInterval: .milliseconds(50),
+                certificateSource: .init(location: .file(path: certificateFile.path), format: .der),
+                privateKeySource: .init(location: .file(path: privateKeyFile.path), format: .der)
+            ) { config in
+                config.onCertificateLoaded = { diff in
+                    numTimesReloaded.withLockedValue { numReloads in
+                        if numReloads == 1 {
+                            XCTAssertEqual(diff.didCertificateChainChange, true)
+                            XCTAssertEqual(diff.didPrivateKeyChange, true)
+                        } else if numReloads == 2 {
+                            XCTAssertEqual(diff.didCertificateChainChange, false)
+                            XCTAssertEqual(diff.didPrivateKeyChange, false)
+                        } else if numReloads == 3 {
+                            XCTAssertEqual(diff.didCertificateChainChange, true)
+                            XCTAssertEqual(diff.didPrivateKeyChange, false)
+                        }
+                    }
+                }
+            }
+        )
+
+        // Update the files to contain data
+        try Data(try Self.sampleCert.serializeAsPEM().derBytes).write(to: certificateFile)
+        try Self.samplePrivateKey1.derRepresentation.write(to: privateKeyFile)
+
+        numTimesReloaded.withLockedValue { $0 += 1 }
+        try reloader.reload()  // numReloads == 1: Both the cert chain and private key changed
+
+        numTimesReloaded.withLockedValue { $0 += 1 }
+        try reloader.reload()  // numReloads == 2: No change
+
+        // Change the certificate file contents, but not the private key contents (same private key used for both certs)
+        try Data(try Self.sampleCertNotSelfSigned.serializeAsPEM().derBytes).write(to: certificateFile)
+
+        numTimesReloaded.withLockedValue { $0 += 1 }
+        try reloader.reload()  // numReloads == 3: Certificate chain changed; private key did not change
+    }
+
     static let startDate = Date()
     static let samplePrivateKey1 = P384.Signing.PrivateKey()
     static let samplePrivateKey2 = P384.Signing.PrivateKey()
