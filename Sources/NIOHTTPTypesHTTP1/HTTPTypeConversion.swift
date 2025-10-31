@@ -15,6 +15,12 @@
 import HTTPTypes
 import NIOHTTP1
 
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
+
 public struct HTTP1TypeConversionError: Error, Equatable {
     private enum Internal {
         case invalidMethod
@@ -160,8 +166,32 @@ extension HTTPFields {
 
 extension HTTPRequestHead {
     public init(_ newRequest: HTTPRequest) throws {
-        guard let path = newRequest.method == .connect ? newRequest.authority : newRequest.path else {
-            throw HTTP1TypeConversionError.missingPath
+        try self.init(newRequest, absoluteForm: false)
+    }
+
+    public init(_ newRequest: HTTPRequest, absoluteForm: Bool) throws {
+        let uri: String
+        if newRequest.method == .connect {
+            if let authority = newRequest.authority {
+                uri = authority
+            } else {
+                throw HTTP1TypeConversionError.missingPath
+            }
+        } else if !absoluteForm {
+            if let path = newRequest.path {
+                uri = path
+            } else {
+                throw HTTP1TypeConversionError.missingPath
+            }
+        } else {
+            if let scheme = newRequest.scheme,
+                let authority = newRequest.authority,
+                let path = newRequest.path
+            {
+                uri = "\(scheme)://\(authority)\(path)"
+            } else {
+                throw HTTP1TypeConversionError.missingPath
+            }
         }
         var headers = HTTPHeaders()
         headers.reserveCapacity(newRequest.headerFields.count + 1)
@@ -182,7 +212,7 @@ extension HTTPRequestHead {
         self.init(
             version: .http1_1,
             method: HTTPMethod(newRequest.method),
-            uri: path,
+            uri: uri,
             headers: headers
         )
     }
@@ -193,11 +223,21 @@ extension HTTPRequest {
         let method = try Method(oldRequest.method)
         let scheme = secure ? "https" : "http"
         let authority = oldRequest.headers["Host"].first
+        let path: String
+        if let url = URLComponents(string: oldRequest.uri),
+            url.rangeOfScheme != nil,  // Absolute URL
+            let pathRange = url.rangeOfPath,
+            let urlString = url.string
+        {
+            path = String(urlString[pathRange.lowerBound...])
+        } else {
+            path = oldRequest.uri
+        }
         self.init(
             method: method,
             scheme: scheme,
             authority: authority,
-            path: oldRequest.uri,
+            path: path,
             headerFields: HTTPFields(oldRequest.headers, splitCookie: splitCookie)
         )
     }

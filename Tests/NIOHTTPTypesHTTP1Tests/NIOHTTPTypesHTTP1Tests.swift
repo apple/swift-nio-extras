@@ -91,6 +91,20 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         ]
     )
 
+    static let oldRequestAbsolute = HTTPRequestHead(
+        version: .http1_1,
+        method: .GET,
+        uri: "https://www.example.com/",
+        headers: [
+            "Host": "www.example.com",
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip",
+            "Accept-Encoding": "br",
+            "Cookie": "a=b; c=d",
+            "Trailer": "X-Foo",
+        ]
+    )
+
     static let response = HTTPResponse(
         status: .ok,
         headerFields: [
@@ -189,6 +203,28 @@ final class NIOHTTPTypesHTTP1Tests: XCTestCase {
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPResponsePart.self), .head(Self.response))
         XCTAssertEqual(try self.channel.readOutbound(as: HTTPResponsePart.self), .end(Self.trailers))
 
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testClientHTTP1ToHTTPAbsolute() throws {
+        let recorder = InboundRecorder<HTTPResponsePart>()
+
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP1ToHTTPClientCodec(absoluteForm: true), recorder)
+
+        try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
+
+        XCTAssertEqual(try self.channel.readOutbound(as: HTTPClientRequestPart.self), .head(Self.oldRequestAbsolute))
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testServerHTTP1ToHTTPAbsolute() throws {
+        let recorder = InboundRecorder<HTTPRequestPart>()
+
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP1ToHTTPServerCodec(secure: true), recorder)
+
+        try self.channel.writeInbound(HTTPServerRequestPart.head(Self.oldRequestAbsolute))
+
+        XCTAssertEqual(recorder.receivedFrames[0], .head(Self.requestNoSplitCookie))
         XCTAssertTrue(try self.channel.finish().isClean)
     }
 }

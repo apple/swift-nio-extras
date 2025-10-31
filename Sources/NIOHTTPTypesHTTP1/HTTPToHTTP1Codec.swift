@@ -93,14 +93,25 @@ public final class HTTPToHTTP1ServerCodec: ChannelDuplexHandler, RemovableChanne
     public typealias OutboundIn = HTTPServerResponsePart
     public typealias OutboundOut = HTTPResponsePart
 
+    private let absoluteForm: Bool
+
     /// Initializes a `HTTPToHTTP1ServerCodec`.
-    public init() {}
+    public init() {
+        self.absoluteForm = false
+    }
+
+    /// Initializes a `HTTPToHTTP1ServerCodec`.
+    /// - Parameters:
+    ///   - absoluteForm: Whether the request should use the absolute-form (for cleartext HTTP proxies).
+    public init(absoluteForm: Bool) {
+        self.absoluteForm = absoluteForm
+    }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         switch self.unwrapInboundIn(data) {
         case .head(let head):
             do {
-                let oldRequest = try HTTPRequestHead(head)
+                let oldRequest = try HTTPRequestHead(head, absoluteForm: self.absoluteForm)
                 context.fireChannelRead(self.wrapInboundOut(.head(oldRequest)))
             } catch {
                 context.fireErrorCaught(error)
