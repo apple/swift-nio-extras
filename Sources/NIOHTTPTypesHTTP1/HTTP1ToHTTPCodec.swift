@@ -26,8 +26,19 @@ public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler, RemovableChanne
     public typealias OutboundIn = HTTPRequestPart
     public typealias OutboundOut = HTTPClientRequestPart
 
+    private let absoluteForm: Bool
+
     /// Initializes a `HTTP1ToHTTPClientCodec`.
-    public init() {}
+    public init() {
+        self.absoluteForm = false
+    }
+
+    /// Initializes a `HTTP1ToHTTPClientCodec`.
+    /// - Parameters:
+    ///   - absoluteForm: Whether the request should use the absolute-form (for cleartext HTTP proxies).
+    public init(absoluteForm: Bool) {
+        self.absoluteForm = absoluteForm
+    }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         switch self.unwrapInboundIn(data) {
@@ -50,7 +61,7 @@ public final class HTTP1ToHTTPClientCodec: ChannelDuplexHandler, RemovableChanne
         switch self.unwrapOutboundIn(data) {
         case .head(let request):
             do {
-                let oldRequest = try HTTPRequestHead(request)
+                let oldRequest = try HTTPRequestHead(request, absoluteForm: self.absoluteForm)
                 context.write(self.wrapOutboundOut(.head(oldRequest)), promise: promise)
             } catch {
                 context.fireErrorCaught(error)
