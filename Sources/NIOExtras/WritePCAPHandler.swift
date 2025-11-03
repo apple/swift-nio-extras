@@ -617,8 +617,13 @@ extension ByteBuffer {
             self.writeInteger(.max, as: UInt8.self)  // TTL, `.max` as we don't care about the TTL
             self.writeInteger(6, as: UInt8.self)  // TCP
             self.writeInteger(0, as: UInt16.self)  // checksum
+            #if os(Windows)
+            self.writeInteger(la.address.sin_addr.S_un.S_addr, endianness: .host, as: UInt32.self)
+            self.writeInteger(ra.address.sin_addr.S_un.S_addr, endianness: .host, as: UInt32.self)
+            #else
             self.writeInteger(la.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
             self.writeInteger(ra.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
+            #endif
         case .v6(let la, let ra):
             let ipv6PayloadLength = tcpLength
             let recordLength = ipv6PayloadLength + 4 + 40  // IPv6 header length (+4 gives 32 bits for protocol id)
@@ -812,7 +817,7 @@ extension NIOWritePCAPHandler {
                                 guard r > 0 else {
                                     throw Error.init(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                                 }
-                                return r
+                                return Int(r)
                             }
                         }
                     }
