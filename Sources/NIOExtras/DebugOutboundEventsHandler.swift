@@ -20,6 +20,8 @@ import Darwin
 @preconcurrency import Musl
 #elseif canImport(Android)
 @preconcurrency import Android
+#elseif canImport(ucrt)
+@preconcurrency import ucrt
 #else
 @preconcurrency import Glibc
 #endif
