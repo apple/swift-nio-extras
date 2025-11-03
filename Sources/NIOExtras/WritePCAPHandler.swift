@@ -24,6 +24,7 @@ import Musl
 import Android
 #elseif canImport(ucrt)
 import ucrt
+import WinSDK
 #else
 import Glibc
 #endif
