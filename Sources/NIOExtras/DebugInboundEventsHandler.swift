@@ -177,6 +177,10 @@ public class DebugInboundEventsHandler: ChannelInboundHandler {
             message = "Channel caught error: \(error)"
         }
         print(message + " in \(context.name)")
+
+        #if os(Windows)
+        let stdout = __acrt_iob_func(1)
+        #endif
         fflush(stdout)
     }
 }
