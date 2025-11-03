@@ -738,7 +738,12 @@ extension NIOWritePCAPHandler {
 
             if fileWritingMode == .createNewPCAPFile {
                 let writeOk = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
-                    sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
+                    #if os(Windows)
+                    let size = UInt32(ptr.count)
+                    #else
+                    let size = ptr.count
+                    #endif
+                    sysWrite(fd, ptr.baseAddress, size) == size
                 }
                 guard writeOk else {
                     throw SynchronizedFileSink.Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
@@ -797,8 +802,13 @@ extension NIOWritePCAPHandler {
                         var buffer = buffer
                         while buffer.readableBytes > 0 {
                             try buffer.readWithUnsafeReadableBytes { dataPtr in
-                                let r = sysWrite(fd, dataPtr.baseAddress, dataPtr.count)
-                                assert(r != 0, "write returned 0 but we tried to write \(dataPtr.count) bytes")
+                                #if os(Windows)
+                                let size = UInt32(dataPtr.count)
+                                #else
+                                let size = dataPtr.count
+                                #endif
+                                let r = sysWrite(fd, dataPtr.baseAddress, size)
+                                assert(r != 0, "write returned 0 but we tried to write \(size) bytes")
                                 guard r > 0 else {
                                     throw Error.init(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                                 }

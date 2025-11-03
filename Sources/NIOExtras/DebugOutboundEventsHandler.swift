@@ -173,6 +173,9 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
             message = "Triggering user outbound event: { \(event) }"
         }
         print(message + " in \(context.name)")
+        #if os(Windows)
+        let stdout = __acrt_iob_func(1)
+        #endif
         fflush(stdout)
     }
 }
