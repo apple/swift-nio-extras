@@ -21,7 +21,7 @@ import Darwin
 import Musl
 #elseif canImport(Android)
 import Android
-#elseif canImport(ucrt)
+#elseif os(Windows)
 import ucrt
 import WinSDK
 #else
