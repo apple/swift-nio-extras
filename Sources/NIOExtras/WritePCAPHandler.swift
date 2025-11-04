@@ -26,7 +26,7 @@ import Android
 import ucrt
 import WinSDK
 
-fileprivate func gettimeofday(_ tp: inout timeval) {
+fileprivate func gettimeofday(_ tp: inout timeval, _ tzp: Never?) {
     var file_time = FILETIME()
     var system_time = SYSTEMTIME()
     var time: UInt64 = 0
@@ -132,11 +132,7 @@ struct PCAPRecordHeader {
 
     init(payloadLength: Int, addresses: AddressTuple, tcp: TCPHeader) {
         var tv = timeval()
-        #if os(Windows)
-        gettimeofday(&tv)
-        #else
         gettimeofday(&tv, nil)
-        #endif
         self = .init(payloadLength: payloadLength, addresses: addresses, time: tv, tcp: tcp)
     }
 }
