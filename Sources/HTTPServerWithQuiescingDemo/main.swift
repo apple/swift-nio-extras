@@ -136,5 +136,4 @@ private func runServer() throws {
 try runServer()
 #else
 print("This demo is not supported on Windows.")
-exit(1)
 #endif
