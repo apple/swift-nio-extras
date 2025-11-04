@@ -219,20 +219,42 @@ extension HTTPRequestHead {
 }
 
 extension HTTPRequest {
+    private static func requestPath(from oldPath: String) -> String {
+        guard let components = URLComponents(string: oldPath),
+              let urlString = components.string,
+              components.rangeOfScheme != nil
+        else {
+            return oldPath
+        }
+
+        let pathRange = components.rangeOfPath
+        let queryRange = components.rangeOfQuery
+        let requestPathRange: Range<String.Index>?
+        if let lowerBound = pathRange?.lowerBound ?? queryRange?.lowerBound,
+           let upperBound = queryRange?.upperBound ?? pathRange?.upperBound
+        {
+            requestPathRange = lowerBound..<upperBound
+        } else {
+            requestPathRange = nil
+        }
+        let path: String
+        if let pathRange, !pathRange.isEmpty, let requestPathRange {
+            path = String(urlString[requestPathRange])
+        } else {
+            if let requestPathRange, !requestPathRange.isEmpty {
+                path = "/\(urlString[requestPathRange])"
+            } else {
+                path = "/"
+            }
+        }
+        return path
+    }
+
     public init(_ oldRequest: HTTPRequestHead, secure: Bool, splitCookie: Bool) throws {
         let method = try Method(oldRequest.method)
         let scheme = secure ? "https" : "http"
         let authority = oldRequest.headers["Host"].first
-        let path: String
-        if let url = URLComponents(string: oldRequest.uri),
-            url.rangeOfScheme != nil,  // Absolute URL
-            let pathRange = url.rangeOfPath,
-            let urlString = url.string
-        {
-            path = String(urlString[pathRange.lowerBound...])
-        } else {
-            path = oldRequest.uri
-        }
+        let path = Self.requestPath(from: oldRequest.uri)
         self.init(
             method: method,
             scheme: scheme,
