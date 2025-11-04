@@ -221,8 +221,8 @@ extension HTTPRequestHead {
 extension HTTPRequest {
     private static func requestPath(from oldPath: String) -> String {
         guard let components = URLComponents(string: oldPath),
-              let urlString = components.string,
-              components.rangeOfScheme != nil
+            let urlString = components.string,
+            components.rangeOfScheme != nil
         else {
             return oldPath
         }
@@ -231,7 +231,7 @@ extension HTTPRequest {
         let queryRange = components.rangeOfQuery
         let requestPathRange: Range<String.Index>?
         if let lowerBound = pathRange?.lowerBound ?? queryRange?.lowerBound,
-           let upperBound = queryRange?.upperBound ?? pathRange?.upperBound
+            let upperBound = queryRange?.upperBound ?? pathRange?.upperBound
         {
             requestPathRange = lowerBound..<upperBound
         } else {
