@@ -22,6 +22,27 @@ import Darwin
 import Musl
 #elseif canImport(Android)
 import Android
+#elseif canImport(ucrt)
+import ucrt
+import WinSDK
+
+fileprivate func gettimeofday(_ tp: inout timeval, _ tzp: Never?) {
+    var file_time = FILETIME()
+    var system_time = SYSTEMTIME()
+    var time: UInt64 = 0
+
+    // This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
+    // until 00:00:00 January 1, 1970 
+    let epoch: UInt64 = 116444736000000000
+
+    GetSystemTime(&system_time);
+    SystemTimeToFileTime(&system_time, &file_time);
+    time =  UInt64(file_time.dwLowDateTime)
+    time += UInt64(file_time.dwHighDateTime) << 32
+
+    tp.tv_sec = Int32((time - epoch) / 10000000)
+    tp.tv_usec = Int32(system_time.wMilliseconds * 1000)
+}
 #else
 import Glibc
 #endif
@@ -614,8 +635,13 @@ extension ByteBuffer {
             self.writeInteger(.max, as: UInt8.self)  // TTL, `.max` as we don't care about the TTL
             self.writeInteger(6, as: UInt8.self)  // TCP
             self.writeInteger(0, as: UInt16.self)  // checksum
+            #if os(Windows)
+            self.writeInteger(la.address.sin_addr.S_un.S_addr, endianness: .host, as: UInt32.self)
+            self.writeInteger(ra.address.sin_addr.S_un.S_addr, endianness: .host, as: UInt32.self)
+            #else
             self.writeInteger(la.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
             self.writeInteger(ra.address.sin_addr.s_addr, endianness: .host, as: UInt32.self)
+            #endif
         case .v6(let la, let ra):
             let ipv6PayloadLength = tcpLength
             let recordLength = ipv6PayloadLength + 4 + 40  // IPv6 header length (+4 gives 32 bits for protocol id)
@@ -724,6 +750,15 @@ extension NIOWritePCAPHandler {
             fileWritingMode: FileWritingMode = .createNewPCAPFile,
             errorHandler: @escaping (Swift.Error) -> Void
         ) throws -> SynchronizedFileSink {
+            #if os(Windows)
+            let fd = try path.withCString(encodedAs: UTF16.self) { pathPtr -> CInt in
+                let fd = _wsopen_s(nil, pathPtr, _O_WRONLY | (fileWritingMode == FileWritingMode.createNewPCAPFile ? (_O_TRUNC | _O_CREAT) : _O_APPEND), _SH_DENYNO, _S_IREAD | _S_IWRITE)
+                guard fd >= 0 else {
+                    throw SynchronizedFileSink.Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue)
+                }
+                return fd
+            }
+            #else
             let oflag: CInt = fileWritingMode == FileWritingMode.createNewPCAPFile ? (O_TRUNC | O_CREAT) : O_APPEND
             let fd = try path.withCString { pathPtr -> CInt in
                 let fd = open(pathPtr, O_WRONLY | oflag, 0o600)
@@ -732,10 +767,16 @@ extension NIOWritePCAPHandler {
                 }
                 return fd
             }
+            #endif
 
             if fileWritingMode == .createNewPCAPFile {
                 let writeOk = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
-                    sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
+                    #if os(Windows)
+                    let size = UInt32(ptr.count)
+                    #else
+                    let size = ptr.count
+                    #endif
+                    return sysWrite(fd, ptr.baseAddress, size) == size
                 }
                 guard writeOk else {
                     throw SynchronizedFileSink.Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
@@ -794,12 +835,17 @@ extension NIOWritePCAPHandler {
                         var buffer = buffer
                         while buffer.readableBytes > 0 {
                             try buffer.readWithUnsafeReadableBytes { dataPtr in
-                                let r = sysWrite(fd, dataPtr.baseAddress, dataPtr.count)
-                                assert(r != 0, "write returned 0 but we tried to write \(dataPtr.count) bytes")
+                                #if os(Windows)
+                                let size = UInt32(dataPtr.count)
+                                #else
+                                let size = dataPtr.count
+                                #endif
+                                let r = sysWrite(fd, dataPtr.baseAddress, size)
+                                assert(r != 0, "write returned 0 but we tried to write \(size) bytes")
                                 guard r > 0 else {
                                     throw Error.init(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
                                 }
-                                return r
+                                return Int(r)
                             }
                         }
                     }
