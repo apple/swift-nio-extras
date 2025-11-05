@@ -140,10 +140,10 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
 
         // If the length isn't too big, let's include a content length header
         if case (let contentLength, false) = self.size.multipliedReportingOverflow(by: self.count) {
-            head.headerFields = HTTPFields(dictionaryLiteral: (.contentLength, "\(contentLength)"))
+            head.headerFields[.contentLength] = "\(contentLength)"
         }
 
-        context.writeAndFlush(self.wrapOutboundOut(.head(head)), promise: nil)
+        context.write(self.wrapOutboundOut(.head(head)), promise: nil)
         self.phase = .dripping(
             DrippingState(
                 chunksLeft: self.count,
