@@ -14,6 +14,7 @@
 
 import CNIOLinux
 import Dispatch
+import NIOConcurrencyHelpers
 import NIOCore
 
 #if canImport(Darwin)
@@ -810,6 +811,103 @@ extension NIOWritePCAPHandler {
             }
         }
     }
+    public final class AsynchronizedFileSink {
+        private let fileHandle: NIOFileHandle
+        private let eventLoop: EventLoop
+        private let errorHandler: @Sendable (Swift.Error) -> Void
+        private let state: NIOLockedValueBox<State> = NIOLockedValueBox(.running)
+
+        public enum FileWritingMode {
+            case appendToExistingPCAPFile
+            case createNewPCAPFile
+        }
+
+        public struct Error: Swift.Error {
+            public var errorCode: Int
+
+            internal enum ErrorCode: Int {
+                case cannotOpenFileError = 1
+                case cannotWriteToFileError
+            }
+        }
+
+        private enum State {
+            case running
+            case error(Swift.Error)
+        }
+
+        /// Creates an AsynchronizedFileSink for writing to a .pcap file at the given path.
+        /// If fileWritingMode is `.createNewPCAPFile`, a file header is written.
+        public static func fileSinkWritingToFile(
+            path: String,
+            fileWritingMode: FileWritingMode = .createNewPCAPFile,
+            errorHandler: @escaping @Sendable (Swift.Error) -> Void,
+            on eventLoop: EventLoop
+        ) async throws -> AsynchronizedFileSink {
+            let oflag: CInt = fileWritingMode == .createNewPCAPFile ? (O_TRUNC | O_CREAT) : O_APPEND
+            let fd: CInt = path.withCString { pathPtr in
+                open(pathPtr, O_WRONLY | oflag, 0o600)
+            }
+            if fd < 0 {
+                throw Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue)
+            }
+
+            /// Write PCAP file header
+            if fileWritingMode == .createNewPCAPFile {
+                let writeOk: Bool = NIOWritePCAPHandler.pcapFileHeader.withUnsafeReadableBytes { ptr in
+                    sysWrite(fd, ptr.baseAddress, ptr.count) == ptr.count
+                }
+                if !writeOk {
+                    throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
+                }
+            }
+
+            let fileHandle: NIOFileHandle = NIOFileHandle(_deprecatedTakingOwnershipOfDescriptor: fd)
+            return AsynchronizedFileSink(fileHandle: fileHandle, eventLoop: eventLoop, errorHandler: errorHandler)
+        }
+
+        private init(
+            fileHandle: NIOFileHandle,
+            eventLoop: EventLoop,
+            errorHandler: @escaping @Sendable (Swift.Error) -> Void
+        ) {
+            self.fileHandle = fileHandle
+            self.eventLoop = eventLoop
+            self.errorHandler = errorHandler
+        }
+
+        public func write(buffer: ByteBuffer) async throws {
+            try self.fileHandle.withUnsafeFileDescriptor { fd in
+                var buffer = buffer
+                while buffer.readableBytes > 0 {
+                    try buffer.readWithUnsafeReadableBytes { dataPtr in
+                        let written = sysWrite(fd, dataPtr.baseAddress, dataPtr.count)
+                        guard written > 0 else {
+                            throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
+                        }
+                        return written
+                    }
+                }
+            }
+        }
+
+        /// Syncs the file to disk using fsync.
+        public func asyncSync() async throws {
+            try self.fileHandle.withUnsafeFileDescriptor { fd in
+                let result: CInt = fsync(fd)
+                if result != 0 {
+                    throw Error(errorCode: Error.ErrorCode.cannotWriteToFileError.rawValue)
+                }
+            }
+        }
+
+        /// Closes the file sink.
+        public func close() async throws {
+            try self.fileHandle.close()
+            print("File successfully closed.")
+        }
+    }
 }
 
 extension NIOWritePCAPHandler.SynchronizedFileSink: @unchecked Sendable {}
+extension NIOWritePCAPHandler.AsynchronizedFileSink: Sendable {}
