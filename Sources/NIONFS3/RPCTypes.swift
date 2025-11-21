@@ -180,7 +180,7 @@ public enum RPCRejectedReply: Hashable & Sendable {
 public enum RPCErrors: Error {
     case unknownType(UInt32)
     case tooLong(RPCFragmentHeader, xid: UInt32, messageType: UInt32)
-    case fragementHeaderLengthTooShort(UInt32)
+    case fragmentHeaderLengthTooShort(UInt32)
     case unknownVerifier(UInt32)
     case unknownVersion(UInt32)
     case invalidAuthFlavor(UInt32)

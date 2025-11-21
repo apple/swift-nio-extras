@@ -531,7 +531,7 @@ extension ByteBuffer {
         }
 
         guard fragmentHeader.length >= 8 else {
-            throw RPCErrors.fragementHeaderLengthTooShort(fragmentHeader.length)
+            throw RPCErrors.fragmentHeaderLengthTooShort(fragmentHeader.length)
         }
 
         guard var body = self.readSlice(length: Int(fragmentHeader.length - 8)) else {
