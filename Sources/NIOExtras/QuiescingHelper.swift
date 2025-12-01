@@ -95,10 +95,12 @@ private struct LifecycleStateMachine: ~Copyable {
 
             precondition(removedChannel != nil, "channel not in ChannelCollector")
 
-            self = .init(.shuttingDown(
-                openChannels: openChannels,
-                fullyShutdownPromise: fullyShutdownPromise
-            ))
+            self = .init(
+                .shuttingDown(
+                    openChannels: openChannels,
+                    fullyShutdownPromise: fullyShutdownPromise
+                )
+            )
 
             if openChannels.isEmpty {
                 return self.shutdownCompleted()
@@ -112,7 +114,11 @@ private struct LifecycleStateMachine: ~Copyable {
     }
 
     enum InitiateShutdownAction: ~Copyable {
-        case fireQuiesceEvents(serverChannel: any Channel, fullyShutdownPromise: EventLoopPromise<Void>, openChannels: [ObjectIdentifier: any Channel])
+        case fireQuiesceEvents(
+            serverChannel: any Channel,
+            fullyShutdownPromise: EventLoopPromise<Void>,
+            openChannels: [ObjectIdentifier: any Channel]
+        )
         case cascadePromise(fullyShutdownPromise: EventLoopPromise<Void>, cascadeTo: EventLoopPromise<Void>?)
         case succeedPromise
     }
@@ -122,9 +128,13 @@ private struct LifecycleStateMachine: ~Copyable {
             let fullyShutdownPromise = promise ?? serverChannel.eventLoop.makePromise(of: Void.self)
 
             self = .init(.shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise))
-            return .fireQuiesceEvents(serverChannel: serverChannel, fullyShutdownPromise: fullyShutdownPromise, openChannels: openChannels)
+            return .fireQuiesceEvents(
+                serverChannel: serverChannel,
+                fullyShutdownPromise: fullyShutdownPromise,
+                openChannels: openChannels
+            )
 
-        case .shuttingDown(openChannels: let openChannels, let fullyShutdownPromise):
+        case .shuttingDown(let openChannels, let fullyShutdownPromise):
             self = .init(.shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise))
             return .cascadePromise(fullyShutdownPromise: fullyShutdownPromise, cascadeTo: promise)
 
@@ -213,7 +223,7 @@ private final class ChannelCollector {
         switch self.lifecycleState.initiateShutdown(promise) {
         case .none:
             ()
-        case .fireQuiesceEvents(serverChannel: let serverChannel, fullyShutdownPromise: let fullyShutdownPromise, openChannels: let openChannels):
+        case .fireQuiesceEvents(let serverChannel, let fullyShutdownPromise, let openChannels):
             serverChannel.pipeline.fireUserInboundEventTriggered(ChannelShouldQuiesceEvent())
             serverChannel.close().cascadeFailure(to: fullyShutdownPromise)
 
@@ -227,7 +237,7 @@ private final class ChannelCollector {
                 self.shutdownCompleted()
             }
 
-        case .cascadePromise(fullyShutdownPromise: let fullyShutdownPromise, cascadeTo: let cascadeTo):
+        case .cascadePromise(let fullyShutdownPromise, let cascadeTo):
             fullyShutdownPromise.futureResult.cascade(to: cascadeTo)
 
         case .succeedPromise:
