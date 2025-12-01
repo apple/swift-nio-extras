@@ -45,7 +45,7 @@ private struct LifecycleStateMachine: ~Copyable {
         case fireChannelShouldQuiesce
         case closeChannelAndThrowError
     }
-    mutating func channelAdded(_ channel: consuming any Channel) -> ChannelAddedAction? {
+    mutating func channelAdded(_ channel: any Channel) -> ChannelAddedAction? {
         switch consume self.state {
         case .upAndRunning(var openChannels, let serverChannel):
             openChannels[ObjectIdentifier(channel)] = channel
@@ -80,7 +80,7 @@ private struct LifecycleStateMachine: ~Copyable {
         }
     }
 
-    mutating func channelRemoved(_ channel: consuming any Channel) -> ShutdownCompletedAction? {
+    mutating func channelRemoved(_ channel: any Channel) -> ShutdownCompletedAction? {
         switch consume self.state {
         case .upAndRunning(var openChannels, let serverChannel):
             let removedChannel = openChannels.removeValue(forKey: ObjectIdentifier(channel))
