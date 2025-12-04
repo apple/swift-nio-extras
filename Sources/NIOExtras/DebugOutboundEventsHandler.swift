@@ -20,6 +20,8 @@ import Darwin
 @preconcurrency import Musl
 #elseif canImport(Android)
 @preconcurrency import Android
+#elseif canImport(ucrt)
+@preconcurrency import ucrt
 #else
 @preconcurrency import Glibc
 #endif
@@ -171,6 +173,9 @@ public class DebugOutboundEventsHandler: ChannelOutboundHandler {
             message = "Triggering user outbound event: { \(event) }"
         }
         print(message + " in \(context.name)")
+        #if os(Windows)
+        let stdout = __acrt_iob_func(1)
+        #endif
         fflush(stdout)
     }
 }
