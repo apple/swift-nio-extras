@@ -227,8 +227,15 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NIOResumableUploadTests",
         dependencies: [
-            "NIOResumableUpload",
+            .target(name: "NIOResumableUpload"),
+            .target(name: "NIOHTTPTypes"),
+            .target(name: "NIOHTTPTypesHTTP1"),
+            .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
         ],
         swiftSettings: strictConcurrencySettings
     ),
