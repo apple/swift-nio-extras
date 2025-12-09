@@ -18,8 +18,8 @@ private enum ShutdownError: Error {
     case alreadyShutdown
 }
 
-private struct LifecycleStateMachine: ~Copyable {
-    enum LifecycleState: ~Copyable {
+private struct LifecycleStateMachine {
+    enum LifecycleState {
         case upAndRunning(
             openChannels: [ObjectIdentifier: Channel],
             serverChannel: Channel
@@ -29,6 +29,7 @@ private struct LifecycleStateMachine: ~Copyable {
             fullyShutdownPromise: EventLoopPromise<Void>
         )
         case shutdownCompleted
+        case modifying
     }
 
     private var state: LifecycleState
@@ -46,13 +47,17 @@ private struct LifecycleStateMachine: ~Copyable {
         case closeChannelAndThrowError
     }
     mutating func channelAdded(_ channel: any Channel) -> ChannelAddedAction? {
-        switch consume self.state {
-        case .upAndRunning(var openChannels, let serverChannel):
+        switch self.state {
+        case .upAndRunning(let openChannels, let serverChannel):
+            self = .init(.modifying)
+            var openChannels = openChannels
             openChannels[ObjectIdentifier(channel)] = channel
             self = .init(.upAndRunning(openChannels: openChannels, serverChannel: serverChannel))
             return nil
 
-        case .shuttingDown(var openChannels, let fullyShutdownPromise):
+        case .shuttingDown(let openChannels, let fullyShutdownPromise):
+            self = .init(.modifying)
+            var openChannels = openChannels
             openChannels[ObjectIdentifier(channel)] = channel
             self = .init(.shuttingDown(openChannels: openChannels, fullyShutdownPromise: fullyShutdownPromise))
             return .fireChannelShouldQuiesce
@@ -60,6 +65,9 @@ private struct LifecycleStateMachine: ~Copyable {
         case .shutdownCompleted:
             self = .init(.shutdownCompleted)
             return .closeChannelAndThrowError
+
+        case .modifying:
+            preconditionFailure("Should not be called when in modifying state")
         }
     }
 
@@ -67,7 +75,7 @@ private struct LifecycleStateMachine: ~Copyable {
         case succeedShutdownPromise(EventLoopPromise<Void>)
     }
     mutating func shutdownCompleted() -> ShutdownCompletedAction {
-        switch consume self.state {
+        switch self.state {
         case .upAndRunning:
             preconditionFailure("This can never happen because we transition to shuttingDown first")
 
@@ -77,12 +85,17 @@ private struct LifecycleStateMachine: ~Copyable {
 
         case .shutdownCompleted:
             preconditionFailure("We should only complete the shutdown once")
+
+        case .modifying:
+            preconditionFailure("Should not be called when in modifying state")
         }
     }
 
     mutating func channelRemoved(_ channel: any Channel) -> ShutdownCompletedAction? {
-        switch consume self.state {
-        case .upAndRunning(var openChannels, let serverChannel):
+        switch self.state {
+        case .upAndRunning(let openChannels, let serverChannel):
+            self = .init(.modifying)
+            var openChannels = openChannels
             let removedChannel = openChannels.removeValue(forKey: ObjectIdentifier(channel))
 
             precondition(removedChannel != nil, "channel not in ChannelCollector")
@@ -90,7 +103,9 @@ private struct LifecycleStateMachine: ~Copyable {
             self = .init(.upAndRunning(openChannels: openChannels, serverChannel: serverChannel))
             return nil
 
-        case .shuttingDown(var openChannels, let fullyShutdownPromise):
+        case .shuttingDown(let openChannels, let fullyShutdownPromise):
+            self = .init(.modifying)
+            var openChannels = openChannels
             let removedChannel = openChannels.removeValue(forKey: ObjectIdentifier(channel))
 
             precondition(removedChannel != nil, "channel not in ChannelCollector")
@@ -110,6 +125,9 @@ private struct LifecycleStateMachine: ~Copyable {
 
         case .shutdownCompleted:
             preconditionFailure("We should not have channels removed after transitioned to completed")
+
+        case .modifying:
+            preconditionFailure("Should not be called when in modifying state")
         }
     }
 
@@ -123,7 +141,7 @@ private struct LifecycleStateMachine: ~Copyable {
         case succeedPromise
     }
     mutating func initiateShutdown(_ promise: consuming EventLoopPromise<Void>?) -> InitiateShutdownAction? {
-        switch consume self.state {
+        switch self.state {
         case .upAndRunning(let openChannels, let serverChannel):
             let fullyShutdownPromise = promise ?? serverChannel.eventLoop.makePromise(of: Void.self)
 
@@ -141,6 +159,9 @@ private struct LifecycleStateMachine: ~Copyable {
         case .shutdownCompleted:
             self = .init(.shutdownCompleted)
             return .succeedPromise
+
+        case .modifying:
+            preconditionFailure("Should not be called when in modifying state")
         }
     }
 }
