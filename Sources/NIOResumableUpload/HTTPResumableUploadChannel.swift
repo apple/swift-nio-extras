@@ -72,6 +72,7 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore, @unchecked Sendabl
         parent: Channel,
         channelConfigurator: (Channel) -> Void
     ) {
+        precondition(upload.eventLoop === parent.eventLoop)
         self.upload = upload
         self.allocator = parent.allocator
         self.closePromise = parent.eventLoop.makePromise()
@@ -160,19 +161,23 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore, @unchecked Sendabl
     }
 
     func write0(_ data: NIOAny, promise: EventLoopPromise<Void>?) {
-        self.upload.loopBoundUpload.value.write(unwrapData(data), promise: promise)
+        // The upload is bound to the same EL as this channel so this is safe.
+        self.upload.assertingCorrectEventLoop.write(unwrapData(data), promise: promise)
     }
 
     func flush0() {
-        self.upload.loopBoundUpload.value.flush()
+        // The upload is bound to the same EL as this channel so this is safe.
+        self.upload.assertingCorrectEventLoop.flush()
     }
 
     func read0() {
-        self.upload.loopBoundUpload.value.read()
+        // The upload is bound to the same EL as this channel so this is safe.
+        self.upload.assertingCorrectEventLoop.read()
     }
 
     func close0(error: Error, mode: CloseMode, promise: EventLoopPromise<Void>?) {
-        self.upload.loopBoundUpload.value.close(mode: mode, promise: promise)
+        // The upload is bound to the same EL as this channel so this is safe.
+        self.upload.assertingCorrectEventLoop.close(mode: mode, promise: promise)
     }
 
     func triggerUserOutboundEvent0(_ event: Any, promise: EventLoopPromise<Void>?) {

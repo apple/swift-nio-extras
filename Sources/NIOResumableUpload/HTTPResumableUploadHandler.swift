@@ -72,7 +72,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         }
         let upload = self.createUpload()
         upload.scheduleOnEventLoop(self.eventLoop)
-        upload.attachUploadHandler(self, channel: context.channel)
+        upload.attachUploadHandler(self.sendableView, channel: context.channel)
         self.upload = upload.sendableView
         self.shouldReset = false
     }
@@ -151,5 +151,67 @@ extension HTTPResumableUploadHandler {
 
     func detach() {
         self.context = nil
+    }
+}
+
+extension HTTPResumableUploadHandler {
+    var sendableView: SendableView {
+        SendableView(self)
+    }
+
+    struct SendableView: Sendable {
+        private let handler: NIOLoopBound<HTTPResumableUploadHandler>
+        let id: ObjectIdentifier
+
+        fileprivate init(_ handler: HTTPResumableUploadHandler) {
+            self.handler = NIOLoopBound(handler, eventLoop: handler.eventLoop)
+            self.id = ObjectIdentifier(handler)
+        }
+
+        func withHandler(_ body: @Sendable @escaping (HTTPResumableUploadHandler) -> Void) {
+            if self.handler.eventLoop.inEventLoop {
+                body(self.handler.value)
+            } else {
+                self.handler.eventLoop.execute {
+                    body(self.handler.value)
+                }
+            }
+        }
+
+        func write(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
+            self.withHandler {
+                $0.context?.write($0.wrapOutboundOut(part), promise: promise)
+            }
+        }
+
+        func flush() {
+            self.withHandler {
+                $0.context?.flush()
+            }
+        }
+
+        func writeAndFlush(_ part: HTTPResponsePart, promise: EventLoopPromise<Void>?) {
+            self.withHandler {
+                $0.context?.writeAndFlush($0.wrapOutboundOut(part), promise: promise)
+            }
+        }
+
+        func read() {
+            self.withHandler {
+                $0.context?.read()
+            }
+        }
+
+        func close(mode: CloseMode, promise: EventLoopPromise<Void>?) {
+            self.withHandler {
+                $0.context?.close(mode: mode, promise: promise)
+            }
+        }
+
+        func detach() {
+            self.withHandler {
+                $0.context = nil
+            }
+        }
     }
 }
