@@ -36,6 +36,9 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "SwiftASN1", package: "swift-asn1"),
+            .product(name: "X509", package: "swift-certificates"),
         ],
         swiftSettings: strictConcurrencySettings
     ),
