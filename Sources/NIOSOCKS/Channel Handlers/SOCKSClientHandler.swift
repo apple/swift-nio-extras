@@ -54,6 +54,7 @@ public final class SOCKSClientHandler: ChannelDuplexHandler {
 
     public func channelActive(context: ChannelHandlerContext) {
         self.beginHandshake(context: context)
+        context.fireChannelActive()
     }
 
     /// Add handler to pipeline and start handshake.
