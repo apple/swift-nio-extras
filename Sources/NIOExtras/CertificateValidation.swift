@@ -20,7 +20,14 @@ import X509
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Certificate {
     fileprivate init(_ certificate: NIOSSLCertificate) throws {
-        try self.init(derEncoded: certificate.toDERBytes()[...])
+        try self.init(derEncoded: certificate.toDERBytes())
+    }
+}
+
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension NIOSSLCertificate {
+    fileprivate convenience init(_ cert: Certificate) throws {
+        try self.init(bytes: cert.serializeAsPEM().derBytes, format: .der)
     }
 }
 
@@ -30,7 +37,7 @@ extension Verifier {
     public mutating func validate(
         chain: [NIOSSLCertificate],
         diagnosticCallback: ((VerificationDiagnostic) -> Void)?
-    ) async -> NIOSSLVerificationResult {
+    ) async -> NIOSSLVerificationResultWithMetadata {
         guard let nioLeaf = chain.first else {
             return .failed
         }
@@ -50,8 +57,15 @@ extension Verifier {
             diagnosticCallback: diagnosticCallback
         )
         switch result {
-        case .validCertificate:
-            return .certificateVerified
+        case .validCertificate(let validatedChain):
+            do {
+                // This won't throw in practise
+                let validatedNioChain = try validatedChain.map { try NIOSSLCertificate($0) }
+                let metadata = VerificationMetadata(ValidatedCertificateChain(validatedNioChain))
+                return .certificateVerified(metadata)
+            } catch {
+                return .failed
+            }
         case .couldNotValidate:
             return .failed
         }

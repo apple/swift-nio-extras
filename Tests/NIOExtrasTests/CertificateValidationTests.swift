@@ -47,10 +47,11 @@ struct CertificateValidationTests {
         }
         let nioChain = try testChain.fullChain.map { try NIOSSLCertificate($0) }
 
-        let result = await verifier.validate(chain: nioChain, diagnosticCallback: { print("\($0)") })
-        #expect(result == .certificateVerified)
+        let result = await verifier.validate(chain: nioChain, diagnosticCallback: nil)
+        #expect(result == .certificateVerified(.init(.init(nioChain))))
         policy.lastSeenChain.withLockedValue { lastSeenChain in
             #expect(lastSeenChain?.leaf == .init(testChain.leaf))
+            #expect(lastSeenChain?.last == .init(testChain.ca))
         }
     }
 
@@ -81,6 +82,7 @@ struct CertificateValidationTests {
         #expect(result == .failed)
         policy.lastSeenChain.withLockedValue { lastSeenChain in
             #expect(lastSeenChain?.leaf == .init(testChain.leaf))
+            #expect(lastSeenChain?.last == .init(testChain.ca))
         }
     }
 
