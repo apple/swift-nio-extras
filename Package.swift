@@ -36,9 +36,6 @@ var targets: [PackageDescription.Target] = [
             .product(name: "NIO", package: "swift-nio"),
             .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOHTTP1", package: "swift-nio"),
-            .product(name: "NIOSSL", package: "swift-nio-ssl"),
-            .product(name: "SwiftASN1", package: "swift-asn1"),
-            .product(name: "X509", package: "swift-certificates"),
         ],
         swiftSettings: strictConcurrencySettings
     ),
@@ -287,6 +284,28 @@ var targets: [PackageDescription.Target] = [
         ],
         swiftSettings: strictConcurrencySettings
     ),
+    .target(
+        name: "NIOCertificateHelpers",
+        dependencies: [
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "SwiftASN1", package: "swift-asn1"),
+            .product(name: "X509", package: "swift-certificates"),
+        ],
+        swiftSettings: strictConcurrencySettings
+    ),
+    .testTarget(
+        name: "NIOCertificateHelpersTests",
+        dependencies: [
+            "NIOCertificateHelpers",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "X509", package: "swift-certificates"),
+            .product(name: "SwiftASN1", package: "swift-asn1"),
+            .product(name: "Crypto", package: "swift-crypto"),
+        ],
+        swiftSettings: strictConcurrencySettings
+    ),
 ]
 
 let package = Package(
@@ -315,6 +334,7 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
 
     ],
     targets: targets

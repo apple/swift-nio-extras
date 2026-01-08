@@ -33,7 +33,11 @@ extension NIOSSLCertificate {
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Verifier {
-    /// This function bridges NIOSSL into swift-certificates. It means we can use a VerifierPolicy as a NIOSSL callback
+    /// This function bridges NIOSSL into swift-certificates.
+    /// It is useful for using a VerifierPolicy as a NIOSSL custom verification callback.
+    /// - Parameters:
+    ///  - chain: The NIOSSL certificates to be verified
+    ///  - diagnosticCallback: A callback you can use to get diagnostics during validation.
     public mutating func validate(
         chain: [NIOSSLCertificate],
         diagnosticCallback: ((VerificationDiagnostic) -> Void)?

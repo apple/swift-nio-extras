@@ -14,12 +14,10 @@
 
 import Crypto
 import Foundation
-import Logging
 import NIOConcurrencyHelpers
-import NIOExtras
+import NIOCertificateHelpers
 import NIOSSL
 import SwiftASN1
-import Synchronization
 import Testing
 import X509
 
