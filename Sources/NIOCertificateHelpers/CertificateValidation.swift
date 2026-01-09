@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2017-2021 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2026 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -27,7 +27,9 @@ extension Certificate {
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension NIOSSLCertificate {
     fileprivate convenience init(_ cert: Certificate) throws {
-        try self.init(bytes: cert.serializeAsPEM().derBytes, format: .der)
+        var serializer = DER.Serializer()
+        try cert.serialize(into: &serializer)
+        try self.init(bytes: serializer.serializedBytes, format: .der)
     }
 }
 
