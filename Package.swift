@@ -328,7 +328,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
-        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.10.0"),
+        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.14.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.34.0"),
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.3.1"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.8.0"),

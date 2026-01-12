@@ -58,7 +58,7 @@ extension Verifier {
         }
 
         let result = await self.validate(
-            leafCertificate: x509Leaf,
+            leaf: x509Leaf,
             intermediates: .init(x509Chain),
             diagnosticCallback: diagnosticCallback
         )

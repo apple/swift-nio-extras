@@ -14,8 +14,8 @@
 
 import Crypto
 import Foundation
-import NIOConcurrencyHelpers
 import NIOCertificateHelpers
+import NIOConcurrencyHelpers
 import NIOSSL
 import SwiftASN1
 import Testing
