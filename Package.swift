@@ -320,6 +320,7 @@ let package = Package(
         .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
         .library(name: "NIOHTTPResponsiveness", targets: ["NIOHTTPResponsiveness"]),
         .library(name: "NIOCertificateReloading", targets: ["NIOCertificateReloading"]),
+        .library(name: "NIOCertificateHelpers", targets: ["NIOCertificateHelpers"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
