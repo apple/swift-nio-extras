@@ -77,9 +77,9 @@ final class HTTPResumableUploadChannel: Channel, ChannelCore, @unchecked Sendabl
         self.allocator = parent.allocator
         self.closePromise = parent.eventLoop.makePromise()
         self.eventLoop = parent.eventLoop
-        // Only support Channels that implement sync options
-        let autoRead = try! parent.syncOptions!.getOption(ChannelOptions.autoRead)
-        self.autoRead = NIOLoopBound(autoRead, eventLoop: eventLoop)
+        // Only support Channels that implement sync options, but catch errors if e.g. parent is closed already.
+        let autoRead = try? parent.syncOptions!.getOption(ChannelOptions.autoRead)
+        self.autoRead = NIOLoopBound(autoRead ?? false, eventLoop: eventLoop)
         self._pipeline = ChannelPipeline(channel: self)
         channelConfigurator(self)
     }
