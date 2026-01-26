@@ -323,7 +323,7 @@ let package = Package(
         .library(name: "NIOCertificateHelpers", targets: ["NIOCertificateHelpers"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", branch: "refs/pull/3495/head"),
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.2.0"),
