@@ -639,6 +639,35 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel3.finish().isClean)
         XCTAssertTrue(try channel.finish().isClean)
     }
+
+    func testChannelInitHandlesParentThrowingOnOptionsRead() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart, Never>()
+
+        // Close the channel before we even get going.
+        try channel.close().wait()
+
+        // Opt into the throwing behaviour (similar to socket-based channels).
+        channel.allowOptionsWhenClosed = false
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
+
+        // Send a request.
+        let request = HTTPRequest(method: .get, scheme: "https", authority: "example.com", path: "/")
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        // Check recorder was called, which means the outer channel handler was created and called.
+        XCTAssertEqual(recorder.receivedFrames.count, 2)
+        XCTAssertEqual(recorder.receivedFrames[0], HTTPRequestPart.head(request))
+        XCTAssertEqual(recorder.receivedFrames[1], HTTPRequestPart.end(nil))
+
+        // Tolerate the channel being already closed -- we closed it :)
+        XCTAssertTrue(try channel.finish(acceptAlreadyClosed: true).isClean)
+    }
 }
 
 extension HTTPField.Name {
