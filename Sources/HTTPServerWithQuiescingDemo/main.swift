@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(Windows)
 import Dispatch
 import NIOCore
 import NIOExtras
@@ -133,3 +134,6 @@ private func runServer() throws {
 }
 
 try runServer()
+#else
+print("This demo is not supported on Windows.")
+#endif
