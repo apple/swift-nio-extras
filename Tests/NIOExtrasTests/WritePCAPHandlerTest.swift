@@ -16,6 +16,7 @@ import CNIOLinux
 import Foundation
 import NIOCore
 import NIOEmbedded
+import NIOPosix
 import XCTest
 
 @testable import NIOExtras
@@ -816,6 +817,37 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertTrue(try channel.finish().isClean))
     }
 
+    func testAsynchronizedFileSinkWritesDataToFile() async throws {
+        let testHostname: String = "testhost"
+        let filePath: String =
+            "/tmp/packets-\(testHostname)-\(UUID())-\(getpid())-\(Int(Date().timeIntervalSince1970)).pcap"
+
+        let eventLoop: EmbeddedEventLoop = EmbeddedEventLoop()
+
+        let fileSink: NIOWritePCAPHandler.AsynchronizedFileSink = try await NIOWritePCAPHandler.AsynchronizedFileSink
+            .fileSinkWritingToFile(
+                path: filePath,
+                fileWritingMode: .createNewPCAPFile,
+                errorHandler: { error in XCTFail("PCAP logging error: \(error)") },
+                on: eventLoop
+            )
+
+        // Write test data directly using the file sink.
+        var buffer = ByteBufferAllocator().buffer(capacity: 64)
+        buffer.writeString("Test PCAP data")
+        try await fileSink.write(buffer: buffer)
+
+        // Sync and then close the file sink.
+        try await fileSink.asyncSync()
+        try await fileSink.close()
+
+        // Verify that the file exists and contains data.
+        let fileData = try Data(contentsOf: URL(fileURLWithPath: filePath))
+        XCTAssertGreaterThan(fileData.count, 0, "PCAP file should contain data")
+
+        // Clean up the temporary file.
+        try FileManager.default.removeItem(atPath: filePath)
+    }
 }
 
 struct PCAPRecord {
