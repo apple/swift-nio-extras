@@ -110,8 +110,8 @@ var targets: [PackageDescription.Target] = [
     .target(
         name: "CNIOExtrasZlib",
         dependencies: [],
-        linkerSettings: [
-            .linkedLibrary("z")
+        cSettings: [
+            .define("HAVE_HIDDEN")
         ]
     ),
     .testTarget(

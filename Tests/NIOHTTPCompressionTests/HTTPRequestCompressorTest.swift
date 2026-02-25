@@ -145,7 +145,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         _ = try write(body: [buffer], to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -167,7 +167,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         try write(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -189,7 +189,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         try write(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressDeflate(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressDeflate(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "deflate")
@@ -211,7 +211,7 @@ class HTTPRequestCompressorTest: XCTestCase {
         try writeWithIntermittantFlush(body: buffers, to: channel)
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffersConcat.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffersConcat, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -240,7 +240,7 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -267,7 +267,7 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -299,7 +299,7 @@ class HTTPRequestCompressorTest: XCTestCase {
 
         var result = try read(from: channel)
         var uncompressedBuffer = ByteBufferAllocator().buffer(capacity: buffer.readableBytes)
-        z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
+        cnioextras_z_stream.decompressGzip(compressedBytes: &result.body, outputBuffer: &uncompressedBuffer)
 
         XCTAssertEqual(buffer, uncompressedBuffer)
         XCTAssertEqual(result.head.headers["content-encoding"].first, "gzip")
@@ -373,7 +373,7 @@ extension ByteBuffer {
     }
 }
 
-extension z_stream {
+extension cnioextras_z_stream {
     fileprivate static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
         decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 15)
     }
@@ -386,7 +386,7 @@ extension z_stream {
     {
         compressedBytes.withUnsafeMutableReadableUInt8Bytes { inputPointer in
             outputBuffer.writeWithUnsafeMutableUInt8Bytes { outputPointer -> Int in
-                var stream = z_stream()
+                var stream = cnioextras_z_stream()
 
                 // zlib requires we initialize next_in, avail_in, zalloc, zfree and opaque before calling inflateInit2.
                 stream.next_in = inputPointer.baseAddress!
@@ -398,14 +398,14 @@ extension z_stream {
                 stream.opaque = nil
 
                 var rc = CNIOExtrasZlib_inflateInit2(&stream, windowSize)
-                precondition(rc == Z_OK)
+                precondition(rc == CNIOEXTRAS_Z_OK)
 
-                rc = inflate(&stream, Z_FINISH)
-                XCTAssertEqual(rc, Z_STREAM_END)
+                rc = cnioextras_z_inflate(&stream, CNIOEXTRAS_Z_FINISH)
+                XCTAssertEqual(rc, CNIOEXTRAS_Z_STREAM_END)
                 XCTAssertEqual(stream.avail_in, 0)
 
-                rc = inflateEnd(&stream)
-                XCTAssertEqual(rc, Z_OK)
+                rc = cnioextras_z_inflateEnd(&stream)
+                XCTAssertEqual(rc, CNIOEXTRAS_Z_OK)
 
                 return outputPointer.count - Int(stream.avail_out)
             }
