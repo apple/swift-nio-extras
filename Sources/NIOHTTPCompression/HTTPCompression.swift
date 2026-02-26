@@ -107,7 +107,7 @@ public enum NIOCompression: Sendable {
             // some compression algorithms and so it should be used only when necessary. This completes the current deflate block and
             // follows it with an empty stored block that is three bits plus filler bits to the next byte, followed by four bytes
             // (00 00 ff ff).
-            let bufferSize = Int(deflateBound(&stream, UInt(inputBuffer.readableBytes)))
+            let bufferSize = Int(deflateBound(&stream, .init(inputBuffer.readableBytes)))
             var outputBuffer = allocator.buffer(capacity: bufferSize + 5)
             stream.oneShotDeflate(from: &inputBuffer, to: &outputBuffer, flag: flags)
             return outputBuffer
