@@ -361,7 +361,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
     }
 
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
-        var stream = z_stream()
+        var stream = cnioextras_z_stream()
 
         stream.zalloc = nil
         stream.zfree = nil
@@ -382,13 +382,13 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         let rc = CNIOExtrasZlib_deflateInit2(
             &stream,
-            Z_DEFAULT_COMPRESSION,
-            Z_DEFLATED,
+            CNIOEXTRAS_Z_DEFAULT_COMPRESSION,
+            CNIOEXTRAS_Z_DEFLATED,
             windowBits,
             8,
-            Z_DEFAULT_STRATEGY
+            CNIOEXTRAS_Z_DEFAULT_STRATEGY
         )
-        XCTAssertEqual(Z_OK, rc)
+        XCTAssertEqual(CNIOEXTRAS_Z_OK, rc)
 
         defer {
             stream.avail_in = 0
@@ -416,15 +416,15 @@ class HTTPResponseDecompressorTest: XCTestCase {
                 )
                 stream.avail_out = UInt32(typedOutputPtr.count)
                 stream.next_out = typedOutputPtr.baseAddress!
-                let rc = deflate(&stream, Z_FINISH)
-                XCTAssertTrue(rc == Z_OK || rc == Z_STREAM_END)
+                let rc = cnioextras_z_deflate(&stream, CNIOEXTRAS_Z_FINISH)
+                XCTAssertTrue(rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END)
                 return typedOutputPtr.count - Int(stream.avail_out)
             }
 
             return typedDataPtr.count - Int(stream.avail_in)
         }
 
-        deflateEnd(&stream)
+        cnioextras_z_deflateEnd(&stream)
 
         return buffer
     }

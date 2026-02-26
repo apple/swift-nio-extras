@@ -54,7 +54,7 @@ public enum NIOCompression: Sendable {
 
     /// Data compression utility.
     struct Compressor {
-        private var stream = z_stream()
+        private var stream = cnioextras_z_stream()
         var isActive = false
 
         init() {}
@@ -79,13 +79,13 @@ public enum NIOCompression: Sendable {
 
             let rc = CNIOExtrasZlib_deflateInit2(
                 &stream,
-                Z_DEFAULT_COMPRESSION,
-                Z_DEFLATED,
+                CNIOEXTRAS_Z_DEFAULT_COMPRESSION,
+                CNIOEXTRAS_Z_DEFLATED,
                 windowBits,
                 8,
-                Z_DEFAULT_STRATEGY
+                CNIOEXTRAS_Z_DEFAULT_STRATEGY
             )
-            precondition(rc == Z_OK, "Unexpected return from zlib init: \(rc)")
+            precondition(rc == CNIOEXTRAS_Z_OK, "Unexpected return from zlib init: \(rc)")
         }
 
         mutating func compress(
@@ -94,20 +94,20 @@ public enum NIOCompression: Sendable {
             finalise: Bool
         ) -> ByteBuffer {
             assert(isActive)
-            let flags = finalise ? Z_FINISH : Z_SYNC_FLUSH
+            let flags = finalise ? CNIOEXTRAS_Z_FINISH : CNIOEXTRAS_Z_SYNC_FLUSH
             // don't compress an empty buffer if we aren't finishing the compress
             guard inputBuffer.readableBytes > 0 || finalise == true else { return allocator.buffer(capacity: 0) }
-            // deflateBound() provides an upper limit on the number of bytes the input can
-            // compress to. We add 5 bytes to handle the fact that Z_SYNC_FLUSH will append
+            // cnioextras_z_deflateBound() provides an upper limit on the number of bytes the input can
+            // compress to. We add 5 bytes to handle the fact that CNIOEXTRAS_Z_SYNC_FLUSH will append
             // an empty stored block that is 5 bytes long.
             // From zlib docs (https://www.zlib.net/manual.html)
-            // If the parameter flush is set to Z_SYNC_FLUSH, all pending output is flushed to the output buffer and the output is
+            // If the parameter flush is set to CNIOEXTRAS_Z_SYNC_FLUSH, all pending output is flushed to the output buffer and the output is
             // aligned on a byte boundary, so that the decompressor can get all input data available so far. (In particular avail_in
             // is zero after the call if enough output space has been provided before the call.) Flushing may degrade compression for
             // some compression algorithms and so it should be used only when necessary. This completes the current deflate block and
             // follows it with an empty stored block that is three bits plus filler bits to the next byte, followed by four bytes
             // (00 00 ff ff).
-            let bufferSize = Int(deflateBound(&stream, UInt(inputBuffer.readableBytes)))
+            let bufferSize = Int(cnioextras_z_deflateBound(&stream, UInt(inputBuffer.readableBytes)))
             var outputBuffer = allocator.buffer(capacity: bufferSize + 5)
             stream.oneShotDeflate(from: &inputBuffer, to: &outputBuffer, flag: flags)
             return outputBuffer
@@ -116,19 +116,19 @@ public enum NIOCompression: Sendable {
         mutating func shutdown() {
             assert(isActive)
             isActive = false
-            deflateEnd(&stream)
+            cnioextras_z_deflateEnd(&stream)
         }
 
         mutating func shutdownIfActive() {
             if isActive {
                 isActive = false
-                deflateEnd(&stream)
+                cnioextras_z_deflateEnd(&stream)
             }
         }
     }
 }
 
-extension z_stream {
+extension cnioextras_z_stream {
     /// Executes deflate from one buffer to another buffer. The advantage of this method is that it
     /// will ensure that the stream is "safe" after each call (that is, that the stream does not have
     /// pointers to byte buffers any longer).
@@ -151,7 +151,7 @@ extension z_stream {
             self.next_in = typedDataPtr.baseAddress!
 
             let rc = deflateToBuffer(buffer: &to, flag: flag)
-            precondition(rc == Z_OK || rc == Z_STREAM_END, "One-shot compression failed: \(rc)")
+            precondition(rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END, "One-shot compression failed: \(rc)")
 
             return typedDataPtr.count - Int(self.avail_in)
         }
@@ -161,7 +161,7 @@ extension z_stream {
     /// This relies on having the input set by the previous caller: it will use whatever input was
     /// configured.
     private mutating func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
-        var rc = Z_OK
+        var rc = CNIOEXTRAS_Z_OK
 
         buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: buffer.capacity) { outputPtr in
             let typedOutputPtr = UnsafeMutableBufferPointer(
@@ -170,7 +170,7 @@ extension z_stream {
             )
             self.avail_out = UInt32(typedOutputPtr.count)
             self.next_out = typedOutputPtr.baseAddress!
-            rc = deflate(&self, flag)
+            rc = cnioextras_z_deflate(&self, flag)
             return typedOutputPtr.count - Int(self.avail_out)
         }
 
