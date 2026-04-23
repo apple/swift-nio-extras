@@ -62,6 +62,30 @@ final class HTTPDrippingDownloadHandlerTests: XCTestCase {
         try dripTest(count: 1, size: 0)
     }
 
+    func testSmallDownloadDoesNotFlushHeadSeparately() throws {
+        let eventLoop = EmbeddedEventLoop()
+        let channel = EmbeddedChannel(loop: eventLoop)
+
+        // Track how many writes occur before the first flush.
+        let flushCounter = FlushCountingHandler()
+        try channel.pipeline.syncOperations.addHandler(flushCounter)
+        try channel.pipeline.syncOperations.addHandler(HTTPDrippingDownloadHandler(count: 1, size: 1000))
+
+        try channel.writeInbound(
+            HTTPRequestPart.head(HTTPRequest(method: .get, scheme: "http", authority: "whatever", path: nil))
+        )
+
+        // The response head, body, and end should all be written before the
+        // first flush — not head flushed separately then body+end.
+        XCTAssertEqual(
+            flushCounter.writesBeforeFirstFlush,
+            3,
+            "Expected head, body, and end to be written before the first flush"
+        )
+
+        let _ = try channel.finish()
+    }
+
     func dripTest(
         count: Int,
         size: Int = 1024,
@@ -134,4 +158,24 @@ final class HTTPDrippingDownloadHandlerTests: XCTestCase {
         #endif
     }
 
+}
+
+private final class FlushCountingHandler: ChannelOutboundHandler {
+    typealias OutboundIn = Any
+    typealias OutboundOut = Any
+
+    var writeCount = 0
+    var writesBeforeFirstFlush: Int?
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        self.writeCount += 1
+        context.write(data, promise: promise)
+    }
+
+    func flush(context: ChannelHandlerContext) {
+        if self.writesBeforeFirstFlush == nil {
+            self.writesBeforeFirstFlush = self.writeCount
+        }
+        context.flush()
+    }
 }

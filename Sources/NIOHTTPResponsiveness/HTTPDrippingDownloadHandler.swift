@@ -54,6 +54,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
     private var pendingRead = false
     private var pendingWrite = false
     private var activelyWritingChunk = false
+    private var needsFlush = false
 
     /// Initializes an `HTTPDrippingDownloadHandler`.
     /// - Parameters:
@@ -144,6 +145,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         }
 
         context.write(self.wrapOutboundOut(.head(head)), promise: nil)
+        self.needsFlush = true
         self.phase = .dripping(
             DrippingState(
                 chunksLeft: self.count,
@@ -152,6 +154,12 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         )
 
         self.writeChunk(context: context)
+        // Ensure the head is flushed even if writeChunk didn't flush (e.g.
+        // zero-size chunks or channel not writable).
+        if self.needsFlush {
+            self.needsFlush = false
+            context.flush()
+        }
     }
 
     public func channelInactive(context: ChannelHandlerContext) {
@@ -184,6 +192,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         // If we've sent all chunks, send end and be done
         if drippingState.chunksLeft < 1 {
             self.phase = .done
+            self.needsFlush = false
             context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             return
         }
@@ -208,6 +217,7 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
             self.pendingWrite = true
             self.phase = .dripping(drippingState)
             if dataWritten {
+                self.needsFlush = false
                 context.flush()
             }
             return
@@ -217,11 +227,13 @@ public final class HTTPDrippingDownloadHandler: ChannelDuplexHandler {
         drippingState.chunksLeft -= 1
         if drippingState.chunksLeft == 0 {
             self.phase = .done
+            self.needsFlush = false
             context.writeAndFlush(self.wrapOutboundOut(.end(nil)), promise: nil)
             return
         }
 
         if dataWritten {
+            self.needsFlush = false
             context.flush()
         }
 
