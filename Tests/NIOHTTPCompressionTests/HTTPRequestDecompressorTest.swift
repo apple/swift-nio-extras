@@ -192,6 +192,96 @@ class HTTPRequestDecompressorTest: XCTestCase {
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
 
+    func testRatioLimitFiresWithHonestContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 500))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "\(compressed.readableBytes)"),
+        ])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(
+            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
+        )))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testRatioLimitFiresWithInflatedContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "100000"),
+        ])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(
+            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
+        )))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testSizeLimitUnaffectedByInflatedContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .size(50_000))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "100000"),
+        ])
+        try channel.writeInbound(HTTPServerRequestPart.head(.init(
+            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
+        )))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testMultiRequestRatioLimitWithInflatedContentLength() throws {
+        let requestCount = 50
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let rawPayload = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(rawPayload, "gzip")
+        let compressedSize = compressed.readableBytes
+        var totalDecompressedBytes = 0
+        var ratioLimitFired = false
+
+        for _ in 0..<requestCount {
+            let headers = HTTPHeaders([
+                ("Content-Encoding", "gzip"),
+                ("Content-Length", "100000"),
+            ])
+            try channel.writeInbound(HTTPServerRequestPart.head(.init(
+                version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
+            )))
+            do {
+                try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+            } catch is NIOHTTPDecompression.DecompressionError {
+                ratioLimitFired = true
+            }
+            _ = try? channel.writeInbound(HTTPServerRequestPart.end(nil))
+            while let part: HTTPServerRequestPart = try channel.readInbound() {
+                if case .body(let buf) = part { totalDecompressedBytes += buf.readableBytes }
+            }
+        }
+
+        let configuredAllowance = requestCount * compressedSize * 10
+        XCTAssertTrue(ratioLimitFired, "Ratio limit must fire — actual amplification far exceeds ratio(10)")
+        XCTAssertLessThanOrEqual(
+            totalDecompressedBytes, configuredAllowance,
+            "Total decompressed bytes (\(totalDecompressedBytes)) must not exceed configured allowance (\(configuredAllowance))"
+        )
+    }
+
     func testDecompressionTruncatedInput() throws {
         // Truncated compressed data
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0])

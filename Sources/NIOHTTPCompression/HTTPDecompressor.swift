@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftNIO open source project
 //
-// Copyright (c) 2019-2021 Apple Inc. and the SwiftNIO project authors
+// Copyright (c) 2019-2026 Apple Inc. and the SwiftNIO project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -15,6 +15,33 @@
 import NIOCore
 import NIOHTTP1
 
+/// Channel hander to decompress incoming HTTP data.
+public final class NIOHTTPRequestDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
+    /// Expect to receive `HTTPServerRequestPart` from the network
+    public typealias InboundIn = HTTPServerRequestPart
+    /// Pass `HTTPServerRequestPart` to the next pipeline state in an inbound direction.
+    public typealias InboundOut = HTTPServerRequestPart
+    /// Pass through `HTTPServerResponsePart` outbound.
+    public typealias OutboundIn = HTTPServerResponsePart
+    /// Pass through `HTTPServerResponsePart` outbound.
+    public typealias OutboundOut = HTTPServerResponsePart
+
+    private var decompressor: Decompressor<HTTPRequestHead>
+
+    /// Initialise
+    /// - Parameter limit: Limit on the amount of decompression allowed.
+    public init(limit: NIOHTTPDecompression.DecompressionLimit) {
+        self.decompressor = Decompressor(limit: limit)
+    }
+
+    public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        self.decompressor.channelRead(context: context, part: Self.unwrapInboundIn(data))
+    }
+}
+
+@available(*, unavailable)
+extension NIOHTTPRequestDecompressor: Sendable {}
+
 /// Duplex channel handler which will accept deflate and gzip encoded responses and decompress them.
 public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableChannelHandler {
     /// Expect `HTTPClientResponsePart` inbound.
@@ -26,25 +53,12 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     /// Send `HTTPClientRequestPart` to the next stage outbound.
     public typealias OutboundOut = HTTPClientRequestPart
 
-    /// this struct encapsulates the state of a single http response decompression
-    private struct Compression {
-
-        /// the used algorithm
-        var algorithm: NIOHTTPDecompression.CompressionAlgorithm
-
-        /// the number of already consumed compressed bytes
-        var compressedLength: Int
-    }
-
-    private var compression: Compression? = nil
-    private var decompressor: NIOHTTPDecompression.Decompressor
-    private var decompressionComplete: Bool
+    private var decompressor: Decompressor<HTTPResponseHead>
 
     /// Initialise
     /// - Parameter limit: Limit on the amount of decompression allowed.
     public init(limit: NIOHTTPDecompression.DecompressionLimit) {
-        self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
-        self.decompressionComplete = false
+        self.decompressor = Decompressor(limit: limit)
     }
 
     public func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -63,7 +77,45 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
     }
 
     public func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-        switch self.unwrapInboundIn(data) {
+        self.decompressor.channelRead(context: context, part: Self.unwrapInboundIn(data))
+    }
+}
+
+@available(*, unavailable)
+extension NIOHTTPResponseDecompressor: Sendable {}
+
+// MARK: - Shared implementation -
+
+private protocol HTTPHead: Equatable {
+    var headers: HTTPHeaders { get }
+}
+
+extension HTTPRequestHead: HTTPHead {}
+extension HTTPResponseHead: HTTPHead {}
+
+private struct Decompressor<InboundHead: HTTPHead> {
+    typealias Inbound = HTTPPart<InboundHead, ByteBuffer>
+
+    /// this struct encapsulates the state of a single http response decompression
+    private struct Compression {
+        /// the used algorithm
+        var algorithm: NIOHTTPDecompression.CompressionAlgorithm
+
+        /// the number of already consumed compressed bytes
+        var compressedLength: Int
+    }
+
+    private var compression: Compression? = nil
+    private var decompressor: NIOHTTPDecompression.Decompressor
+    private var decompressionComplete: Bool
+
+    init(limit: NIOHTTPDecompression.DecompressionLimit) {
+        self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
+        self.decompressionComplete = false
+    }
+
+    mutating func channelRead(context: ChannelHandlerContext, part: Inbound) {
+        switch part {
         case .head(let head):
             let contentType = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased()
             let algorithm = NIOHTTPDecompression.CompressionAlgorithm(header: contentType)
@@ -74,35 +126,35 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                     try self.decompressor.initializeDecoder()
                 }
 
-                context.fireChannelRead(data)
+                context.fireChannelRead(NIOAny(part))
             } catch {
                 context.fireErrorCaught(error)
             }
-        case .body(var part):
+        case .body(var content):
             guard var compression = self.compression else {
-                context.fireChannelRead(data)
+                context.fireChannelRead(NIOAny(part))
                 return
             }
 
             do {
-                compression.compressedLength += part.readableBytes
-                while part.readableBytes > 0 && !self.decompressionComplete {
+                compression.compressedLength += content.readableBytes
+                while content.readableBytes > 0 && !self.decompressionComplete {
                     var buffer = context.channel.allocator.buffer(capacity: 16384)
                     let result = try self.decompressor.decompress(
-                        part: &part,
+                        part: &content,
                         buffer: &buffer,
                         compressedLength: compression.compressedLength
                     )
                     if result.complete {
                         self.decompressionComplete = true
                     }
-                    context.fireChannelRead(self.wrapInboundOut(.body(buffer)))
+                    context.fireChannelRead(NIOAny(Inbound.body(buffer)))
                 }
 
                 // assign the changed local property back to the class state
                 self.compression = compression
 
-                if part.readableBytes > 0 {
+                if content.readableBytes > 0 {
                     context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.invalidTrailingData)
                 }
             } catch {
@@ -120,10 +172,7 @@ public final class NIOHTTPResponseDecompressor: ChannelDuplexHandler, RemovableC
                     context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.truncatedData)
                 }
             }
-            context.fireChannelRead(data)
+            context.fireChannelRead(NIOAny(part))
         }
     }
 }
-
-@available(*, unavailable)
-extension NIOHTTPResponseDecompressor: Sendable {}
