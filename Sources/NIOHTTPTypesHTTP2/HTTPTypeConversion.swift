@@ -30,6 +30,7 @@ private enum HTTP2TypeConversionError: Error {
 
     case pseudoFieldNotFirst
     case pseudoFieldInTrailers
+    case unknownPseudoField
 }
 
 extension HPACKIndexing {
@@ -100,7 +101,7 @@ extension HPACKHeaders {
 }
 
 extension HTTPRequest {
-    init(_ hpack: HPACKHeaders) throws {
+    package init(_ hpack: HPACKHeaders) throws {
         var methodString: String? = nil
         var methodIndexable: HPACKIndexing = .indexable
         var schemeString: String? = nil
@@ -150,7 +151,7 @@ extension HTTPRequest {
                 protocolString = value
                 protocolIndexable = indexable
             default:
-                continue
+                throw HTTP2TypeConversionError.unknownPseudoField
             }
             i = hpack.index(after: i)
         }
@@ -194,7 +195,7 @@ extension HTTPRequest {
 }
 
 extension HTTPResponse {
-    init(_ hpack: HPACKHeaders) throws {
+    package init(_ hpack: HPACKHeaders) throws {
         var statusString: String? = nil
         var statusIndexable: HPACKIndexing = .indexable
 
@@ -212,7 +213,7 @@ extension HTTPResponse {
                 statusString = value
                 statusIndexable = indexable
             default:
-                continue
+                throw HTTP2TypeConversionError.unknownPseudoField
             }
             i = hpack.index(after: i)
         }
