@@ -14,6 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 import PackageDescription
+import class Foundation.ProcessInfo
 
 let strictConcurrencyDevelopment = false
 
@@ -335,11 +336,25 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
-        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
-
     ],
     targets: targets
 )
+
+// If the `SWIFT_NIO_EXTRAS_ALLOW_SWIFT_CRYPTO_BETA` environment variable is set
+// swift-nio-extras will accept swift-crypto beta releases as a dependency.
+//
+// Note: A beta release can only be used if other packages in the dependency tree
+// that have a direct dependency on swift-crypto accept beta releases as well.
+if ProcessInfo.processInfo.environment["SWIFT_NIO_EXTRAS_ALLOW_SWIFT_CRYPTO_BETA"] == nil {
+    package.dependencies += [
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0")
+    ]
+} else {
+    print("Accepting beta versions of swift-crypto!")
+    package.dependencies += [
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0-beta.max")
+    ]
+}
 
 // ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
 for target in package.targets {
