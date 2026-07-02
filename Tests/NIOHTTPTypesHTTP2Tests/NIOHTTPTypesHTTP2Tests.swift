@@ -190,6 +190,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: malformedHeaders))
         XCTAssertNil(try self.channel.readInbound(as: HTTPRequestPart.self))
         XCTAssertEqual(errorRecorder.caughtErrors.count, 1)
+        XCTAssertEqual(errorRecorder.caughtErrors.first as? HTTP2TypeConversionError, .unknownPseudoField)
     }
 
     func testClientCodecFiresErrorOnUnrecognizedPseudoHeaderInResponse() throws {
@@ -210,6 +211,7 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: malformedHeaders))
         XCTAssertNil(try self.channel.readInbound(as: HTTPResponsePart.self))
         XCTAssertEqual(errorRecorder.caughtErrors.count, 1)
+        XCTAssertEqual(errorRecorder.caughtErrors.first as? HTTP2TypeConversionError, .unknownPseudoField)
     }
 
     func testHTTPRequestInitThrowsOnUnrecognizedPseudoHeader() throws {
@@ -222,7 +224,9 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
             ":status": "200",  // invalid for requests
         ]
 
-        XCTAssertThrowsError(try HTTPRequest(headers))
+        XCTAssertThrowsError(try HTTPRequest(headers)) { error in
+            XCTAssertEqual(error as? HTTP2TypeConversionError, .unknownPseudoField)
+        }
     }
 
     func testHTTPResponseInitThrowsOnUnrecognizedPseudoHeader() throws {
@@ -233,6 +237,8 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
             ":method": "GET",  // invalid for responses.
         ]
 
-        XCTAssertThrowsError(try HTTPResponse(headers))
+        XCTAssertThrowsError(try HTTPResponse(headers)) { error in
+            XCTAssertEqual(error as? HTTP2TypeConversionError, .unknownPseudoField)
+        }
     }
 }

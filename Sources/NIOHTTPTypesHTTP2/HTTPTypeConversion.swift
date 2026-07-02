@@ -15,7 +15,7 @@
 import HTTPTypes
 import NIOHPACK
 
-private enum HTTP2TypeConversionError: Error {
+package enum HTTP2TypeConversionError: Error, Equatable {
     case multipleMethod
     case multipleScheme
     case multipleAuthority
