@@ -203,9 +203,16 @@ class HTTPRequestDecompressorTest: XCTestCase {
             ("Content-Encoding", "gzip"),
             ("Content-Length", "\(compressed.readableBytes)"),
         ])
-        try channel.writeInbound(HTTPServerRequestPart.head(.init(
-            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
-        )))
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
 
@@ -220,9 +227,16 @@ class HTTPRequestDecompressorTest: XCTestCase {
             ("Content-Encoding", "gzip"),
             ("Content-Length", "100000"),
         ])
-        try channel.writeInbound(HTTPServerRequestPart.head(.init(
-            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
-        )))
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
 
@@ -237,9 +251,16 @@ class HTTPRequestDecompressorTest: XCTestCase {
             ("Content-Encoding", "gzip"),
             ("Content-Length", "100000"),
         ])
-        try channel.writeInbound(HTTPServerRequestPart.head(.init(
-            version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
-        )))
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
 
@@ -260,9 +281,16 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 ("Content-Encoding", "gzip"),
                 ("Content-Length", "100000"),
             ])
-            try channel.writeInbound(HTTPServerRequestPart.head(.init(
-                version: .init(major: 1, minor: 1), method: .POST, uri: "/", headers: headers
-            )))
+            try channel.writeInbound(
+                HTTPServerRequestPart.head(
+                    .init(
+                        version: .init(major: 1, minor: 1),
+                        method: .POST,
+                        uri: "/",
+                        headers: headers
+                    )
+                )
+            )
             do {
                 try channel.writeInbound(HTTPServerRequestPart.body(compressed))
             } catch is NIOHTTPDecompression.DecompressionError {
@@ -277,7 +305,8 @@ class HTTPRequestDecompressorTest: XCTestCase {
         let configuredAllowance = requestCount * compressedSize * 10
         XCTAssertTrue(ratioLimitFired, "Ratio limit must fire — actual amplification far exceeds ratio(10)")
         XCTAssertLessThanOrEqual(
-            totalDecompressedBytes, configuredAllowance,
+            totalDecompressedBytes,
+            configuredAllowance,
             "Total decompressed bytes (\(totalDecompressedBytes)) must not exceed configured allowance (\(configuredAllowance))"
         )
     }

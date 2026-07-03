@@ -37,8 +37,17 @@ private func qValueFromHeader<S: StringProtocol>(_ text: S) -> Float {
         return 1
     }
 
-    // We have a Q value.
-    let qValue = Float(headerParts[1].split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)[1]) ?? 0
+    // We might have a Q value.
+    let qParts = headerParts[1].split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+
+    // A parameter without a value (e.g. "gzip;q") is malformed; treat as q=0.
+    guard qParts.count > 1 else { return 0 }
+
+    // Check the left hand side is a "q" or a "Q".
+    guard let qChar = qParts[0].utf8.first, qParts[0].utf8.count == 1 else { return 0 }
+    guard qChar == UInt8(ascii: "q") || qChar == UInt8(ascii: "Q") else { return 0 }
+
+    let qValue = Float(qParts[1]) ?? 0
     if qValue < 0 || qValue > 1 || qValue.isNaN {
         return 0
     }

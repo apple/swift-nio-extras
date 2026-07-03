@@ -1012,6 +1012,58 @@ class HTTPResponseCompressorTest: XCTestCase {
 
         XCTAssertEqual(counter.withLockedValue { $0 }, 2)
     }
+
+    func testMalformedAcceptEncodingQValueNoEquals() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q")
+    }
+
+    func testMalformedAcceptEncodingQValueNoValue() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=")
+    }
+
+    func testMalformedAcceptEncodingQValueNegative() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=-1")
+    }
+
+    func testMalformedAcceptEncodingQValueNonNumeric() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=bar")
+    }
+
+    func testMalformedAcceptEncodingQValueNotQ() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "r=0.1")
+    }
+
+    func testMalformedAcceptEncodingQValueDoesNotCrash(qValue: String) throws {
+        let channel = try compressionChannel()
+        defer { XCTAssertNoThrow(try channel.finish()) }
+
+        try sendRequest(acceptEncoding: "gzip;\(qValue)", channel: channel)
+
+        let responseHead = HTTPResponseHead(version: .http1_1, status: .ok)
+        var body = channel.allocator.buffer(capacity: 4)
+        body.writeStaticString("test")
+        try writeOneChunk(head: responseHead, body: [body], channel: channel)
+
+        // The malformed token's q-value should be treated as 0 — no compression applied.
+        let clientChannel = clientParsingChannel()
+        defer { _ = try! clientChannel.finish() }
+        var requestHead = HTTPRequestHead(version: .http1_1, method: .GET, uri: "/")
+        requestHead.headers.add(name: "host", value: "example.com")
+        clientChannel.write(HTTPClientRequestPart.head(requestHead), promise: nil)
+        clientChannel.write(HTTPClientRequestPart.end(nil), promise: nil)
+        while let b = try channel.readOutbound(as: ByteBuffer.self) {
+            try clientChannel.writeInbound(b)
+        }
+        var responseReceived: HTTPResponseHead? = nil
+        loop: while let part: HTTPClientResponsePart = try clientChannel.readInbound() {
+            if case .head(let h) = part {
+                responseReceived = h
+                break loop
+            }
+        }
+        XCTAssertNotNil(responseReceived)
+        XCTAssertEqual(responseReceived?.headers[canonicalForm: "content-encoding"], [])
+    }
 }
 
 extension EventLoopFuture {
