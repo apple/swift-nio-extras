@@ -359,7 +359,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(compressed)))
         XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
-    
+
     func testReentrantChannelReadDuringForwardIsSafe() throws {
         let channel = EmbeddedChannel()
         let recorder = Recorder<HTTPClientResponsePart>()
@@ -373,7 +373,7 @@ class HTTPResponseDecompressorTest: XCTestCase {
 
         var head = HTTPResponseHead(version: .http1_1, status: .ok)
         head.headers.add(name: "Content-Encoding", value: "gzip")
-        
+
         XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.head(head)))
         XCTAssertEqual(recorder.reads.count, 2)
         XCTAssertNoThrow(try channel.finish())
