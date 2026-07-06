@@ -93,83 +93,117 @@ private protocol HTTPHead: Equatable {
 extension HTTPRequestHead: HTTPHead {}
 extension HTTPResponseHead: HTTPHead {}
 
-private struct Decompressor<InboundHead: HTTPHead> {
+/// This class encapsulates the state of a single http message decompression
+private final class HTTPDecompressionDecoder: NIOSingleStepByteToMessageDecoder {
+    typealias InboundOut = ByteBuffer
+
+    private let allocator: ByteBufferAllocator
+    private var decompressor: NIOHTTPDecompression.Decompressor
+    /// The number of already consumed compressed bytes
+    private var compressedLength: Int
+    private var complete: Bool
+
+    init(limit: NIOHTTPDecompression.DecompressionLimit, allocator: ByteBufferAllocator) throws {
+        self.allocator = allocator
+        self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
+        self.compressedLength = 0
+        self.complete = false
+        try self.decompressor.initializeDecoder()
+    }
+
+    deinit {
+        self.decompressor.deinitializeDecoder()
+    }
+
+    func decode(buffer: inout ByteBuffer) throws -> ByteBuffer? {
+        guard !self.complete, buffer.readableBytes > 0 else {
+            return nil
+        }
+
+        let compressedLength = self.compressedLength + buffer.readableBytes
+        var output = self.allocator.buffer(capacity: 16384)
+        let readableBytesBefore = buffer.readableBytes
+        let result = try self.decompressor.decompress(
+            part: &buffer,
+            buffer: &output,
+            compressedLength: compressedLength
+        )
+        self.compressedLength += readableBytesBefore - buffer.readableBytes
+        if result.complete {
+            self.complete = true
+        }
+        return output
+    }
+
+    func decodeLast(buffer: inout ByteBuffer, seenEOF: Bool) throws -> ByteBuffer? {
+        if let output = try self.decode(buffer: &buffer) {
+            return output
+        }
+        if !self.complete {
+            throw NIOHTTPDecompression.ExtraDecompressionError.truncatedData
+        }
+        return nil
+    }
+}
+
+private final class Decompressor<InboundHead: HTTPHead> {
     typealias Inbound = HTTPPart<InboundHead, ByteBuffer>
 
-    /// this struct encapsulates the state of a single http response decompression
-    private struct Compression {
-        /// the used algorithm
-        var algorithm: NIOHTTPDecompression.CompressionAlgorithm
-
-        /// the number of already consumed compressed bytes
-        var compressedLength: Int
-    }
-
-    private var compression: Compression? = nil
-    private var decompressor: NIOHTTPDecompression.Decompressor
-    private var decompressionComplete: Bool
+    private let limit: NIOHTTPDecompression.DecompressionLimit
+    private var processor: NIOSingleStepByteToMessageProcessor<HTTPDecompressionDecoder>?
 
     init(limit: NIOHTTPDecompression.DecompressionLimit) {
-        self.decompressor = NIOHTTPDecompression.Decompressor(limit: limit)
-        self.decompressionComplete = false
+        self.limit = limit
+        self.processor = nil
     }
 
-    mutating func channelRead(context: ChannelHandlerContext, part: Inbound) {
+    func channelRead(context: ChannelHandlerContext, part: Inbound) {
         switch part {
         case .head(let head):
             let contentType = head.headers[canonicalForm: "Content-Encoding"].first?.lowercased()
             let algorithm = NIOHTTPDecompression.CompressionAlgorithm(header: contentType)
 
             do {
-                if let algorithm = algorithm {
-                    self.compression = Compression(algorithm: algorithm, compressedLength: 0)
-                    try self.decompressor.initializeDecoder()
+                if algorithm != nil {
+                    let decoder = try HTTPDecompressionDecoder(
+                        limit: self.limit,
+                        allocator: context.channel.allocator
+                    )
+                    self.processor = NIOSingleStepByteToMessageProcessor(decoder)
                 }
 
                 context.fireChannelRead(NIOAny(part))
             } catch {
                 context.fireErrorCaught(error)
             }
-        case .body(var content):
-            guard var compression = self.compression else {
+        case .body(let buffer):
+            guard let processor = self.processor else {
                 context.fireChannelRead(NIOAny(part))
                 return
             }
 
             do {
-                compression.compressedLength += content.readableBytes
-                while content.readableBytes > 0 && !self.decompressionComplete {
-                    var buffer = context.channel.allocator.buffer(capacity: 16384)
-                    let result = try self.decompressor.decompress(
-                        part: &content,
-                        buffer: &buffer,
-                        compressedLength: compression.compressedLength
-                    )
-                    if result.complete {
-                        self.decompressionComplete = true
-                    }
-                    context.fireChannelRead(NIOAny(Inbound.body(buffer)))
+                try processor.process(buffer: buffer) { output in
+                    context.fireChannelRead(NIOAny(Inbound.body(output)))
                 }
 
-                // assign the changed local property back to the class state
-                self.compression = compression
-
-                if content.readableBytes > 0 {
+                // bytes left after the compressed body are invalid trailing data
+                if processor.unprocessedBytes > 0 {
                     context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.invalidTrailingData)
                 }
             } catch {
                 context.fireErrorCaught(error)
             }
         case .end:
-            if self.compression != nil {
-                let wasDecompressionComplete = self.decompressionComplete
+            if let processor = self.processor {
+                self.processor = nil
 
-                self.decompressor.deinitializeDecoder()
-                self.compression = nil
-                self.decompressionComplete = false
-
-                if !wasDecompressionComplete {
-                    context.fireErrorCaught(NIOHTTPDecompression.ExtraDecompressionError.truncatedData)
+                do {
+                    try processor.finishProcessing(seenEOF: true) { output in
+                        context.fireChannelRead(NIOAny(Inbound.body(output)))
+                    }
+                } catch {
+                    context.fireErrorCaught(error)
                 }
             }
             context.fireChannelRead(NIOAny(part))
