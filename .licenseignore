@@ -1,6 +1,7 @@
 .gitignore
 **/.gitignore
 .licenseignore
+.unacceptablelanguageignore
 .gitattributes
 .git-blame-ignore-revs
 .mailfilter
@@ -38,3 +39,7 @@ dev/lldb-smoker
 dev/make-single-file-spm
 dev/malloc-aggregation.d
 dev/update-alloc-limits-to-last-completed-ci-build
+Sources/CNIOExtrasZlib/vendored-zlib.version
+Sources/CNIOExtrasZlib/*.c
+Sources/CNIOExtrasZlib/nioextras-*.h
+Sources/CNIOExtrasZlib/include/nioextras-*.h

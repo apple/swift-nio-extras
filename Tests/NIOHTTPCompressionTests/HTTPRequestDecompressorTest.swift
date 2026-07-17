@@ -192,6 +192,125 @@ class HTTPRequestDecompressorTest: XCTestCase {
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
     }
 
+    func testRatioLimitFiresWithHonestContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 500))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "\(compressed.readableBytes)"),
+        ])
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testRatioLimitFiresWithInflatedContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "100000"),
+        ])
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testSizeLimitUnaffectedByInflatedContentLength() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .size(50_000))
+        )
+        let decompressed = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(decompressed, "gzip")
+        let headers = HTTPHeaders([
+            ("Content-Encoding", "gzip"),
+            ("Content-Length", "100000"),
+        ])
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "/",
+                    headers: headers
+                )
+            )
+        )
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.body(compressed)))
+    }
+
+    func testMultiRequestRatioLimitWithInflatedContentLength() throws {
+        let requestCount = 50
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(
+            NIOHTTPRequestDecompressor(limit: .ratio(10))
+        )
+        let rawPayload = ByteBuffer.of(bytes: Array(repeating: 0, count: 100_000))
+        let compressed = compress(rawPayload, "gzip")
+        let compressedSize = compressed.readableBytes
+        var totalDecompressedBytes = 0
+        var ratioLimitFired = false
+
+        for _ in 0..<requestCount {
+            let headers = HTTPHeaders([
+                ("Content-Encoding", "gzip"),
+                ("Content-Length", "100000"),
+            ])
+            try channel.writeInbound(
+                HTTPServerRequestPart.head(
+                    .init(
+                        version: .init(major: 1, minor: 1),
+                        method: .POST,
+                        uri: "/",
+                        headers: headers
+                    )
+                )
+            )
+            do {
+                try channel.writeInbound(HTTPServerRequestPart.body(compressed))
+            } catch is NIOHTTPDecompression.DecompressionError {
+                ratioLimitFired = true
+            }
+            _ = try? channel.writeInbound(HTTPServerRequestPart.end(nil))
+            while let part: HTTPServerRequestPart = try channel.readInbound() {
+                if case .body(let buf) = part { totalDecompressedBytes += buf.readableBytes }
+            }
+        }
+
+        let configuredAllowance = requestCount * compressedSize * 10
+        XCTAssertTrue(ratioLimitFired, "Ratio limit must fire — actual amplification far exceeds ratio(10)")
+        XCTAssertLessThanOrEqual(
+            totalDecompressedBytes,
+            configuredAllowance,
+            "Total decompressed bytes (\(totalDecompressedBytes)) must not exceed configured allowance (\(configuredAllowance))"
+        )
+    }
+
     func testDecompressionTruncatedInput() throws {
         // Truncated compressed data
         let compressed = ByteBuffer(bytes: [120, 156, 99, 0])
@@ -214,8 +333,103 @@ class HTTPRequestDecompressorTest: XCTestCase {
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.end(nil)))
     }
 
+    func testReentrantChannelReadDuringForwardIsSafe() throws {
+        let channel = EmbeddedChannel()
+        let recorder = Recorder<HTTPServerRequestPart>()
+
+        let reinjected = HTTPServerRequestPart.head(.init(version: .http1_1, method: .GET, uri: "/"))
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
+        try channel.pipeline.syncOperations.addHandler(
+            ReinjectOnce<HTTPServerRequestPart>(on: .read) { reinjected }
+        )
+        try channel.pipeline.syncOperations.addHandler(recorder)
+
+        var head = HTTPRequestHead(version: .http1_1, method: .POST, uri: "/")
+        head.headers.add(name: "Content-Encoding", value: "gzip")
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.head(head)))
+        XCTAssertEqual(recorder.reads.count, 2)
+        XCTAssertNoThrow(try channel.finish())
+    }
+
+    func testReentrantChannelReadDuringErrorCaughtIsSafe() throws {
+        let channel = EmbeddedChannel()
+        let recorder = Recorder<HTTPServerRequestPart>()
+
+        let reinjected = HTTPServerRequestPart.head(.init(version: .http1_1, method: .GET, uri: "/"))
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
+        try channel.pipeline.syncOperations.addHandler(
+            ReinjectOnce<HTTPServerRequestPart>(on: .error) { reinjected }
+        )
+        try channel.pipeline.syncOperations.addHandler(recorder)
+
+        var head = HTTPRequestHead(version: .http1_1, method: .POST, uri: "/")
+        head.headers.add(name: "Content-Encoding", value: "deflate")
+        XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.head(head)))
+
+        // invalid deflate payload
+        var badBody = channel.allocator.buffer(capacity: 4)
+        badBody.writeBytes([0xff, 0xff, 0xff, 0xff])
+        _ = try? channel.writeInbound(HTTPServerRequestPart.body(badBody))
+
+        XCTAssertFalse(recorder.errors.isEmpty)
+        XCTAssertTrue(recorder.reads.contains { if case .head = $0 { return true } else { return false } })
+        _ = try? channel.finish()
+    }
+
+    private final class Recorder<Part>: ChannelInboundHandler {
+        typealias InboundIn = Part
+
+        private(set) var reads: [Part] = []
+        private(set) var errors: [Error] = []
+
+        func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+            self.reads.append(Self.unwrapInboundIn(data))
+            context.fireChannelRead(data)
+        }
+
+        func errorCaught(context: ChannelHandlerContext, error: Error) {
+            self.errors.append(error)
+            context.fireErrorCaught(error)
+        }
+    }
+
+    private final class ReinjectOnce<Part: Sendable>: ChannelInboundHandler {
+        typealias InboundIn = Part
+
+        enum Trigger {
+            case read
+            case error
+        }
+
+        private let trigger: Trigger
+        private let reinject: () -> Part
+        private var fired = false
+
+        init(on trigger: Trigger, reinject: @escaping () -> Part) {
+            self.trigger = trigger
+            self.reinject = reinject
+        }
+
+        func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+            if self.trigger == .read, !self.fired {
+                self.fired = true
+                context.channel.pipeline.fireChannelRead(self.reinject())
+            }
+            context.fireChannelRead(data)
+        }
+
+        func errorCaught(context: ChannelHandlerContext, error: Error) {
+            if self.trigger == .error, !self.fired {
+                self.fired = true
+                context.channel.pipeline.fireChannelRead(self.reinject())
+            }
+            context.fireErrorCaught(error)
+        }
+    }
+
     private func compress(_ body: ByteBuffer, _ algorithm: String) -> ByteBuffer {
-        var stream = z_stream()
+        var stream = cnioextras_z_stream()
 
         stream.zalloc = nil
         stream.zfree = nil
@@ -236,13 +450,13 @@ class HTTPRequestDecompressorTest: XCTestCase {
 
         let rc = CNIOExtrasZlib_deflateInit2(
             &stream,
-            Z_DEFAULT_COMPRESSION,
-            Z_DEFLATED,
+            CNIOEXTRAS_Z_DEFAULT_COMPRESSION,
+            CNIOEXTRAS_Z_DEFLATED,
             windowBits,
             8,
-            Z_DEFAULT_STRATEGY
+            CNIOEXTRAS_Z_DEFAULT_STRATEGY
         )
-        XCTAssertEqual(Z_OK, rc)
+        XCTAssertEqual(CNIOEXTRAS_Z_OK, rc)
 
         defer {
             stream.avail_in = 0
@@ -270,15 +484,15 @@ class HTTPRequestDecompressorTest: XCTestCase {
                 )
                 stream.avail_out = UInt32(typedOutputPtr.count)
                 stream.next_out = typedOutputPtr.baseAddress!
-                let rc = deflate(&stream, Z_FINISH)
-                XCTAssertTrue(rc == Z_OK || rc == Z_STREAM_END)
+                let rc = cnioextras_z_deflate(&stream, CNIOEXTRAS_Z_FINISH)
+                XCTAssertTrue(rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END)
                 return typedOutputPtr.count - Int(stream.avail_out)
             }
 
             return typedDataPtr.count - Int(stream.avail_in)
         }
 
-        deflateEnd(&stream)
+        cnioextras_z_deflateEnd(&stream)
 
         return buffer
     }

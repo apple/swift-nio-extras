@@ -124,13 +124,13 @@ public enum NIOHTTPDecompression: Sendable {
         /// or add 16 to decode only the gzip format (the zlib format will return a Z_DATA_ERROR).
         /// If a gzip stream is being decoded, strm->adler is a CRC-32 instead of an Adler-32.
         /// Unlike the gunzip utility and gzread() (see below), inflate() will not automatically decode concatenated gzip members.
-        /// inflate() will return Z_STREAM_END at the end of the gzip member.
+        /// inflate() will return CNIOEXTRAS_Z_STREAM_END at the end of the gzip member.
         /// The state would need to be reset to continue decoding a subsequent gzip member.
         /// This must be done if there is more data after a gzip member, in order for the decompression to be compliant with the gzip standard (RFC 1952).
         static let windowBitsWithAutomaticCompressionFormatDetection: Int32 = 15 + 32
 
         private let limit: NIOHTTPDecompression.DecompressionLimit
-        private var stream = z_stream()
+        private var stream = cnioextras_z_stream()
         private var inflated = 0
 
         init(limit: NIOHTTPDecompression.DecompressionLimit) {
@@ -159,18 +159,18 @@ public enum NIOHTTPDecompression: Sendable {
             self.inflated = 0
 
             let rc = CNIOExtrasZlib_inflateInit2(&self.stream, Self.windowBitsWithAutomaticCompressionFormatDetection)
-            guard rc == Z_OK else {
+            guard rc == CNIOEXTRAS_Z_OK else {
                 throw NIOHTTPDecompression.DecompressionError.initializationError(Int(rc))
             }
         }
 
         mutating func deinitializeDecoder() {
-            inflateEnd(&self.stream)
+            cnioextras_z_inflateEnd(&self.stream)
         }
     }
 }
 
-extension z_stream {
+extension cnioextras_z_stream {
     mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> InflateResult {
         let minimumCapacity = input.readableBytes * 2
         var inflateResult = InflateResult(written: 0, complete: false)
@@ -194,21 +194,21 @@ extension z_stream {
     }
 
     private mutating func inflatePart(to buffer: inout ByteBuffer, minimumCapacity: Int) throws -> InflateResult {
-        var rc = Z_OK
+        var rc = CNIOEXTRAS_Z_OK
 
         let written = try buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: minimumCapacity) { pointer in
             self.avail_out = UInt32(pointer.count)
             self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
-            rc = inflate(&self, Z_NO_FLUSH)
-            guard rc == Z_OK || rc == Z_STREAM_END else {
+            rc = cnioextras_z_inflate(&self, CNIOEXTRAS_Z_NO_FLUSH)
+            guard rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END else {
                 throw NIOHTTPDecompression.DecompressionError.inflationError(Int(rc))
             }
 
             return pointer.count - Int(self.avail_out)
         }
 
-        return InflateResult(written: written, complete: rc == Z_STREAM_END)
+        return InflateResult(written: written, complete: rc == CNIOEXTRAS_Z_STREAM_END)
     }
 }
 

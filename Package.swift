@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:6.1
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the SwiftNIO open source project
@@ -14,6 +14,8 @@
 //===----------------------------------------------------------------------===//
 
 import PackageDescription
+
+import class Foundation.ProcessInfo
 
 let strictConcurrencyDevelopment = false
 
@@ -116,6 +118,7 @@ var targets: [PackageDescription.Target] = [
         linkerSettings: [
             .linkedLibrary("z", .when(platforms: [.linux, .macOS, .iOS, .tvOS, .watchOS, .visionOS])),
             .linkedLibrary("zlib", .when(platforms: [.windows])),
+            .define("HAVE_HIDDEN")
         ]
     ),
     .testTarget(
@@ -231,8 +234,15 @@ var targets: [PackageDescription.Target] = [
     .testTarget(
         name: "NIOResumableUploadTests",
         dependencies: [
-            "NIOResumableUpload",
+            .target(name: "NIOResumableUpload"),
+            .target(name: "NIOHTTPTypes"),
+            .target(name: "NIOHTTPTypesHTTP1"),
+            .product(name: "NIOCore", package: "swift-nio"),
             .product(name: "NIOEmbedded", package: "swift-nio"),
+            .product(name: "NIOHTTP1", package: "swift-nio"),
+            .product(name: "NIOPosix", package: "swift-nio"),
+            .product(name: "HTTPTypes", package: "swift-http-types"),
+            .product(name: "StructuredFieldValues", package: "swift-http-structured-headers"),
         ],
         swiftSettings: strictConcurrencySettings
     ),
@@ -281,6 +291,28 @@ var targets: [PackageDescription.Target] = [
         ],
         swiftSettings: strictConcurrencySettings
     ),
+    .target(
+        name: "NIOCertificateHelpers",
+        dependencies: [
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "SwiftASN1", package: "swift-asn1"),
+            .product(name: "X509", package: "swift-certificates"),
+        ],
+        swiftSettings: strictConcurrencySettings
+    ),
+    .testTarget(
+        name: "NIOCertificateHelpersTests",
+        dependencies: [
+            "NIOCertificateHelpers",
+            .product(name: "NIOCore", package: "swift-nio"),
+            .product(name: "NIOConcurrencyHelpers", package: "swift-nio"),
+            .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            .product(name: "X509", package: "swift-certificates"),
+            .product(name: "SwiftASN1", package: "swift-asn1"),
+            .product(name: "Crypto", package: "swift-crypto"),
+        ],
+        swiftSettings: strictConcurrencySettings
+    ),
 ]
 
 let package = Package(
@@ -295,24 +327,40 @@ let package = Package(
         .library(name: "NIOResumableUpload", targets: ["NIOResumableUpload"]),
         .library(name: "NIOHTTPResponsiveness", targets: ["NIOHTTPResponsiveness"]),
         .library(name: "NIOCertificateReloading", targets: ["NIOCertificateReloading"]),
+        .library(name: "NIOCertificateHelpers", targets: ["NIOCertificateHelpers"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.81.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.94.0"),
         .package(url: "https://github.com/apple/swift-nio-http2.git", from: "1.27.0"),
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.3.0"),
         .package(url: "https://github.com/apple/swift-http-structured-headers.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
-        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.10.0"),
+        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.14.0"),
         .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.34.0"),
         .package(url: "https://github.com/apple/swift-asn1.git", from: "1.3.1"),
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.8.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.3"),
-
     ],
     targets: targets
 )
+
+// If the `SWIFT_NIO_EXTRAS_ALLOW_SWIFT_CRYPTO_BETA` environment variable is set
+// swift-nio-extras will accept swift-crypto beta releases as a dependency.
+//
+// Note: A beta release can only be used if other packages in the dependency tree
+// that have a direct dependency on swift-crypto accept beta releases as well.
+if ProcessInfo.processInfo.environment["SWIFT_NIO_EXTRAS_ALLOW_SWIFT_CRYPTO_BETA"] == nil {
+    package.dependencies += [
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0")
+    ]
+} else {
+    print("Accepting beta versions of swift-crypto!")
+    package.dependencies += [
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0-beta.max")
+    ]
+}
 
 // ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
 for target in package.targets {

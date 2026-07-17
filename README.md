@@ -37,7 +37,8 @@ SwiftNIO Extras     | Minimum Swift Version
 `1.20.0 ..< 1.23.0` | 5.7.1
 `1.23.0 ..< 1.27.0` | 5.8
 `1.27.0 ..< 1.30.0` | 5.10
-`1.30.0 ...`        | 6.0
+`1.30.0 ..< 1.34.0` | 6.0
+`1.34.0 ..<`        | 6.1
 
 On the [`nio-extras-0.1`](https://github.com/apple/swift-nio-extras/tree/nio-extras-0.1) branch, you can find the `swift-nio-extras` version for the SwiftNIO 1 family. It requires Swift 4.1 or better.
 

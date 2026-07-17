@@ -43,3 +43,12 @@ This product contains a derivation of "HTTP1ProxyConnectHandler.swift" and accom
     * https://github.com/swift-server/async-http-client
 
 ---
+
+This product contains a vendored copy of zlib with symbols prefixed as "cnioextras_z_".
+
+  * LICENSE (zlib License):
+    * https://www.zlib.net/zlib_license.html
+  * HOMEPAGE:
+    * https://www.zlib.net/
+
+---

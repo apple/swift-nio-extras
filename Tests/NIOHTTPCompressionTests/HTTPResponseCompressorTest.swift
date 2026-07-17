@@ -88,7 +88,7 @@ extension ByteBuffer {
     }
 }
 
-extension z_stream {
+extension cnioextras_z_stream {
     fileprivate static func decompressDeflate(compressedBytes: inout ByteBuffer, outputBuffer: inout ByteBuffer) {
         decompress(compressedBytes: &compressedBytes, outputBuffer: &outputBuffer, windowSize: 15)
     }
@@ -101,7 +101,7 @@ extension z_stream {
     {
         compressedBytes.withUnsafeMutableReadableUInt8Bytes { inputPointer in
             outputBuffer.writeWithUnsafeMutableUInt8Bytes { outputPointer -> Int in
-                var stream = z_stream()
+                var stream = cnioextras_z_stream()
 
                 // zlib requires we initialize next_in, avail_in, zalloc, zfree and opaque before calling inflateInit2.
                 stream.next_in = inputPointer.baseAddress!
@@ -113,14 +113,14 @@ extension z_stream {
                 stream.opaque = nil
 
                 var rc = CNIOExtrasZlib_inflateInit2(&stream, windowSize)
-                precondition(rc == Z_OK)
+                precondition(rc == CNIOEXTRAS_Z_OK)
 
-                rc = inflate(&stream, Z_FINISH)
-                XCTAssertEqual(rc, Z_STREAM_END)
+                rc = cnioextras_z_inflate(&stream, CNIOEXTRAS_Z_FINISH)
+                XCTAssertEqual(rc, CNIOEXTRAS_Z_STREAM_END)
                 XCTAssertEqual(stream.avail_in, 0)
 
-                rc = inflateEnd(&stream)
-                XCTAssertEqual(rc, Z_OK)
+                rc = cnioextras_z_inflateEnd(&stream)
+                XCTAssertEqual(rc, CNIOEXTRAS_Z_OK)
 
                 return outputPointer.count - Int(stream.avail_out)
             }
@@ -304,7 +304,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             responseData: &compressedBody,
             expectedResponse: bodyBuffer,
             allocator: channel.allocator,
-            decompressor: z_stream.decompressDeflate
+            decompressor: cnioextras_z_stream.decompressDeflate
         )
     }
 
@@ -360,7 +360,7 @@ class HTTPResponseCompressorTest: XCTestCase {
             responseData: &compressedBody,
             expectedResponse: bodyBuffer,
             allocator: channel.allocator,
-            decompressor: z_stream.decompressGzip
+            decompressor: cnioextras_z_stream.decompressGzip
         )
     }
 
@@ -1011,6 +1011,58 @@ class HTTPResponseCompressorTest: XCTestCase {
         )
 
         XCTAssertEqual(counter.withLockedValue { $0 }, 2)
+    }
+
+    func testMalformedAcceptEncodingQValueNoEquals() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q")
+    }
+
+    func testMalformedAcceptEncodingQValueNoValue() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=")
+    }
+
+    func testMalformedAcceptEncodingQValueNegative() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=-1")
+    }
+
+    func testMalformedAcceptEncodingQValueNonNumeric() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "q=bar")
+    }
+
+    func testMalformedAcceptEncodingQValueNotQ() throws {
+        try self.testMalformedAcceptEncodingQValueDoesNotCrash(qValue: "r=0.1")
+    }
+
+    func testMalformedAcceptEncodingQValueDoesNotCrash(qValue: String) throws {
+        let channel = try compressionChannel()
+        defer { XCTAssertNoThrow(try channel.finish()) }
+
+        try sendRequest(acceptEncoding: "gzip;\(qValue)", channel: channel)
+
+        let responseHead = HTTPResponseHead(version: .http1_1, status: .ok)
+        var body = channel.allocator.buffer(capacity: 4)
+        body.writeStaticString("test")
+        try writeOneChunk(head: responseHead, body: [body], channel: channel)
+
+        // The malformed token's q-value should be treated as 0 — no compression applied.
+        let clientChannel = clientParsingChannel()
+        defer { _ = try! clientChannel.finish() }
+        var requestHead = HTTPRequestHead(version: .http1_1, method: .GET, uri: "/")
+        requestHead.headers.add(name: "host", value: "example.com")
+        clientChannel.write(HTTPClientRequestPart.head(requestHead), promise: nil)
+        clientChannel.write(HTTPClientRequestPart.end(nil), promise: nil)
+        while let b = try channel.readOutbound(as: ByteBuffer.self) {
+            try clientChannel.writeInbound(b)
+        }
+        var responseReceived: HTTPResponseHead? = nil
+        loop: while let part: HTTPClientResponsePart = try clientChannel.readInbound() {
+            if case .head(let h) = part {
+                responseReceived = h
+                break loop
+            }
+        }
+        XCTAssertNotNil(responseReceived)
+        XCTAssertEqual(responseReceived?.headers[canonicalForm: "content-encoding"], [])
     }
 }
 

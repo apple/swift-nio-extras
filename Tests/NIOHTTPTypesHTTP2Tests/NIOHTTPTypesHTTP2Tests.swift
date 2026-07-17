@@ -32,6 +32,18 @@ private final class InboundRecorder<Frame>: ChannelInboundHandler {
     }
 }
 
+/// A handler that records errors fired down the pipeline via fireErrorCaught.
+private final class ErrorRecorder: ChannelInboundHandler {
+    // InboundIn is a placeholder; this handler only captures errors.
+    typealias InboundIn = ByteBuffer
+
+    var caughtErrors: [Error] = []
+
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        self.caughtErrors.append(error)
+    }
+}
+
 extension HTTPField.Name {
     static let xFoo = Self("X-Foo")!
 }
@@ -161,5 +173,72 @@ final class NIOHTTPTypesHTTP2Tests: XCTestCase {
         }
 
         XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testServerCodecFiresErrorOnUnrecognizedPseudoHeaderInRequest() throws {
+        // A HEADERS frame containing ":status"  must be rejected for a
+        // request and should result in an error being thrown.
+        let malformedHeaders: HPACKHeaders = [
+            ":method": "GET",
+            ":scheme": "https",
+            ":path": "/",
+            ":status": "200",
+        ]
+
+        let errorRecorder = ErrorRecorder()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP2FramePayloadToHTTPServerCodec(), errorRecorder)
+        try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: malformedHeaders))
+        XCTAssertNil(try self.channel.readInbound(as: HTTPRequestPart.self))
+        XCTAssertEqual(errorRecorder.caughtErrors.count, 1)
+        XCTAssertEqual(errorRecorder.caughtErrors.first as? HTTP2TypeConversionError, .unknownPseudoField)
+    }
+
+    func testClientCodecFiresErrorOnUnrecognizedPseudoHeaderInResponse() throws {
+        // A HEADERS frame containing ":method"  must be rejected for a
+        // response and should result in an error being thrown.
+        let malformedHeaders: HPACKHeaders = [
+            ":status": "200",
+            ":method": "GET",
+        ]
+
+        let errorRecorder = ErrorRecorder()
+        try self.channel.pipeline.syncOperations.addHandlers(HTTP2FramePayloadToHTTPClientCodec(), errorRecorder)
+
+        // The client state machine requires a request to be sent before it will
+        // accept a response frame, so prime it with a request head.
+        try self.channel.writeOutbound(HTTPRequestPart.head(Self.request))
+
+        try self.channel.writeInbound(HTTP2Frame.FramePayload(headers: malformedHeaders))
+        XCTAssertNil(try self.channel.readInbound(as: HTTPResponsePart.self))
+        XCTAssertEqual(errorRecorder.caughtErrors.count, 1)
+        XCTAssertEqual(errorRecorder.caughtErrors.first as? HTTP2TypeConversionError, .unknownPseudoField)
+    }
+
+    func testHTTPRequestInitThrowsOnUnrecognizedPseudoHeader() throws {
+        // `HTTP2TypeConversionError.unknownPseudoField` should be thrown if an invalid psuedo header
+        // is included in the response.
+        let headers: HPACKHeaders = [
+            ":method": "GET",
+            ":scheme": "https",
+            ":path": "/",
+            ":status": "200",  // invalid for requests
+        ]
+
+        XCTAssertThrowsError(try HTTPRequest(headers)) { error in
+            XCTAssertEqual(error as? HTTP2TypeConversionError, .unknownPseudoField)
+        }
+    }
+
+    func testHTTPResponseInitThrowsOnUnrecognizedPseudoHeader() throws {
+        // `HTTP2TypeConversionError.unknownPseudoField` should be thrown if an invalid psuedo header
+        // is included in the response.
+        let headers: HPACKHeaders = [
+            ":status": "200",
+            ":method": "GET",  // invalid for responses.
+        ]
+
+        XCTAssertThrowsError(try HTTPResponse(headers)) { error in
+            XCTAssertEqual(error as? HTTP2TypeConversionError, .unknownPseudoField)
+        }
     }
 }
