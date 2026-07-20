@@ -26,21 +26,21 @@ import Android
 import ucrt
 import WinSDK
 
-fileprivate func gettimeofday(_ tp: inout timeval, _ tzp: Never?) {
+private func gettimeofday(_ tp: inout timeval, _ tzp: Never?) {
     var file_time = FILETIME()
     var system_time = SYSTEMTIME()
     var time: UInt64 = 0
 
     // This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
-    // until 00:00:00 January 1, 1970 
-    let epoch: UInt64 = 116444736000000000
+    // until 00:00:00 January 1, 1970
+    let epoch: UInt64 = 116_444_736_000_000_000
 
-    GetSystemTime(&system_time);
-    SystemTimeToFileTime(&system_time, &file_time);
-    time =  UInt64(file_time.dwLowDateTime)
+    GetSystemTime(&system_time)
+    SystemTimeToFileTime(&system_time, &file_time)
+    time = UInt64(file_time.dwLowDateTime)
     time += UInt64(file_time.dwHighDateTime) << 32
 
-    tp.tv_sec = Int32((time - epoch) / 10000000)
+    tp.tv_sec = Int32((time - epoch) / 10_000_000)
     tp.tv_usec = Int32(system_time.wMilliseconds * 1000)
 }
 #else
@@ -752,7 +752,14 @@ extension NIOWritePCAPHandler {
         ) throws -> SynchronizedFileSink {
             #if os(Windows)
             let fd = try path.withCString(encodedAs: UTF16.self) { pathPtr -> CInt in
-                let fd = _wsopen_s(nil, pathPtr, _O_WRONLY | (fileWritingMode == FileWritingMode.createNewPCAPFile ? (_O_TRUNC | _O_CREAT) : _O_APPEND), _SH_DENYNO, _S_IREAD | _S_IWRITE)
+                let fd = _wsopen_s(
+                    nil,
+                    pathPtr,
+                    _O_WRONLY
+                        | (fileWritingMode == FileWritingMode.createNewPCAPFile ? (_O_TRUNC | _O_CREAT) : _O_APPEND),
+                    _SH_DENYNO,
+                    _S_IREAD | _S_IWRITE
+                )
                 guard fd >= 0 else {
                     throw SynchronizedFileSink.Error(errorCode: Error.ErrorCode.cannotOpenFileError.rawValue)
                 }

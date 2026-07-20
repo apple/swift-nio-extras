@@ -113,12 +113,12 @@ var targets: [PackageDescription.Target] = [
         name: "CNIOExtrasZlib",
         dependencies: [],
         cSettings: [
+            .define("HAVE_HIDDEN"),
             .define("_CRT_SECURE_NO_WARNINGS", .when(platforms: [.windows])),
         ],
         linkerSettings: [
             .linkedLibrary("z", .when(platforms: [.linux, .macOS, .iOS, .tvOS, .watchOS, .visionOS])),
             .linkedLibrary("zlib", .when(platforms: [.windows])),
-            .define("HAVE_HIDDEN")
         ]
     ),
     .testTarget(
