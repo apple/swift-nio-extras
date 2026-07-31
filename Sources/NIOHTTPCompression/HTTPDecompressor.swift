@@ -98,7 +98,7 @@ private final class HTTPDecompressionDecoder: NIOSingleStepByteToMessageDecoder 
     typealias InboundOut = ByteBuffer
 
     private let allocator: ByteBufferAllocator
-    private var decompressor: NIOHTTPDecompression.Decompressor
+    private let decompressor: NIOHTTPDecompression.Decompressor
     /// The number of already consumed compressed bytes
     private var compressedLength: Int
     private var complete: Bool

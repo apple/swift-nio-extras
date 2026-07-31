@@ -96,7 +96,7 @@ public enum NIOHTTPDecompression: Sendable {
         }
     }
 
-    struct Decompressor {
+    final class Decompressor {
         /// `15` is the base two logarithm of the maximum window size (the size of the history buffer). It should be in the range 8..15 for this version of the library.
         /// `32` enables automatic detection of gzip or zlib compression format with automatic header detection.
         ///
@@ -130,14 +130,25 @@ public enum NIOHTTPDecompression: Sendable {
         static let windowBitsWithAutomaticCompressionFormatDetection: Int32 = 15 + 32
 
         private let limit: NIOHTTPDecompression.DecompressionLimit
-        private var stream = cnioextras_z_stream()
+        // zlib stores the address of this stream in its internal state. Keep it in separately
+        // allocated storage so that its address remains stable for the entire decompression lifecycle.
+        private let stream: UnsafeMutablePointer<cnioextras_z_stream>
         private var inflated = 0
+        private var isInitialized = false
 
         init(limit: NIOHTTPDecompression.DecompressionLimit) {
             self.limit = limit
+            self.stream = .allocate(capacity: 1)
+            self.stream.initialize(to: cnioextras_z_stream())
         }
 
-        mutating func decompress(
+        deinit {
+            self.deinitializeDecoder()
+            self.stream.deinitialize(count: 1)
+            self.stream.deallocate()
+        }
+
+        func decompress(
             part: inout ByteBuffer,
             buffer: inout ByteBuffer,
             compressedLength: Int
@@ -152,60 +163,71 @@ public enum NIOHTTPDecompression: Sendable {
             return result
         }
 
-        mutating func initializeDecoder() throws {
-            self.stream.zalloc = nil
-            self.stream.zfree = nil
-            self.stream.opaque = nil
+        func initializeDecoder() throws {
+            try self.initializeDecoder(windowBits: Self.windowBitsWithAutomaticCompressionFormatDetection)
+        }
+
+        func initializeDecoder(windowBits: Int32) throws {
+            precondition(!self.isInitialized)
+            self.stream.pointee.zalloc = nil
+            self.stream.pointee.zfree = nil
+            self.stream.pointee.opaque = nil
             self.inflated = 0
 
-            let rc = CNIOExtrasZlib_inflateInit2(&self.stream, Self.windowBitsWithAutomaticCompressionFormatDetection)
+            let rc = CNIOExtrasZlib_inflateInit2(self.stream, windowBits)
             guard rc == CNIOEXTRAS_Z_OK else {
                 throw NIOHTTPDecompression.DecompressionError.initializationError(Int(rc))
             }
+            self.isInitialized = true
         }
 
-        mutating func deinitializeDecoder() {
-            cnioextras_z_inflateEnd(&self.stream)
+        @discardableResult
+        func deinitializeDecoder() -> Int32? {
+            if self.isInitialized {
+                self.isInitialized = false
+                return cnioextras_z_inflateEnd(self.stream)
+            }
+            return nil
         }
     }
 }
 
-extension cnioextras_z_stream {
-    mutating func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> InflateResult {
+extension UnsafeMutablePointer where Pointee == cnioextras_z_stream {
+    func inflatePart(input: inout ByteBuffer, output: inout ByteBuffer) throws -> InflateResult {
         let minimumCapacity = input.readableBytes * 2
         var inflateResult = InflateResult(written: 0, complete: false)
 
         try input.readWithUnsafeMutableReadableBytes { pointer in
-            self.avail_in = UInt32(pointer.count)
-            self.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
+            self.pointee.avail_in = UInt32(pointer.count)
+            self.pointee.next_in = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
             defer {
-                self.avail_in = 0
-                self.next_in = nil
-                self.avail_out = 0
-                self.next_out = nil
+                self.pointee.avail_in = 0
+                self.pointee.next_in = nil
+                self.pointee.avail_out = 0
+                self.pointee.next_out = nil
             }
 
             inflateResult = try self.inflatePart(to: &output, minimumCapacity: minimumCapacity)
 
-            return pointer.count - Int(self.avail_in)
+            return pointer.count - Int(self.pointee.avail_in)
         }
         return inflateResult
     }
 
-    private mutating func inflatePart(to buffer: inout ByteBuffer, minimumCapacity: Int) throws -> InflateResult {
+    private func inflatePart(to buffer: inout ByteBuffer, minimumCapacity: Int) throws -> InflateResult {
         var rc = CNIOEXTRAS_Z_OK
 
         let written = try buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: minimumCapacity) { pointer in
-            self.avail_out = UInt32(pointer.count)
-            self.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
+            self.pointee.avail_out = UInt32(pointer.count)
+            self.pointee.next_out = CNIOExtrasZlib_voidPtr_to_BytefPtr(pointer.baseAddress!)
 
-            rc = cnioextras_z_inflate(&self, CNIOEXTRAS_Z_NO_FLUSH)
+            rc = cnioextras_z_inflate(self, CNIOEXTRAS_Z_NO_FLUSH)
             guard rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END else {
                 throw NIOHTTPDecompression.DecompressionError.inflationError(Int(rc))
             }
 
-            return pointer.count - Int(self.avail_out)
+            return pointer.count - Int(self.pointee.avail_out)
         }
 
         return InflateResult(written: written, complete: rc == CNIOEXTRAS_Z_STREAM_END)

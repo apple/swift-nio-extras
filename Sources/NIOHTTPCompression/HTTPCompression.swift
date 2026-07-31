@@ -53,21 +53,31 @@ public enum NIOCompression: Sendable {
     }
 
     /// Data compression utility.
-    struct Compressor {
-        private var stream = cnioextras_z_stream()
+    final class Compressor {
+        // zlib stores the address of this stream in its internal state. Keep it in separately
+        // allocated storage so that its address remains stable for the entire compression lifecycle.
+        private let stream: UnsafeMutablePointer<cnioextras_z_stream>
         var isActive = false
 
-        init() {}
+        init() {
+            self.stream = .allocate(capacity: 1)
+            self.stream.initialize(to: cnioextras_z_stream())
+        }
+
+        deinit {
+            self.shutdownIfActive()
+            self.stream.deinitialize(count: 1)
+            self.stream.deallocate()
+        }
 
         /// Set up the encoder for compressing data according to a specific
         /// algorithm.
-        mutating func initialize(encoding: Algorithm) {
+        func initialize(encoding: Algorithm) {
             assert(!isActive)
-            isActive = true
             // zlib docs say: The application must initialize zalloc, zfree and opaque before calling the init function.
-            stream.zalloc = nil
-            stream.zfree = nil
-            stream.opaque = nil
+            stream.pointee.zalloc = nil
+            stream.pointee.zfree = nil
+            stream.pointee.opaque = nil
 
             let windowBits: Int32
             switch encoding.algorithm {
@@ -78,7 +88,7 @@ public enum NIOCompression: Sendable {
             }
 
             let rc = CNIOExtrasZlib_deflateInit2(
-                &stream,
+                stream,
                 CNIOEXTRAS_Z_DEFAULT_COMPRESSION,
                 CNIOEXTRAS_Z_DEFLATED,
                 windowBits,
@@ -86,9 +96,10 @@ public enum NIOCompression: Sendable {
                 CNIOEXTRAS_Z_DEFAULT_STRATEGY
             )
             precondition(rc == CNIOEXTRAS_Z_OK, "Unexpected return from zlib init: \(rc)")
+            isActive = true
         }
 
-        mutating func compress(
+        func compress(
             inputBuffer: inout ByteBuffer,
             allocator: ByteBufferAllocator,
             finalise: Bool
@@ -107,37 +118,39 @@ public enum NIOCompression: Sendable {
             // some compression algorithms and so it should be used only when necessary. This completes the current deflate block and
             // follows it with an empty stored block that is three bits plus filler bits to the next byte, followed by four bytes
             // (00 00 ff ff).
-            let bufferSize = Int(cnioextras_z_deflateBound(&stream, UInt(inputBuffer.readableBytes)))
+            let bufferSize = Int(cnioextras_z_deflateBound(stream, UInt(inputBuffer.readableBytes)))
             var outputBuffer = allocator.buffer(capacity: bufferSize + 5)
             stream.oneShotDeflate(from: &inputBuffer, to: &outputBuffer, flag: flags)
             return outputBuffer
         }
 
-        mutating func shutdown() {
+        @discardableResult
+        func shutdown() -> Int32 {
             assert(isActive)
             isActive = false
-            cnioextras_z_deflateEnd(&stream)
+            return cnioextras_z_deflateEnd(stream)
         }
 
-        mutating func shutdownIfActive() {
+        @discardableResult
+        func shutdownIfActive() -> Int32? {
             if isActive {
-                isActive = false
-                cnioextras_z_deflateEnd(&stream)
+                return self.shutdown()
             }
+            return nil
         }
     }
 }
 
-extension cnioextras_z_stream {
+extension UnsafeMutablePointer where Pointee == cnioextras_z_stream {
     /// Executes deflate from one buffer to another buffer. The advantage of this method is that it
     /// will ensure that the stream is "safe" after each call (that is, that the stream does not have
     /// pointers to byte buffers any longer).
-    mutating func oneShotDeflate(from: inout ByteBuffer, to: inout ByteBuffer, flag: Int32) {
+    func oneShotDeflate(from: inout ByteBuffer, to: inout ByteBuffer, flag: Int32) {
         defer {
-            self.avail_in = 0
-            self.next_in = nil
-            self.avail_out = 0
-            self.next_out = nil
+            self.pointee.avail_in = 0
+            self.pointee.next_in = nil
+            self.pointee.avail_out = 0
+            self.pointee.next_out = nil
         }
 
         from.readWithUnsafeMutableReadableBytes { dataPtr in
@@ -147,20 +160,20 @@ extension cnioextras_z_stream {
                 count: dataPtr.count
             )
 
-            self.avail_in = UInt32(typedDataPtr.count)
-            self.next_in = typedDataPtr.baseAddress!
+            self.pointee.avail_in = UInt32(typedDataPtr.count)
+            self.pointee.next_in = typedDataPtr.baseAddress!
 
             let rc = deflateToBuffer(buffer: &to, flag: flag)
             precondition(rc == CNIOEXTRAS_Z_OK || rc == CNIOEXTRAS_Z_STREAM_END, "One-shot compression failed: \(rc)")
 
-            return typedDataPtr.count - Int(self.avail_in)
+            return typedDataPtr.count - Int(self.pointee.avail_in)
         }
     }
 
     /// A private function that sets the deflate target buffer and then calls deflate.
     /// This relies on having the input set by the previous caller: it will use whatever input was
     /// configured.
-    private mutating func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
+    private func deflateToBuffer(buffer: inout ByteBuffer, flag: Int32) -> Int32 {
         var rc = CNIOEXTRAS_Z_OK
 
         buffer.writeWithUnsafeMutableBytes(minimumWritableBytes: buffer.capacity) { outputPtr in
@@ -168,10 +181,10 @@ extension cnioextras_z_stream {
                 start: outputPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
                 count: outputPtr.count
             )
-            self.avail_out = UInt32(typedOutputPtr.count)
-            self.next_out = typedOutputPtr.baseAddress!
-            rc = cnioextras_z_deflate(&self, flag)
-            return typedOutputPtr.count - Int(self.avail_out)
+            self.pointee.avail_out = UInt32(typedOutputPtr.count)
+            self.pointee.next_out = typedOutputPtr.baseAddress!
+            rc = cnioextras_z_deflate(self, flag)
+            return typedOutputPtr.count - Int(self.pointee.avail_out)
         }
 
         return rc
