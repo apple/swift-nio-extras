@@ -136,6 +136,12 @@ public enum NIOHTTPDecompression: Sendable {
         private var inflated = 0
         private var isInitialized = false
 
+        // Internal for lifecycle tests: zlib clears this pointer only after inflateEnd releases
+        // the state it allocated for the stream.
+        var zlibStateIsAllocated: Bool {
+            self.stream.pointee.state != nil
+        }
+
         init(limit: NIOHTTPDecompression.DecompressionLimit) {
             self.limit = limit
             self.stream = .allocate(capacity: 1)

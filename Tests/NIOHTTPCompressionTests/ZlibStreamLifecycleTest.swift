@@ -45,6 +45,7 @@ final class ZlibStreamLifecycleTest: XCTestCase {
             (NIOCompression.Algorithm.deflate, ["second compression ", "lifecycle"]),
         ] {
             compressor.initialize(encoding: encoding)
+            XCTAssertTrue(compressor.zlibStateIsAllocated)
             var firstInput = allocator.buffer(capacity: chunks[0].utf8.count)
             firstInput.writeString(chunks[0])
             var compressed = compressor.compress(inputBuffer: &firstInput, allocator: allocator, finalise: false)
@@ -55,12 +56,14 @@ final class ZlibStreamLifecycleTest: XCTestCase {
             compressed.writeBuffer(&finalCompressed)
             XCTAssertEqual(compressor.shutdown(), CNIOEXTRAS_Z_OK)
             XCTAssertNil(compressor.shutdownIfActive())
+            XCTAssertFalse(compressor.zlibStateIsAllocated)
 
             let text = chunks.joined()
             let compressedLength = compressed.readableBytes
             var firstCompressedPart = compressed.readSlice(length: compressedLength / 2)!
             var output = allocator.buffer(capacity: text.utf8.count)
             try decompressor.initializeDecoder()
+            XCTAssertTrue(decompressor.zlibStateIsAllocated)
             let firstResult = try decompressor.decompress(
                 part: &firstCompressedPart,
                 buffer: &output,
@@ -72,6 +75,7 @@ final class ZlibStreamLifecycleTest: XCTestCase {
                 compressedLength: compressedLength
             )
             XCTAssertEqual(decompressor.deinitializeDecoder(), CNIOEXTRAS_Z_OK)
+            XCTAssertFalse(decompressor.zlibStateIsAllocated)
 
             XCTAssertFalse(firstResult.complete)
             XCTAssertTrue(finalResult.complete)

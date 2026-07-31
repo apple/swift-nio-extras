@@ -59,6 +59,12 @@ public enum NIOCompression: Sendable {
         private let stream: UnsafeMutablePointer<cnioextras_z_stream>
         var isActive = false
 
+        // Internal for lifecycle tests: zlib clears this pointer only after deflateEnd releases
+        // the state it allocated for the stream.
+        var zlibStateIsAllocated: Bool {
+            self.stream.pointee.state != nil
+        }
+
         init() {
             self.stream = .allocate(capacity: 1)
             self.stream.initialize(to: cnioextras_z_stream())
