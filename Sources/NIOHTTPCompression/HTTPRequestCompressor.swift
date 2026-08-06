@@ -51,7 +51,7 @@ public final class NIOHTTPRequestCompressor: ChannelOutboundHandler, RemovableCh
     /// handler state
     var state: State
     /// compression handler
-    var compressor: NIOCompression.Compressor
+    let compressor: NIOCompression.Compressor
     /// pending write promise
     var pendingWritePromise: EventLoopPromise<Void>!
 

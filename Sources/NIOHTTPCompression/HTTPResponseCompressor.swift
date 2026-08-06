@@ -126,7 +126,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         case noDataToWrite
     }
 
-    private var compressor: NIOCompression.Compressor
+    private let compressor: NIOCompression.Compressor
 
     // A queue of accept headers.
     private var acceptQueue = CircularBuffer<[Substring]>(initialCapacity: 8)
@@ -270,7 +270,7 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
     ///
     /// Called either when a HTTP end message is received or our flush() method is called.
     private func emitPendingWrites(context: ChannelHandlerContext) {
-        let writesToEmit = pendingResponse.flush(compressor: &compressor, allocator: context.channel.allocator)
+        let writesToEmit = pendingResponse.flush(compressor: compressor, allocator: context.channel.allocator)
         var pendingPromise = pendingWritePromise
 
         if let writeHead = writesToEmit.0 {
@@ -372,7 +372,7 @@ private struct PartialHTTPResponse {
     /// Calling this function resets the buffer, freeing any excess memory allocated in the internal
     /// buffer and losing all copies of the other HTTP data. At this point it may freely be reused.
     mutating func flush(
-        compressor: inout NIOCompression.Compressor,
+        compressor: NIOCompression.Compressor,
         allocator: ByteBufferAllocator
     ) -> (HTTPResponseHead?, ByteBuffer?, HTTPServerResponsePart?) {
         var outputBody: ByteBuffer? = nil
