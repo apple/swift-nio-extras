@@ -816,6 +816,32 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertNoThrow(XCTAssertTrue(try channel.finish().isClean))
     }
 
+    func testReadTCPIPv4RejectsTotalLengthTooSmallForTCP() {
+        func makeIPv4Header(totalLength: UInt16) -> ByteBuffer {
+            var buffer = ByteBuffer()
+            buffer.writeInteger(UInt8(0x45))  // IP version 4 & IHL 5
+            buffer.writeInteger(UInt8(0))  // DSCP
+            buffer.writeInteger(totalLength)  // total length
+            buffer.writeInteger(UInt16(0))  // identification
+            buffer.writeInteger(UInt16(0))  // flags & fragment offset
+            buffer.writeInteger(UInt8(64))  // TTL
+            buffer.writeInteger(UInt8(6))  // TCP
+            buffer.writeInteger(UInt16(0))  // checksum
+            buffer.writeInteger(UInt32(0), endianness: .host)  // source address
+            buffer.writeInteger(UInt32(0), endianness: .host)  // destination address
+            return buffer
+        }
+
+        // A TCP/IPv4 packet is at least 40 bytes, so a smaller total length is an illegal packet
+        // that no further data can complete. Parsing must reject it by throwing rather than
+        // underflowing the payload length calculation. The values below the 20 byte IPv4 header
+        // size are the ones that previously wrapped around and trapped.
+        for tooSmall: UInt16 in [0, 1, 19, 20, 39] {
+            var buffer = makeIPv4Header(totalLength: tooSmall)
+            XCTAssertThrowsError(try buffer.readTCPIPv4(), "total length \(tooSmall)")
+        }
+    }
+
 }
 
 struct PCAPRecord {
@@ -888,15 +914,23 @@ extension ByteBuffer {
             let innerProtocolID = self.readInteger(as: UInt8.self),  // TCP
             let _ = self.readInteger(as: UInt16.self),  // checksum
             let srcRaw = self.readInteger(endianness: .host, as: UInt32.self),
-            let dstRaw = self.readInteger(endianness: .host, as: UInt32.self),
-            var payload = self.readSlice(length: Int(ipv4WholeLength - 20)),
-            let tcp = try payload.readTCPHeader()
+            let dstRaw = self.readInteger(endianness: .host, as: UInt32.self)
         else {
             self = saveSelf
             return nil
         }
-        guard version == 0x45, innerProtocolID == 6 else {  // innerProtocolID -> TCP is 6
+        // A TCP/IPv4 packet is at least 40 bytes: a 20 byte IPv4 header plus a 20 byte TCP header.
+        // The total length field declares the whole size, so a smaller value is an illegal packet
+        // that no amount of further data can complete. Rejecting it here also keeps the payload
+        // length calculation below from wrapping around.
+        guard version == 0x45, innerProtocolID == 6, ipv4WholeLength >= 40 else {  // innerProtocolID -> TCP is 6
             throw ParsingError()
+        }
+        guard var payload = self.readSlice(length: Int(ipv4WholeLength) - 20),
+            let tcp = try payload.readTCPHeader()
+        else {
+            self = saveSelf
+            return nil
         }
 
         let src = in_addr(s_addr: srcRaw)

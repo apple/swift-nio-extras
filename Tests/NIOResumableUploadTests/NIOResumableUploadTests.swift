@@ -84,6 +84,125 @@ final class NIOResumableUploadTests: XCTestCase {
         XCTAssertTrue(try channel.finish().isClean)
     }
 
+    func testNonUploadKeepAlive() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart, HTTPResponsePart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
+
+        let request = HTTPRequest(method: .get, scheme: "https", authority: "example.com", path: "/")
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 2)
+
+        recorder.write(HTTPResponsePart.head(HTTPResponse(status: .ok)))
+        recorder.write(HTTPResponsePart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status, .ok)
+        guard let responsePart = try channel.readOutbound(as: HTTPResponsePart.self), case .end = responsePart else {
+            XCTFail("Part is not response end")
+            return
+        }
+
+        // A second request on the same channel, as with HTTP/1.1 keep-alive.
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 4)
+
+        recorder.write(HTTPResponsePart.head(HTTPResponse(status: .ok)))
+        recorder.write(HTTPResponsePart.end(nil))
+
+        let secondResponsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let secondResponse) = secondResponsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(secondResponse.status, .ok)
+        guard let secondResponsePart = try channel.readOutbound(as: HTTPResponsePart.self),
+            case .end = secondResponsePart
+        else {
+            XCTFail("Part is not response end")
+            return
+        }
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
+    func testResumableUploadKeepAlive() throws {
+        let channel = EmbeddedChannel()
+        let recorder = InboundRecorder<HTTPRequestPart, HTTPResponsePart>()
+
+        let context = HTTPResumableUploadContext(origin: "https://example.com")
+        try channel.pipeline.syncOperations.addHandler(
+            HTTPResumableUploadHandler(context: context, handlers: [recorder])
+        )
+
+        var request = HTTPRequest(method: .post, scheme: "https", authority: "example.com", path: "/")
+        request.headerFields[.uploadDraftInteropVersion] = "6"
+        request.headerFields[.uploadComplete] = "?1"
+        request.headerFields[.contentLength] = "5"
+        request.headerFields[.uploadLength] = "5"
+        try channel.writeInbound(HTTPRequestPart.head(request))
+        try channel.writeInbound(HTTPRequestPart.body(ByteBuffer(string: "Hello")))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 3)
+
+        let informationalResponsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let informationalResponse) = informationalResponsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(informationalResponse.status.code, 104)
+
+        recorder.write(HTTPResponsePart.head(HTTPResponse(status: .created)))
+        recorder.write(HTTPResponsePart.end(nil))
+
+        let responsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let response) = responsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(response.status, .created)
+        guard let responsePart = try channel.readOutbound(as: HTTPResponsePart.self), case .end = responsePart else {
+            XCTFail("Part is not response end")
+            return
+        }
+
+        // A second request on the same channel, as with HTTP/1.1 keep-alive.
+        let secondRequest = HTTPRequest(method: .get, scheme: "https", authority: "example.com", path: "/")
+        try channel.writeInbound(HTTPRequestPart.head(secondRequest))
+        try channel.writeInbound(HTTPRequestPart.end(nil))
+
+        XCTAssertEqual(recorder.receivedFrames.count, 5)
+
+        recorder.write(HTTPResponsePart.head(HTTPResponse(status: .ok)))
+        recorder.write(HTTPResponsePart.end(nil))
+
+        let secondResponsePart = try channel.readOutbound(as: HTTPResponsePart.self)
+        guard case .head(let secondResponse) = secondResponsePart else {
+            XCTFail("Part is not response headers")
+            return
+        }
+        XCTAssertEqual(secondResponse.status, .ok)
+        guard let secondResponsePart = try channel.readOutbound(as: HTTPResponsePart.self),
+            case .end = secondResponsePart
+        else {
+            XCTFail("Part is not response end")
+            return
+        }
+        XCTAssertTrue(try channel.finish().isClean)
+    }
+
     func testOptions() throws {
         let channel = EmbeddedChannel()
         let recorder = InboundRecorder<HTTPRequestPart, HTTPResponsePart>()

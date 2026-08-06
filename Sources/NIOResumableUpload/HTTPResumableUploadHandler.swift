@@ -70,6 +70,7 @@ public final class HTTPResumableUploadHandler: ChannelDuplexHandler {
         if let existingUpload = self.upload {
             existingUpload.end(handler: self, error: nil)
         }
+        self.context = context
         let upload = self.createUpload()
         upload.scheduleOnEventLoop(self.eventLoop)
         upload.attachUploadHandler(self.sendableView, channel: context.channel)
