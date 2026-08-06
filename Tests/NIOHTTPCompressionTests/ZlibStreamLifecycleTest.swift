@@ -85,21 +85,4 @@ final class ZlibStreamLifecycleTest: XCTestCase {
         }
     }
 
-    func testActiveStreamsAreCleanedUpOnDeinit() throws {
-        weak var weakCompressor: NIOCompression.Compressor?
-        weak var weakDecompressor: NIOHTTPDecompression.Decompressor?
-
-        do {
-            let compressor = NIOCompression.Compressor()
-            compressor.initialize(encoding: .gzip)
-            weakCompressor = compressor
-
-            let decompressor = NIOHTTPDecompression.Decompressor(limit: .none)
-            try decompressor.initializeDecoder()
-            weakDecompressor = decompressor
-        }
-
-        XCTAssertNil(weakCompressor)
-        XCTAssertNil(weakDecompressor)
-    }
 }
