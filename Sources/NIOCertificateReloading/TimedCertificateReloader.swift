@@ -36,7 +36,7 @@ import Foundation
 /// key via ``init(refreshInterval:certificateSource:privateKeySource:logger:)``.
 /// Simply creating a timed reloader won't validate that the sources provide valid certificate and private key pairs. If you want this to be
 /// validated at creation time, you may instead use
-/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``.
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``.
 ///
 /// You may then set the timed reloader on your ``NIOSSL/TLSConfiguration`` using
 /// ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)``:
@@ -76,7 +76,7 @@ import Foundation
 /// ```
 ///
 /// In both cases, make sure you've either called ``run()`` or created the ``TimedCertificateReloader`` using
-/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``
 /// _before_ creating the ``NIOSSL/TLSConfiguration``, as otherwise the validation will fail.
 ///
 /// Once the reloader is running, you can manually access its ``sslContextConfigurationOverride`` property to get a
@@ -413,8 +413,8 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
     /// implementation provides.
     /// - Note: If no reload attempt has yet been tried (either by creating the reloader with
-    /// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``,
-    /// manually calling ``reload()``, or by calling ``run()``), `NIOSSLContextConfigurationOverride/noChanges`
+    /// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``,
+    /// manually calling ``reload()-7zipa``, or by calling ``run()``), `NIOSSLContextConfigurationOverride/noChanges`
     /// will be returned.
     public var sslContextConfigurationOverride: NIOSSLContextConfigurationOverride {
         get {
@@ -431,7 +431,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
     /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
-    /// ``TimedCertificateReloader/reload()`` are called.
+    /// ``TimedCertificateReloader/reload()-7zipa`` are called.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
     ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
@@ -456,7 +456,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
     /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
-    /// ``TimedCertificateReloader/reload()`` are called.
+    /// ``TimedCertificateReloader/reload()-7zipa`` are called.
     /// - Parameter configuration: Configuration for this reloader.
     public init(
         configuration: Configuration
