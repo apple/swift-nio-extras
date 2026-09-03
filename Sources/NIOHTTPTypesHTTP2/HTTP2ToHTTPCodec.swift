@@ -289,18 +289,18 @@ extension HTTP2FramePayloadToHTTPServerCodec: Sendable {}
 /// Events that can be sent by the application to be handled by the `HTTP2StreamChannel`
 public struct NIOHTTP2FramePayloadToHTTPEvent: Hashable, Sendable {
     private enum Kind: Hashable, Sendable {
-        case reset(HTTP2ErrorCode)
+        case reset(NIOHTTP2.HTTP2ErrorCode)
     }
 
     private var kind: Kind
 
     /// Send a `RST_STREAM` with the specified code
-    public static func reset(code: HTTP2ErrorCode) -> Self {
+    public static func reset(code: NIOHTTP2.HTTP2ErrorCode) -> Self {
         .init(kind: .reset(code))
     }
 
     /// Returns reset code if the event is a reset
-    public var reset: HTTP2ErrorCode? {
+    public var reset: NIOHTTP2.HTTP2ErrorCode? {
         switch self.kind {
         case .reset(let code):
             return code
