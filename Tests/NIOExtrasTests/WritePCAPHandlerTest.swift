@@ -842,6 +842,38 @@ class WritePCAPHandlerTest: XCTestCase {
         }
     }
 
+    func testUnixDomainSocketAddressesFallBackToFakeIPAddresses() throws {
+        XCTAssertEqual([], self.accumulatedPackets)
+        self.channel.localAddress = try SocketAddress(unixDomainSocketPath: "/tmp/local.sock")
+        XCTAssertNoThrow(
+            try self.channel.connect(to: SocketAddress(unixDomainSocketPath: "/tmp/remote.sock")).wait()
+        )
+        XCTAssertNoThrow(try self.channel.throwIfErrorCaught())
+        XCTAssertEqual(1, self.accumulatedPackets.count)
+
+        var buffer = self.accumulatedPackets.first
+        var record = buffer?.readPCAPRecord()  // SYN
+        XCTAssertEqual(2, record?.pcapProtocolID)  // 2 is IPv4, the fake addresses are IPv4
+        let ipPacket = try record?.payload.readTCPIPv4()
+        XCTAssertNotNil(ipPacket)
+
+        // UNIX domain sockets have no IP address or port, so the handler substitutes its fake addresses.
+        let expectedLocal = try SocketAddress(ipAddress: "111.111.111.111", port: 1111)
+        let expectedRemote = try SocketAddress(ipAddress: "222.222.222.222", port: 2222)
+        if let ipPacket = ipPacket {
+            self.assertEqual(
+                expectedAddress: expectedLocal,
+                actualIPv4Address: ipPacket.src,
+                actualPort: ipPacket.tcpHeader.srcPort
+            )
+            self.assertEqual(
+                expectedAddress: expectedRemote,
+                actualIPv4Address: ipPacket.dst,
+                actualPort: ipPacket.tcpHeader.dstPort
+            )
+            XCTAssertEqual([.syn], ipPacket.tcpHeader.flags)
+        }
+    }
 }
 
 struct PCAPRecord {
