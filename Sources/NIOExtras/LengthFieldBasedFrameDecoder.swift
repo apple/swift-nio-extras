@@ -53,6 +53,8 @@ public enum NIOLengthFieldBasedFrameDecoderError: Error {
     case lengthFieldValueTooLarge
     /// This error can be thrown by ``LengthFieldBasedFrameDecoder`` if the length field value is larger than `LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize`
     case lengthFieldValueLargerThanMaxSupportedSize
+    /// The adjusted frame length is negative or cannot be represented by `Int`.
+    case invalidAdjustedFrameLength
 }
 
 ///
@@ -121,6 +123,7 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
 
     private let lengthFieldLength: NIOLengthFieldBitLength
     private let lengthFieldEndianness: Endianness
+    private let lengthAdjustment: Int
 
     /// Create `LengthFieldBasedFrameDecoder` with a given frame length.
     ///
@@ -136,9 +139,48 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
     /// - parameters:
     ///    - lengthFieldBitLength: The length of the field specifying the remaining length of the frame.
     ///    - lengthFieldEndianness: The endianness of the field specifying the remaining length of the frame.
-    public init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
+    public convenience init(lengthFieldBitLength: NIOLengthFieldBitLength, lengthFieldEndianness: Endianness = .big) {
+        self.init(
+            lengthFieldBitLength: lengthFieldBitLength,
+            lengthFieldEndianness: lengthFieldEndianness,
+            lengthAdjustment: 0
+        )
+    }
+
+    /// Create a decoder that adjusts the declared length before reading the frame body.
+    ///
+    /// - Parameters:
+    ///   - lengthFieldLength: The size of the length field.
+    ///   - lengthFieldEndianness: The endianness of the length field.
+    ///   - lengthAdjustment: The number of bytes to add to the declared length.
+    ///     For a protocol that includes a two-byte length field in its declared length, use `-2`.
+    public convenience init(
+        lengthFieldLength: ByteLength,
+        lengthFieldEndianness: Endianness = .big,
+        lengthAdjustment: Int
+    ) {
+        self.init(
+            lengthFieldBitLength: lengthFieldLength.bitLength,
+            lengthFieldEndianness: lengthFieldEndianness,
+            lengthAdjustment: lengthAdjustment
+        )
+    }
+
+    /// Create a decoder that adjusts the declared length before reading the frame body.
+    ///
+    /// - Parameters:
+    ///   - lengthFieldBitLength: The size of the length field.
+    ///   - lengthFieldEndianness: The endianness of the length field.
+    ///   - lengthAdjustment: The number of bytes to add to the declared length.
+    ///     Use the negative size of the length field when the declared length includes that field.
+    public init(
+        lengthFieldBitLength: NIOLengthFieldBitLength,
+        lengthFieldEndianness: Endianness = .big,
+        lengthAdjustment: Int
+    ) {
         self.lengthFieldLength = lengthFieldBitLength
         self.lengthFieldEndianness = lengthFieldEndianness
+        self.lengthAdjustment = lengthAdjustment
     }
 
     /// Decode supplied data.
@@ -196,7 +238,14 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             return
         }
 
-        self.readState = .waitingForFrame(length: lengthFieldValue)
+        let (frameLength, overflow) = lengthFieldValue.addingReportingOverflow(self.lengthAdjustment)
+        guard !overflow, frameLength >= 0 else {
+            throw NIOLengthFieldBasedFrameDecoderError.invalidAdjustedFrameLength
+        }
+        guard frameLength <= LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize else {
+            throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
+        }
+        self.readState = .waitingForFrame(length: frameLength)
     }
 
     /// Attempts to read the body data for a given length. Updates the status is successful.
@@ -245,11 +294,6 @@ public final class LengthFieldBasedFrameDecoder: ByteToMessageDecoder {
             }
         }
 
-        if let frameLength = frameLength,
-            frameLength > LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize
-        {
-            throw NIOLengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize
-        }
         return frameLength
     }
 }
