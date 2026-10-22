@@ -353,12 +353,12 @@ let package = Package(
 // that have a direct dependency on swift-crypto accept beta releases as well.
 if ProcessInfo.processInfo.environment["SWIFT_NIO_EXTRAS_ALLOW_SWIFT_CRYPTO_BETA"] == nil {
     package.dependencies += [
-        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0")
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"6.0.0")
     ]
 } else {
     print("Accepting beta versions of swift-crypto!")
     package.dependencies += [
-        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0-beta.max")
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"6.0.0-beta.max")
     ]
 }
 
