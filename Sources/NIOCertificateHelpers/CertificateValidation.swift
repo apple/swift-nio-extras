@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import NIOSSL
 import SwiftASN1
 import X509
