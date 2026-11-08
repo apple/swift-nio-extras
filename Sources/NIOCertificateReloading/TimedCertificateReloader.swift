@@ -15,6 +15,7 @@
 import AsyncAlgorithms
 import Logging
 import NIOConcurrencyHelpers
+import NIOPosix
 import NIOSSL
 import ServiceLifecycle
 import SwiftASN1
@@ -35,7 +36,7 @@ import Foundation
 /// key via ``init(refreshInterval:certificateSource:privateKeySource:logger:)``.
 /// Simply creating a timed reloader won't validate that the sources provide valid certificate and private key pairs. If you want this to be
 /// validated at creation time, you may instead use
-/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``.
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``.
 ///
 /// You may then set the timed reloader on your ``NIOSSL/TLSConfiguration`` using
 /// ``NIOSSL/TLSConfiguration/setCertificateReloader(_:)``:
@@ -54,7 +55,7 @@ import Foundation
 /// ```
 ///
 /// Finally, you must call ``run()`` on the reloader for it to start observing changes.
-/// If you want to trigger a manual reload at any point, you may call ``reload()``.
+/// If you want to trigger a manual reload at any point, you may call `try await reloader.reload()`.
 ///
 /// If you're creating a server configuration, you can instead opt to use
 /// ``NIOSSL/TLSConfiguration/makeServerConfiguration(certificateReloader:)``, which will set the initial
@@ -75,7 +76,7 @@ import Foundation
 /// ```
 ///
 /// In both cases, make sure you've either called ``run()`` or created the ``TimedCertificateReloader`` using
-/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``
+/// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``
 /// _before_ creating the ``NIOSSL/TLSConfiguration``, as otherwise the validation will fail.
 ///
 /// Once the reloader is running, you can manually access its ``sslContextConfigurationOverride`` property to get a
@@ -412,8 +413,8 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Its certificate and private key will be kept up-to-date via the reload mechanism the ``TimedCertificateReloader``
     /// implementation provides.
     /// - Note: If no reload attempt has yet been tried (either by creating the reloader with
-    /// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)``,
-    /// manually calling ``reload()``, or by calling ``run()``), `NIOSSLContextConfigurationOverride/noChanges`
+    /// ``makeReloaderValidatingSources(refreshInterval:certificateSource:privateKeySource:logger:)-3c5se``,
+    /// manually calling ``reload()-7zipa``, or by calling ``run()``), `NIOSSLContextConfigurationOverride/noChanges`
     /// will be returned.
     public var sslContextConfigurationOverride: NIOSSLContextConfigurationOverride {
         get {
@@ -430,7 +431,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
     /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
-    /// ``TimedCertificateReloader/reload()`` are called.
+    /// ``TimedCertificateReloader/reload()-7zipa`` are called.
     /// - Parameters:
     ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
     ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
@@ -455,7 +456,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// Initialize a new ``TimedCertificateReloader``.
     /// - Important: ``TimedCertificateReloader/sslContextConfigurationOverride`` will return
     /// `NIOSSLContextConfigurationOverride/noChanges` until ``TimedCertificateReloader/run()`` or
-    /// ``TimedCertificateReloader/reload()`` are called.
+    /// ``TimedCertificateReloader/reload()-7zipa`` are called.
     /// - Parameter configuration: Configuration for this reloader.
     public init(
         configuration: Configuration
@@ -481,6 +482,7 @@ public struct TimedCertificateReloader: CertificateReloader {
     ///   - logger: An optional logger.
     /// - Returns: The newly created ``TimedCertificateReloader``.
     /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
+    @available(*, deprecated, message: "This can block the calling thread. Use the async overload instead.")
     public static func makeReloaderValidatingSources(
         refreshInterval: Duration,
         certificateSource: CertificateSource,
@@ -494,7 +496,35 @@ public struct TimedCertificateReloader: CertificateReloader {
         ) {
             $0.logger = logger
         }
-        return try makeReloaderValidatingSources(configuration: configuration)
+        return try self.makeReloaderValidatingSourcesSynchronously(configuration: configuration)
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``, and asynchronously attempt to reload the certificate and private
+    /// key pair from the given sources. If the reload fails (because e.g. the paths aren't valid), this method will throw.
+    /// - Important: If this method does not throw, it is guaranteed that
+    /// ``TimedCertificateReloader/sslContextConfigurationOverride`` will contain the configured certificate and
+    /// private key pair, even before the first reload is triggered or ``TimedCertificateReloader/run()`` is called.
+    /// - Parameters:
+    ///   - refreshInterval: The interval at which attempts to update the certificate and private key should be made.
+    ///   - certificateSource: A ``TimedCertificateReloader/CertificateSource``.
+    ///   - privateKeySource: A ``TimedCertificateReloader/PrivateKeySource``.
+    ///   - logger: An optional logger.
+    /// - Returns: The newly created ``TimedCertificateReloader``.
+    /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
+    public static func makeReloaderValidatingSources(
+        refreshInterval: Duration,
+        certificateSource: CertificateSource,
+        privateKeySource: PrivateKeySource,
+        logger: Logger? = nil
+    ) async throws -> Self {
+        let configuration = Configuration(
+            refreshInterval: refreshInterval,
+            certificateSource: certificateSource,
+            privateKeySource: privateKeySource
+        ) {
+            $0.logger = logger
+        }
+        return try await self.makeReloaderValidatingSources(configuration: configuration)
     }
 
     /// Initialize a new ``TimedCertificateReloader``, and attempt to reload the certificate and private key pair from the given
@@ -505,11 +535,34 @@ public struct TimedCertificateReloader: CertificateReloader {
     /// - Parameter configuration: Configuration for the ``TimedCertificateReloader``.
     /// - Returns: The newly created ``TimedCertificateReloader``.
     /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
+    @available(*, deprecated, message: "This can block the calling thread. Use the async overload instead.")
     public static func makeReloaderValidatingSources(
         configuration: Configuration
     ) throws -> Self {
+        try self.makeReloaderValidatingSourcesSynchronously(configuration: configuration)
+    }
+
+    /// Initialize a new ``TimedCertificateReloader``, and asynchronously attempt to reload the certificate and private
+    /// key pair from the given sources. If the reload fails (because e.g. the paths aren't valid), this method will throw.
+    /// - Important: If this method does not throw, it is guaranteed that
+    /// ``TimedCertificateReloader/sslContextConfigurationOverride`` will contain the configured certificate and
+    /// private key pair, even before the first reload is triggered or ``TimedCertificateReloader/run()`` is called.
+    /// - Parameter configuration: Configuration for the ``TimedCertificateReloader``.
+    /// - Returns: The newly created ``TimedCertificateReloader``.
+    /// - Throws: If either the certificate or private key sources cannot be loaded, an error will be thrown.
+    public static func makeReloaderValidatingSources(
+        configuration: Configuration
+    ) async throws -> Self {
         let reloader = Self.init(configuration: configuration)
-        try reloader.reload()
+        try await reloader.reload()
+        return reloader
+    }
+
+    private static func makeReloaderValidatingSourcesSynchronously(
+        configuration: Configuration
+    ) throws -> Self {
+        let reloader = Self.init(configuration: configuration)
+        try reloader.reloadSynchronously()
         return reloader
     }
 
@@ -519,7 +572,9 @@ public struct TimedCertificateReloader: CertificateReloader {
     public func run() async throws {
         for try await _ in AsyncTimerSequence.repeating(every: self.refreshInterval).cancelOnGracefulShutdown() {
             do {
-                try self.reload()
+                try await self.reload()
+            } catch let error as CancellationError where Task.isCancelled {
+                throw error
             } catch {
                 self.logger?.debug(
                     "Failed to reload certificate and private key.",
@@ -534,27 +589,52 @@ public struct TimedCertificateReloader: CertificateReloader {
     }
 
     /// Manually attempt a certificate and private key pair update.
+    @available(*, deprecated, message: "This can block the calling thread. Use the async overload instead.")
     public func reload() throws {
+        try self.reloadSynchronously()
+    }
+
+    /// Asynchronously attempt a certificate and private key pair update.
+    ///
+    /// Source loading is performed on a blocking I/O thread pool so this method does not block the calling executor.
+    public func reload() async throws {
         do {
-            let certificateBytes = try self.loadCertificate()
-            let keyBytes = try self.loadPrivateKey()
-
-            let certificates = try self.parseCertificates(from: certificateBytes)
-            let key = try self.parsePrivateKey(from: keyBytes)
-
-            guard let firstCertificate = certificates.first else {
-                throw Error.certificateLoadingError(reason: "The provided file does not contain any certificates.")
+            let (certificateBytes, keyBytes) = try await NIOThreadPool.singleton.runIfActive {
+                try (self.loadCertificate(), self.loadPrivateKey())
             }
-
-            guard key.publicKey == firstCertificate.publicKey else {
-                throw Error.publicKeyMismatch
-            }
-
-            try self.attemptToUpdatePair(certificates: certificates, key: key)
+            try self.reload(certificateBytes: certificateBytes, keyBytes: keyBytes)
+        } catch let error as CancellationError where Task.isCancelled {
+            throw error
         } catch {
             self.onCertificateLoadFailed?(CertificateChainAndKeyPairReloadFailure(error: error))
             throw error
         }
+    }
+
+    private func reloadSynchronously() throws {
+        do {
+            let certificateBytes = try self.loadCertificate()
+            let keyBytes = try self.loadPrivateKey()
+            try self.reload(certificateBytes: certificateBytes, keyBytes: keyBytes)
+        } catch {
+            self.onCertificateLoadFailed?(CertificateChainAndKeyPairReloadFailure(error: error))
+            throw error
+        }
+    }
+
+    private func reload(certificateBytes: [UInt8], keyBytes: [UInt8]) throws {
+        let certificates = try self.parseCertificates(from: certificateBytes)
+        let key = try self.parsePrivateKey(from: keyBytes)
+
+        guard let firstCertificate = certificates.first else {
+            throw Error.certificateLoadingError(reason: "The provided file does not contain any certificates.")
+        }
+
+        guard key.publicKey == firstCertificate.publicKey else {
+            throw Error.publicKeyMismatch
+        }
+
+        try self.attemptToUpdatePair(certificates: certificates, key: key)
     }
 
     private func loadCertificate() throws -> [UInt8] {

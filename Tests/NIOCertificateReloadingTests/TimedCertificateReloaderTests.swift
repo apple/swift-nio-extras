@@ -44,9 +44,11 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 XCTAssertNil(override.certificateChain)
                 XCTAssertNil(override.privateKey)
                 XCTAssertEqual(failureBox.withLockedValue { $0 }.count, 0)
-                let result = Result { try reloader.reload() }
+                do {
+                    try await reloader.reload()
+                    XCTFail("Reloading a missing certificate path should throw.")
+                } catch {}
                 XCTAssertEqual(failureBox.withLockedValue { $0 }.count, 1)
-                XCTAssertThrowsError(try result.get())
             }
         )
     }
@@ -361,6 +363,37 @@ final class TimedCertificateReloaderTests: XCTestCase {
         )
     }
 
+    func testAsyncReloadOffloadsSourceLoadingFromSwiftConcurrencyExecutor() async throws {
+        let certificateProviderWasRunningOnTask = NIOLockedValueBox<Bool?>(nil)
+        let callbackWasRunningOnTask = NIOLockedValueBox<Bool?>(nil)
+        let configuration = TimedCertificateReloader.Configuration(
+            refreshInterval: .seconds(10),
+            certificateSource: .init(
+                location: .memory(provider: {
+                    let isRunningOnTask = withUnsafeCurrentTask { $0 != nil }
+                    certificateProviderWasRunningOnTask.withLockedValue { $0 = isRunningOnTask }
+                    return try Self.sampleCert.serializeAsPEM().derBytes
+                }),
+                format: .der
+            ),
+            privateKeySource: .init(
+                location: .memory(provider: { Array(Self.samplePrivateKey1.derRepresentation) }),
+                format: .der
+            )
+        ) {
+            $0.onCertificateLoaded = { _ in
+                let isRunningOnTask = withUnsafeCurrentTask { $0 != nil }
+                callbackWasRunningOnTask.withLockedValue { $0 = isRunningOnTask }
+            }
+        }
+        let reloader = TimedCertificateReloader(configuration: configuration)
+
+        try await reloader.reload()
+
+        XCTAssertEqual(certificateProviderWasRunningOnTask.withLockedValue { $0 }, false)
+        XCTAssertEqual(callbackWasRunningOnTask.withLockedValue { $0 }, true)
+    }
+
     func testReloadSuccessfully_FromFile() async throws {
         // Start with empty files.
         let certificateFile = try self.createTempFile(contents: Data())
@@ -666,8 +699,8 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     /// This tests the first makeReloaderValidatingSources helper function, which takes many parameters.
-    func testCreateValidating() throws {
-        let reloader = try TimedCertificateReloader.makeReloaderValidatingSources(
+    func testCreateValidating() async throws {
+        let reloader = try await TimedCertificateReloader.makeReloaderValidatingSources(
             refreshInterval: .milliseconds(50),
             certificateSource: .init(
                 location: .memory(provider: { try Self.sampleCert.serializeAsPEM().derBytes }),
@@ -690,7 +723,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     /// This tests the other makeReloaderValidatingSources helper function, which takes a configuration.
-    func testCreateValidatingConfig() throws {
+    func testCreateValidatingConfig() async throws {
         let config = TimedCertificateReloader.Configuration(
             refreshInterval: .milliseconds(50),
             certificateSource: .init(
@@ -702,7 +735,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         )
-        let reloader = try TimedCertificateReloader.makeReloaderValidatingSources(configuration: config)
+        let reloader = try await TimedCertificateReloader.makeReloaderValidatingSources(configuration: config)
         // Cert should have been loaded once already
         XCTAssertEqual(
             reloader.sslContextConfigurationOverride.certificateChain,
@@ -715,7 +748,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
     }
 
     /// This tests makeReloaderValidatingSources when the sources are not valid.
-    func testCreateValidatingConfigInvalid() throws {
+    func testCreateValidatingConfigInvalid() async throws {
         let config = TimedCertificateReloader.Configuration(
             refreshInterval: .milliseconds(50),
             certificateSource: .init(
@@ -727,14 +760,17 @@ final class TimedCertificateReloaderTests: XCTestCase {
                 format: .der
             )
         )
-        XCTAssertThrowsError(try TimedCertificateReloader.makeReloaderValidatingSources(configuration: config))
+        do {
+            _ = try await TimedCertificateReloader.makeReloaderValidatingSources(configuration: config)
+            XCTFail("Creating a reloader with invalid sources should throw.")
+        } catch {}
     }
 
     /// This tests that `makeServerConfigurationWithMTLS(certificateReloader:trustRoots:)` correctly extracts the
     /// certificate chain and private key from `certificateReloader` and sets those in the returned `TLSConfiguration`
     /// (along with `trustRoots` and setting `.certificateVerification` to `.noHostnameVerification`)
     func testCreateServerConfigWithMTLS() async throws {
-        let certificateReloader = try TimedCertificateReloader.makeReloaderValidatingSources(
+        let certificateReloader = try await TimedCertificateReloader.makeReloaderValidatingSources(
             refreshInterval: .seconds(10),
             certificateSource: .init(
                 location: .memory(provider: {
@@ -888,7 +924,7 @@ final class TimedCertificateReloaderTests: XCTestCase {
         let reloader = TimedCertificateReloader(configuration: config)
 
         if validateSources {
-            try reloader.reload()
+            try await reloader.reload()
         }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
