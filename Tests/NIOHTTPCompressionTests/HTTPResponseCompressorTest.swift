@@ -508,6 +508,20 @@ class HTTPResponseCompressorTest: XCTestCase {
         try assertGzippedResponse(channel: channel)
     }
 
+    func testAllowsWhitespaceBeforeQValue() throws {
+        let channel = try compressionChannel()
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        // Optional whitespace is allowed after the ";" (RFC 9110 § 12.4.2).
+        try sendRequest(acceptEncoding: "deflate; q=0.5, gzip; q=0.8", channel: channel)
+        try sendRequest(acceptEncoding: "gzip;q=0.5, deflate;\tq=1.0", channel: channel)
+
+        try assertGzippedResponse(channel: channel)
+        try assertDeflatedResponse(channel: channel)
+    }
+
     func testAsteriskMeansGzip() throws {
         let channel = try compressionChannel()
         defer {
