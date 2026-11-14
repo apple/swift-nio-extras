@@ -37,8 +37,10 @@ private func qValueFromHeader<S: StringProtocol>(_ text: S) -> Float {
         return 1
     }
 
-    // We might have a Q value.
-    let qParts = headerParts[1].split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+    // We might have a Q value. Optional whitespace is allowed after the ";" (e.g. "gzip; q=0.5"),
+    // see RFC 9110 § 12.4.2.
+    let parameter = headerParts[1].drop(while: { $0 == " " || $0 == "\t" })
+    let qParts = parameter.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
 
     // A parameter without a value (e.g. "gzip;q") is malformed; treat as q=0.
     guard qParts.count > 1 else { return 0 }
