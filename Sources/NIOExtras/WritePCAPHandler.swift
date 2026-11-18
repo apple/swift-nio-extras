@@ -273,11 +273,25 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         self.fileSink(buffer)
     }
 
+    /// Returns `address` if it is an IP address, or `nil` otherwise.
+    ///
+    /// PCAP records need an IP address and a port for both ends of the connection, so a
+    /// UNIX domain socket address (which has neither) is replaced with a fake address.
+    private static func ipAddressOrNil(_ address: SocketAddress?) -> SocketAddress? {
+        switch address {
+        case .some(.v4), .some(.v6):
+            return address
+        default:
+            return nil
+        }
+    }
+
     private func localAddress(context: ChannelHandlerContext) -> SocketAddress {
         if let localAddress = self.localAddress {
             return localAddress
         } else {
-            let localAddress = context.channel.localAddress ?? NIOWritePCAPHandler.fakeLocalAddress
+            let localAddress =
+                NIOWritePCAPHandler.ipAddressOrNil(context.channel.localAddress) ?? NIOWritePCAPHandler.fakeLocalAddress
             self.localAddress = localAddress
             return localAddress
         }
@@ -287,7 +301,9 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         if let remoteAddress = self.remoteAddress {
             return remoteAddress
         } else {
-            let remoteAddress = context.channel.remoteAddress ?? NIOWritePCAPHandler.fakeRemoteAddress
+            let remoteAddress =
+                NIOWritePCAPHandler.ipAddressOrNil(context.channel.remoteAddress)
+                ?? NIOWritePCAPHandler.fakeRemoteAddress
             self.remoteAddress = remoteAddress
             return remoteAddress
         }
