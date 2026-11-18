@@ -29,6 +29,105 @@ class LengthFieldBasedFrameDecoderTest: XCTestCase {
     override func setUp() {
         self.channel = EmbeddedChannel()
     }
+    func testLengthIncludingHeaderWithFragmentedFrames() throws {
+        let lengths: [NIOLengthFieldBitLength] = [.oneByte, .twoBytes, .threeBytes, .fourBytes, .eightBytes]
+        for length in lengths {
+            for endianness in [Endianness.big, .little] {
+                let channel = EmbeddedChannel()
+                try channel.pipeline.syncOperations.addHandler(
+                    ByteToMessageHandler(
+                        LengthFieldBasedFrameDecoder(
+                            lengthFieldBitLength: length,
+                            lengthFieldEndianness: endianness,
+                            lengthAdjustment: -length.length
+                        )
+                    )
+                )
+                var packet = ByteBuffer()
+                for body in ["abcde", "", "xyz"] {
+                    let value = body.utf8.count + length.length
+                    switch length.bitLength {
+                    case .bits8:
+                        packet.writeInteger(UInt8(value), endianness: endianness)
+                    case .bits16:
+                        packet.writeInteger(UInt16(value), endianness: endianness)
+                    case .bits24:
+                        packet.write24UInt(UInt32(value), endianness: endianness)
+                    case .bits32:
+                        packet.writeInteger(UInt32(value), endianness: endianness)
+                    case .bits64:
+                        packet.writeInteger(UInt64(value), endianness: endianness)
+                    }
+                    packet.writeString(body)
+                }
+                for byte in packet.readableBytesView {
+                    _ = try channel.writeInbound(ByteBuffer(bytes: [byte]))
+                }
+                for expected in ["abcde", "", "xyz"] {
+                    var frame = try XCTUnwrap(channel.readInbound(as: ByteBuffer.self))
+                    XCTAssertEqual(frame.readString(length: frame.readableBytes), expected)
+                }
+                XCTAssertNil(try channel.readInbound(as: ByteBuffer.self))
+                XCTAssertTrue(try channel.finish().isClean)
+            }
+        }
+    }
+
+    func testLengthAdjustmentWithByteLengthInitializer() throws {
+        try self.channel.pipeline.syncOperations.addHandler(
+            ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldLength: .two, lengthAdjustment: -2))
+        )
+        XCTAssertTrue(try self.channel.writeInbound(ByteBuffer(bytes: [0, 5, 97, 98, 99])).isFull)
+        XCTAssertEqual(
+            try self.channel.readInbound(as: ByteBuffer.self),
+            ByteBuffer(string: "abc")
+        )
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testPositiveLengthAdjustment() throws {
+        try self.channel.pipeline.syncOperations.addHandler(
+            ByteToMessageHandler(LengthFieldBasedFrameDecoder(lengthFieldBitLength: .oneByte, lengthAdjustment: 2))
+        )
+        XCTAssertTrue(try self.channel.writeInbound(ByteBuffer(bytes: [3, 97, 98, 99, 100, 101])).isFull)
+        XCTAssertEqual(try self.channel.readInbound(as: ByteBuffer.self), ByteBuffer(string: "abcde"))
+        XCTAssertTrue(try self.channel.finish().isClean)
+    }
+
+    func testInvalidAdjustedFrameLength() throws {
+        for (declaredLength, adjustment) in [(UInt8(0), -1), (UInt8(1), Int.max)] {
+            let channel = EmbeddedChannel()
+            try channel.pipeline.syncOperations.addHandler(
+                ByteToMessageHandler(
+                    LengthFieldBasedFrameDecoder(lengthFieldBitLength: .oneByte, lengthAdjustment: adjustment)
+                )
+            )
+            XCTAssertThrowsError(try channel.writeInbound(ByteBuffer(bytes: [declaredLength]))) { error in
+                guard case NIOLengthFieldBasedFrameDecoderError.invalidAdjustedFrameLength = error else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+            }
+            _ = try? channel.finish()
+        }
+    }
+
+    func testAdjustedFrameLengthExceedsSupportedMaximum() throws {
+        try self.channel.pipeline.syncOperations.addHandler(
+            ByteToMessageHandler(
+                LengthFieldBasedFrameDecoder(
+                    lengthFieldBitLength: .oneByte,
+                    lengthAdjustment: LengthFieldBasedFrameDecoder.maxSupportedLengthFieldSize + 1
+                )
+            )
+        )
+        XCTAssertThrowsError(try self.channel.writeInbound(ByteBuffer(bytes: [0]))) { error in
+            guard case NIOLengthFieldBasedFrameDecoderError.lengthFieldValueLargerThanMaxSupportedSize = error else {
+                return XCTFail("unexpected error: \(error)")
+            }
+        }
+        _ = try? self.channel.finish()
+    }
+
     func testReadUInt32From3Bytes() {
         var buffer = ByteBuffer(bytes: [
             0, 0, 5,
