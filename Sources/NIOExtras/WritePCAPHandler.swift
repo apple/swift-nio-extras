@@ -277,7 +277,12 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         if let localAddress = self.localAddress {
             return localAddress
         } else {
-            let localAddress = context.channel.localAddress ?? NIOWritePCAPHandler.fakeLocalAddress
+            // The pcap format has no room for addresses without a port (e.g. Unix Domain
+            // Sockets), so fall back to the fake address whenever the real one can't supply one,
+            // not just when there's no real address at all.
+            let realLocalAddress = context.channel.localAddress
+            let localAddress =
+                realLocalAddress?.port != nil ? realLocalAddress! : NIOWritePCAPHandler.fakeLocalAddress
             self.localAddress = localAddress
             return localAddress
         }
@@ -287,7 +292,11 @@ public class NIOWritePCAPHandler: RemovableChannelHandler {
         if let remoteAddress = self.remoteAddress {
             return remoteAddress
         } else {
-            let remoteAddress = context.channel.remoteAddress ?? NIOWritePCAPHandler.fakeRemoteAddress
+            // See the comment in `localAddress(context:)`: a real address without a port (e.g.
+            // Unix Domain Sockets) can't be represented in the pcap format either.
+            let realRemoteAddress = context.channel.remoteAddress
+            let remoteAddress =
+                realRemoteAddress?.port != nil ? realRemoteAddress! : NIOWritePCAPHandler.fakeRemoteAddress
             self.remoteAddress = remoteAddress
             return remoteAddress
         }

@@ -732,6 +732,40 @@ class WritePCAPHandlerTest: XCTestCase {
         XCTAssertEqual(20, ipPackets[2].payloadLength)  // 20 -> just the TCP header
     }
 
+    func testUnixDomainSocketAddressesFallBackToFakeAddressesInsteadOfCrashing() throws {
+        self.channel.localAddress = try! SocketAddress(unixDomainSocketPath: "/tmp/nio-pcap-test-local.sock")
+        self.channel.remoteAddress = try! SocketAddress(unixDomainSocketPath: "/tmp/nio-pcap-test-remote.sock")
+        self.scratchBuffer.writeStaticString("hello")
+        XCTAssertNoThrow(try self.channel.writeOutbound(self.scratchBuffer))
+        self.channel.flush()
+
+        XCTAssertEqual(1, self.accumulatedPackets.count)
+        var buffer = self.accumulatedPackets.first
+        var record = buffer?.readPCAPRecord()
+        XCTAssertNotNil(record)
+        XCTAssertEqual(2, record?.pcapProtocolID)  // 2 is IPv4: the fake addresses are IPv4
+
+        guard let ipPacket = try record?.payload.readTCPIPv4() else {
+            XCTFail("could not parse a TCP/IPv4 packet")
+            return
+        }
+        // Real Unix Domain Socket addresses have no port, so `NIOWritePCAPHandler` must fall
+        // back to its fake local/remote addresses (111.111.111.111:1111 / 222.222.222.222:2222)
+        // rather than force-unwrapping a `nil` port and crashing.
+        let fakeLocal = try! SocketAddress(ipAddress: "111.111.111.111", port: 1111)
+        let fakeRemote = try! SocketAddress(ipAddress: "222.222.222.222", port: 2222)
+        self.assertEqual(
+            expectedAddress: fakeLocal,
+            actualIPv4Address: ipPacket.src,
+            actualPort: ipPacket.tcpHeader.srcPort
+        )
+        self.assertEqual(
+            expectedAddress: fakeRemote,
+            actualIPv4Address: ipPacket.dst,
+            actualPort: ipPacket.tcpHeader.dstPort
+        )
+    }
+
     func testUnflushedOutboundDataIsWrittenWhenEmittingWritesOnIssue() throws {
         XCTAssertNoThrow(try self.channel.pipeline.removeHandler(name: "NIOWritePCAPHandler").wait())
         let settings = NIOWritePCAPHandler.Settings(emitPCAPWrites: .whenIssued)
