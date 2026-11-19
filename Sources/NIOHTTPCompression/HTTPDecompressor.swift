@@ -139,7 +139,10 @@ private final class HTTPDecompressionDecoder: NIOSingleStepByteToMessageDecoder 
         if let output = try self.decode(buffer: &buffer) {
             return output
         }
-        if !self.complete {
+        // A message that never carried a single compressed byte (e.g. a redirect, a 204/304 or the response
+        // to a HEAD request that still advertises `Content-Encoding`) has nothing that could be truncated.
+        // Only a compressed body that started and did not reach its end is an error.
+        if !self.complete && self.compressedLength > 0 {
             throw NIOHTTPDecompression.ExtraDecompressionError.truncatedData
         }
         return nil

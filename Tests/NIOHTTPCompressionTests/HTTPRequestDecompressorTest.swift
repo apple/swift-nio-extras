@@ -333,6 +333,70 @@ class HTTPRequestDecompressorTest: XCTestCase {
         XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.end(nil)))
     }
 
+    func testBodilessRequestWithContentEncodingCompletesWithoutError() throws {
+        // The decoder is shared with the response decompressor, so a request that declares
+        // `Content-Encoding` but carries no body must also finish normally.
+        for algorithm in ["gzip", "deflate"] {
+            let channel = EmbeddedChannel()
+            try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
+            let headers = HTTPHeaders([("Content-Encoding", algorithm)])
+
+            XCTAssertNoThrow(
+                try channel.writeInbound(
+                    HTTPServerRequestPart.head(
+                        .init(
+                            version: .init(major: 1, minor: 1),
+                            method: .POST,
+                            uri: "https://nio.swift.org/test",
+                            headers: headers
+                        )
+                    )
+                ),
+                algorithm
+            )
+            XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.end(nil)), algorithm)
+            XCTAssertNoThrow(try channel.throwIfErrorCaught(), algorithm)
+
+            guard case .head? = try channel.readInbound(as: HTTPServerRequestPart.self) else {
+                XCTFail("Expected a head for \(algorithm)")
+                continue
+            }
+            guard case .end(nil)? = try channel.readInbound(as: HTTPServerRequestPart.self) else {
+                XCTFail("Expected an end for \(algorithm)")
+                continue
+            }
+            XCTAssertNil(try channel.readInbound(as: HTTPServerRequestPart.self))
+            XCTAssertNoThrow(try channel.finish())
+        }
+    }
+
+    func testDecompressionTruncatedGzipBodyStillThrows() throws {
+        let compressed = self.compress(ByteBuffer.of(string: String(repeating: "truncate me ", count: 100)), "gzip")
+        let truncated = compressed.getSlice(at: compressed.readerIndex, length: compressed.readableBytes / 2)!
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPRequestDecompressor(limit: .none))
+        let headers = HTTPHeaders([("Content-Encoding", "gzip")])
+        try channel.writeInbound(
+            HTTPServerRequestPart.head(
+                .init(
+                    version: .init(major: 1, minor: 1),
+                    method: .POST,
+                    uri: "https://nio.swift.org/test",
+                    headers: headers
+                )
+            )
+        )
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPServerRequestPart.body(truncated)))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPServerRequestPart.end(nil))) { error in
+            XCTAssertEqual(
+                error as? NIOHTTPDecompression.ExtraDecompressionError,
+                NIOHTTPDecompression.ExtraDecompressionError.truncatedData
+            )
+        }
+    }
+
     func testReentrantChannelReadDuringForwardIsSafe() throws {
         let channel = EmbeddedChannel()
         let recorder = Recorder<HTTPServerRequestPart>()
