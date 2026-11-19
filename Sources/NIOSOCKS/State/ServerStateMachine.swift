@@ -61,7 +61,7 @@ extension ServerStateMachine {
             case .waitingForClientGreeting:
                 return try self.handleClientGreeting(from: &buffer)
             case .authenticating:
-                return self.handleAuthenticationData(from: &buffer)
+                return try self.handleAuthenticationData(from: &buffer)
             case .waitingForClientRequest:
                 return try self.handleClientRequest(from: &buffer)
             }
@@ -91,7 +91,20 @@ extension ServerStateMachine {
         }
     }
 
-    fileprivate mutating func handleAuthenticationData(from buffer: inout ByteBuffer) -> ClientMessage? {
+    fileprivate mutating func handleAuthenticationData(from buffer: inout ByteBuffer) throws -> ClientMessage? {
+        if self.authenticationMethod == .usernamePassword {
+            // RFC 1929: only surface the sub-negotiation once the complete request has arrived, so
+            // that fragmented reads and malformed requests are handled here and not by every server.
+            // The framed bytes can be decoded with `ByteBuffer.readUsernamePasswordRequest()`.
+            // Parse a copy first, so nothing is consumed unless the whole request is there.
+            var lookahead = buffer
+            guard try lookahead.readUsernamePasswordRequest() != nil else {
+                return nil
+            }
+            let length = lookahead.readerIndex - buffer.readerIndex
+            return buffer.readSlice(length: length).map { .authenticationData($0) }
+        }
+
         guard let buffer = buffer.readSlice(length: buffer.readableBytes) else {
             return nil
         }
@@ -177,6 +190,16 @@ extension ServerStateMachine {
             .active,
             .error:
             throw SOCKSError.InvalidServerState()
+        }
+
+        if self.authenticationMethod == .usernamePassword, self.state == .authenticating {
+            // RFC 1929: after a failure status the connection must be closed, so don't
+            // allow the handshake to carry on.
+            var response = data
+            if let response = try? response.readUsernamePasswordResponse(), !response.isSuccess {
+                self.state = .error
+                return
+            }
         }
 
         if complete {

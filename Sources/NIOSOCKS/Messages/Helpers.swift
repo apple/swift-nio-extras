@@ -54,4 +54,17 @@ extension ByteBuffer {
         }
     }
 
+    /// Reads the version byte of the username/password sub-negotiation (RFC 1929), which must be *1*.
+    mutating func readAndValidateSubnegotiationVersion() throws -> UInt8? {
+        try self.parseUnwindingIfNeeded { buffer -> UInt8? in
+            guard let version = buffer.readInteger(as: UInt8.self) else {
+                return nil
+            }
+            guard version == 0x01 else {
+                throw SOCKSError.InvalidSubnegotiationVersion(actual: version)
+            }
+            return version
+        }
+    }
+
 }
