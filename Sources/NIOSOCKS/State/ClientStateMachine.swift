@@ -18,6 +18,8 @@ private enum ClientState: Hashable {
     case inactive
     case waitingForClientGreeting
     case waitingForAuthenticationMethod(ClientGreeting)
+    case waitingToSendCredentials
+    case waitingForCredentialsResponse
     case waitingForClientRequest
     case waitingForServerResponse(SOCKSRequest)
     case active
@@ -27,6 +29,7 @@ private enum ClientState: Hashable {
 enum ClientAction: Hashable {
     case waitForMoreData
     case sendGreeting
+    case sendCredentials
     case sendRequest
     case proxyEstablished
 }
@@ -40,7 +43,7 @@ struct ClientStateMachine {
         case .active:
             return true
         case .error, .inactive, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest,
-            .waitingForServerResponse:
+            .waitingForServerResponse, .waitingToSendCredentials, .waitingForCredentialsResponse:
             return false
         }
     }
@@ -50,7 +53,7 @@ struct ClientStateMachine {
         case .inactive:
             return true
         case .active, .error, .waitingForAuthenticationMethod, .waitingForClientGreeting, .waitingForClientRequest,
-            .waitingForServerResponse:
+            .waitingForServerResponse, .waitingToSendCredentials, .waitingForCredentialsResponse:
             return false
         }
     }
@@ -72,12 +75,18 @@ extension ClientStateMachine {
                     return .waitForMoreData
                 }
                 return action
+            case .waitingForCredentialsResponse:
+                guard let action = try self.handleCredentialsResponse(&buffer) else {
+                    return .waitForMoreData
+                }
+                return action
             case .waitingForServerResponse(let request):
                 guard let action = try self.handleServerResponse(&buffer, request: request) else {
                     return .waitForMoreData
                 }
                 return action
-            case .active, .error, .inactive, .waitingForClientGreeting, .waitingForClientRequest:
+            case .active, .error, .inactive, .waitingForClientGreeting, .waitingForClientRequest,
+                .waitingToSendCredentials:
                 throw SOCKSError.UnexpectedRead()
             }
         } catch {
@@ -94,12 +103,28 @@ extension ClientStateMachine {
             guard let selected = try buffer.readMethodSelection() else {
                 return nil
             }
+            // RFC 1928: the server has no acceptable method, the connection has to be closed.
+            guard selected.method != .noneAcceptable else {
+                throw SOCKSError.NoValidAuthenticationMethod()
+            }
             guard greeting.methods.contains(selected.method) else {
                 throw SOCKSError.InvalidAuthenticationSelection(selection: selected.method)
             }
 
-            // we don't current support any form of authentication
-            return self.authenticate(&buffer, method: selected.method)
+            return try self.authenticate(&buffer, method: selected.method)
+        }
+    }
+
+    mutating func handleCredentialsResponse(_ buffer: inout ByteBuffer) throws -> ClientAction? {
+        try buffer.parseUnwindingIfNeeded { buffer -> ClientAction? in
+            guard let response = try buffer.readUsernamePasswordResponse() else {
+                return nil
+            }
+            guard response.isSuccess else {
+                throw SOCKSError.AuthenticationFailed(status: response.status)
+            }
+            self.state = .waitingForClientRequest
+            return .sendRequest
         }
     }
 
@@ -116,14 +141,22 @@ extension ClientStateMachine {
         }
     }
 
-    mutating func authenticate(_ buffer: inout ByteBuffer, method: AuthenticationMethod) -> ClientAction {
-        precondition(method == .noneRequired, "No authentication mechanism is supported. Use .noneRequired only.")
-
-        // we don't currently support any authentication
-        // so assume all is fine, and instruct the client
-        // to send the request
-        self.state = .waitingForClientRequest
-        return .sendRequest
+    mutating func authenticate(_ buffer: inout ByteBuffer, method: AuthenticationMethod) throws -> ClientAction {
+        switch method {
+        case .noneRequired:
+            // nothing to negotiate, instruct the client to send the request
+            self.state = .waitingForClientRequest
+            return .sendRequest
+        case .usernamePassword:
+            // RFC 1929 sub-negotiation, the request has to be sent before the connect request
+            self.state = .waitingToSendCredentials
+            return .sendCredentials
+        case .noneAcceptable:
+            throw SOCKSError.NoValidAuthenticationMethod()
+        default:
+            // e.g. GSSAPI, which is not implemented
+            throw SOCKSError.UnsupportedAuthenticationMethod(method: method)
+        }
     }
 
 }
@@ -144,6 +177,13 @@ extension ClientStateMachine {
             throw SOCKSError.InvalidClientState()
         }
         self.state = .waitingForAuthenticationMethod(greeting)
+    }
+
+    mutating func sendClientCredentials() throws {
+        guard self.state == .waitingToSendCredentials else {
+            throw SOCKSError.InvalidClientState()
+        }
+        self.state = .waitingForCredentialsResponse
     }
 
     mutating func sendClientRequest(_ request: SOCKSRequest) throws {
