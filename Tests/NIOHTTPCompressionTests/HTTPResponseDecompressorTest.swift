@@ -360,6 +360,91 @@ class HTTPResponseDecompressorTest: XCTestCase {
         XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.end(nil)))
     }
 
+    func testBodilessResponseWithContentEncodingCompletesWithoutError() throws {
+        // Redirects, 204s, 304s and responses to HEAD requests may carry `Content-Encoding` yet never have a body.
+        // A 200 with no body is what a response to a HEAD request looks like to this handler.
+        let statuses: [HTTPResponseStatus] = [
+            .movedPermanently, .found, .temporaryRedirect, .noContent, .notModified, .ok,
+        ]
+        for algorithm in ["gzip", "deflate"] {
+            for status in statuses {
+                let channel = EmbeddedChannel()
+                try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
+                let headers = HTTPHeaders([("Content-Encoding", algorithm), ("Location", "https://nio.swift.org/next")])
+
+                XCTAssertNoThrow(
+                    try channel.writeInbound(
+                        HTTPClientResponsePart.head(.init(version: .http1_1, status: status, headers: headers))
+                    ),
+                    "\(algorithm) \(status)"
+                )
+                XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.end(nil)), "\(algorithm) \(status)")
+                XCTAssertNoThrow(try channel.throwIfErrorCaught(), "\(algorithm) \(status)")
+
+                guard case .head(let head)? = try channel.readInbound(as: HTTPClientResponsePart.self) else {
+                    XCTFail("Expected a head for \(algorithm) \(status)")
+                    continue
+                }
+                XCTAssertEqual(head.status, status)
+                guard case .end(nil)? = try channel.readInbound(as: HTTPClientResponsePart.self) else {
+                    XCTFail("Expected an end for \(algorithm) \(status)")
+                    continue
+                }
+                XCTAssertNil(try channel.readInbound(as: HTTPClientResponsePart.self))
+                XCTAssertNoThrow(try channel.finish())
+            }
+        }
+    }
+
+    func testBodilessResponseDoesNotLeakStateIntoNextMessage() throws {
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
+        let headers = HTTPHeaders([("Content-Encoding", "gzip")])
+
+        // A redirect without body followed by a normal compressed response on the same connection.
+        try channel.writeInbound(
+            HTTPClientResponsePart.head(.init(version: .http1_1, status: .found, headers: headers))
+        )
+        try channel.writeInbound(HTTPClientResponsePart.end(nil))
+
+        let original = ByteBuffer.of(string: "hello hello hello hello")
+        let compressed = self.compress(original, "gzip")
+        try channel.writeInbound(
+            HTTPClientResponsePart.head(.init(version: .http1_1, status: .ok, headers: headers))
+        )
+        try channel.writeInbound(HTTPClientResponsePart.body(compressed))
+        try channel.writeInbound(HTTPClientResponsePart.end(nil))
+
+        var decompressed = ByteBuffer()
+        while let part = try channel.readInbound(as: HTTPClientResponsePart.self) {
+            if case .body(var chunk) = part {
+                decompressed.writeBuffer(&chunk)
+            }
+        }
+        XCTAssertEqual(decompressed, original)
+    }
+
+    func testDecompressionTruncatedGzipBodyStillThrows() throws {
+        let compressed = self.compress(ByteBuffer.of(string: String(repeating: "truncate me ", count: 100)), "gzip")
+        // Cut the stream in the middle of the compressed data.
+        let truncated = compressed.getSlice(at: compressed.readerIndex, length: compressed.readableBytes / 2)!
+
+        let channel = EmbeddedChannel()
+        try channel.pipeline.syncOperations.addHandler(NIOHTTPResponseDecompressor(limit: .none))
+        let headers = HTTPHeaders([("Content-Encoding", "gzip")])
+        try channel.writeInbound(
+            HTTPClientResponsePart.head(.init(version: .http1_1, status: .ok, headers: headers))
+        )
+
+        XCTAssertNoThrow(try channel.writeInbound(HTTPClientResponsePart.body(truncated)))
+        XCTAssertThrowsError(try channel.writeInbound(HTTPClientResponsePart.end(nil))) { error in
+            XCTAssertEqual(
+                error as? NIOHTTPDecompression.ExtraDecompressionError,
+                NIOHTTPDecompression.ExtraDecompressionError.truncatedData
+            )
+        }
+    }
+
     func testReentrantChannelReadDuringForwardIsSafe() throws {
         let channel = EmbeddedChannel()
         let recorder = Recorder<HTTPClientResponsePart>()
