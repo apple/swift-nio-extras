@@ -528,6 +528,26 @@ class HTTPResponseCompressorTest: XCTestCase {
         try assertUncompressedResponse(channel: channel)
     }
 
+    func testAsteriskDoesNotOverrideRefusedGzip() throws {
+        let channel = try compressionChannel()
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "gzip;q=0, *", channel: channel)
+        try assertDeflatedResponse(channel: channel)
+    }
+
+    func testAsteriskDoesNotOverrideRefusedAlgorithms() throws {
+        let channel = try compressionChannel()
+        defer {
+            XCTAssertNoThrow(try channel.finish())
+        }
+
+        try sendRequest(acceptEncoding: "gzip;q=0, deflate;q=0, *", channel: channel)
+        try assertUncompressedResponse(channel: channel)
+    }
+
     func testNonNumericQValuePreventsChoice() throws {
         let channel = try compressionChannel()
         defer {
