@@ -256,10 +256,17 @@ public final class HTTPResponseCompressor: ChannelDuplexHandler, RemovableChanne
         if gzipQValue > 0 || deflateQValue > 0 {
             return gzipQValue > deflateQValue ? .gzip : .deflate
         } else if anyQValue > 0 {
+            // "*" only covers codings the client did not list explicitly, so a coding
+            // listed with q=0 stays unacceptable (RFC 9110, section 12.5.3).
+            //
             // Though gzip is usually less well compressed than deflate, it has slightly
             // wider support because it's unabiguous. We therefore default to that unless
             // the client has expressed a preference.
-            return .gzip
+            if gzipQValue < 0 {
+                return .gzip
+            } else if deflateQValue < 0 {
+                return .deflate
+            }
         }
 
         return nil
